@@ -108,7 +108,7 @@ class QQbox(Star):
         if len(params) < 2:
             yield event.plain_result("请修正指令,应为 /QQbox_title [qq] [title]")
             return
-        qq, title = params[0], "".join(params[1:])
+        qq, title = params[0], " ".join(params[1:])
         self._set_title_name(qq, title)
         yield event.plain_result(f"设置成功qq:{qq},title:{title}")
         return
@@ -121,7 +121,7 @@ class QQbox(Star):
         if len(params) < 2:
             yield event.plain_result("请修正指令,应为 /QQbox_note [qq] [note]")
             return
-        qq, note = params[0], "".join(params[1:])
+        qq, note = params[0], " ".join(params[1:])
         self._set_note(qq, note)
         yield event.plain_result(f"设置成功qq:{qq},note:{note}")
         return
@@ -143,7 +143,6 @@ class QQbox(Star):
         write_json_file(self.qq_title_key, os.path.join(self.avatar_image_path,"qq_data.json"))
 
     def _set_title_color(self, qq, color_id):
-        # color = input("颜色:(1.灰色,2.紫色,3.黄色,4.绿色;请直接输入数字)")
         match = re.search(r'[1-4]', color_id)
         color_clean = match.group() if match else "1"
         if self.qq_title_key.get(str(qq),None) is None:
