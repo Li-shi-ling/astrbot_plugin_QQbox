@@ -8,6 +8,7 @@ from io import BytesIO
 import traceback
 import tempfile
 import aiofiles
+import asyncio
 import httpx
 import base64
 import json
@@ -22,7 +23,7 @@ class QQbox(Star):
         self.Config = config
 
         # 使用框架提供的标准数据目录
-        self.data_dir = StarTools.get_data_dir()
+        self.data_dir = str(StarTools.get_data_dir())
 
         # 优先使用配置的路径，如果没有则使用标准数据目录
         avatar_path = self.Config.get("avatar_image_path")
@@ -44,7 +45,7 @@ class QQbox(Star):
         self.qq_data_file = os.path.join(self._get_absolute_path(avatar_path), "qq_data.json")
 
         # 初始化QQ数据
-        self.qq_title_key = self._load_qq_data()
+        self.qq_title_key = {}
 
         # 初始化气泡生成器
         self.qqbox = ChatBubbleGenerator(
@@ -65,6 +66,7 @@ class QQbox(Star):
         # 创建异步HTTP客户端
         self.http_client = httpx.AsyncClient(timeout=30.0)
         logger.info("QQbox 插件初始化完成")
+        self.qq_title_key = await self._load_qq_data()
 
     async def terminate(self):
         """清理资源"""
@@ -96,15 +98,19 @@ class QQbox(Star):
             for font_name, font_path in missing_fonts:
                 logger.warning(f"找不到{font_name}文件: {font_path}")
 
-    def _load_qq_data(self):
-        """同步加载QQ数据"""
+    async def _load_qq_data(self):
+        """异步加载QQ数据"""
         try:
             if os.path.exists(self.qq_data_file):
-                with open(self.qq_data_file, 'r', encoding='utf-8') as f:
-                    return json.load(f)
+                async with aiofiles.open(self.qq_data_file, 'r', encoding='utf-8') as f:
+                    content = await f.read()
+                    if not content.strip():
+                        return {}
+                    return json.loads(content)
+            return {}
         except (json.JSONDecodeError, OSError) as e:
             logger.error(f"加载QQ数据失败: {e}")
-        return {}
+            return {}
 
     async def _save_qq_data(self):
         """保存QQ数据"""
@@ -129,56 +135,81 @@ class QQbox(Star):
         text = event.message_str
         params = extract_help_parameters(text, "QQbox_echo")
         logger.info(f"进入QQbox_echo, params: {params}")
-
         if len(params) < 2:
             yield event.plain_result("请修正指令，应为 /echo [qq] [text]")
             return
-
         qq, text = params[0], " ".join(params[1:])
-
-        # 验证QQ号
         if not self._validate_qq(qq):
             yield event.plain_result("QQ号格式错误，请使用纯数字")
             return
-
+        tmp_path = None
         try:
-            # 异步获取QQ信息
-            info = await get_qq_info(qq, self.avatar_image_path, self.http_client)
-            if not info:
-                yield event.plain_result("获取QQ信息失败，请检查网络或稍后重试")
-                return
-
-            # 创建气泡图片
-            image = await self.qqbox.create_chat_message(
-                qq=qq,
-                text=text,
-                image=None,
-                qq_title_key=self.qq_title_key,
-                user_info=info  # 传递用户信息避免重复获取
-            )
-
-            # 使用内存操作，避免文件竞争
-            img_bytes = BytesIO()
-            image.save(img_bytes, format='PNG')
-            img_bytes.seek(0)
-
-            # 使用临时文件发送（AstrBot可能需要文件路径）
-            with tempfile.NamedTemporaryFile(suffix='.png', delete=False, dir=self.temp_path) as tmp_file:
-                tmp_file.write(img_bytes.read())
-                tmp_path = tmp_file.name
-
-            yield event.make_result().file_image(tmp_path)
-
-            # 发送后删除临时文件
             try:
-                os.unlink(tmp_path)
-                logger.debug(f"临时文件已删除: {tmp_path}")
-            except OSError as e:
-                logger.warning(f"删除临时文件失败: {e}")
-
+                info = await get_qq_info(qq, self.avatar_image_path, self.http_client)
+                if not info:
+                    yield event.plain_result("获取QQ信息失败，请检查网络或稍后重试")
+                    return
+            except httpx.RequestError as e:
+                logger.error(f"网络请求失败，QQ: {qq}, 错误: {e}")
+                yield event.plain_result("网络请求失败，请检查网络连接")
+                return
+            except httpx.HTTPStatusError as e:
+                logger.error(f"HTTP请求异常，状态码: {e.response.status_code}, QQ: {qq}")
+                yield event.plain_result("服务暂时不可用，请稍后重试")
+                return
+            try:
+                image = await asyncio.to_thread(
+                    self.qqbox.create_chat_message,
+                    qq=qq,
+                    text=text,
+                    image=None,
+                    qq_title_key=self.qq_title_key,
+                    user_info=info
+                )
+            except (MemoryError, OSError) as e:
+                logger.error(f"图片生成失败，QQ: {qq}, 错误类型: {type(e).__name__}, 详情: {e}")
+                yield event.plain_result("图片生成失败，可能是内存不足或系统资源限制")
+                return
+            except ImportError as e:
+                logger.error(f"依赖库错误: {e}\n{traceback.format_exc()}")
+                yield event.plain_result("系统组件异常，请联系管理员")
+                return
+            try:
+                img_bytes = BytesIO()
+                image.save(img_bytes, format='PNG')
+                image_data = img_bytes.getvalue()
+            except (IOError, OSError) as e:
+                logger.error(f"图片保存失败，QQ: {qq}, 错误: {e}")
+                yield event.plain_result("图片处理失败，请稍后重试")
+                return
+            try:
+                fd, tmp_path = tempfile.mkstemp(suffix='.png', dir=self.temp_path)
+                with os.fdopen(fd, 'wb') as f:
+                    f.write(image_data)
+            except (OSError, IOError) as e:
+                logger.error(f"临时文件创建失败，QQ: {qq}, 错误: {e}")
+                yield event.plain_result("文件操作失败，请检查磁盘空间")
+                return
+            try:
+                yield event.make_result().file_image(tmp_path)
+            except Exception as e:
+                logger.error(f"消息发送失败，QQ: {qq}, 错误类型: {type(e).__name__}")
+                yield event.plain_result("消息发送失败，请稍后重试")
+                return
         except Exception as e:
-            logger.error(f"创建气泡错误: {e}\n{traceback.format_exc()}")
-            yield event.plain_result(f"创建气泡时发生错误: {str(e)[:50]}")
+            logger.error(
+                f"未知错误，QQ: {qq}, 错误类型: {type(e).__name__}\n"
+                f"完整堆栈: {traceback.format_exc()}\n"
+                f"错误消息: {e}"
+            )
+            yield event.plain_result("系统内部错误，请联系管理员")
+        finally:
+            if tmp_path and os.path.exists(tmp_path):
+                try:
+                    os.unlink(tmp_path)
+                    logger.debug(f"临时文件已清理: {tmp_path}")
+                except OSError as e:
+                    logger.warning(f"清理临时文件失败: {e}")
 
     @filter.command("QQbox_color")
     async def QQbox_color(self, event: AstrMessageEvent):
@@ -311,17 +342,16 @@ class QQbox(Star):
 
         await self._save_qq_data()
 
-
 # ------------------------------------------------------------------------------
 # 高 DPI 超清聊天气泡生成器
 # ------------------------------------------------------------------------------
 class ChatBubbleGenerator:
     def __init__(
             self,
-            bubble_font_path="./resources/fonts/Microsoft-YaHei-Semilight.ttc",
-            nickname_font_path="./resources/fonts/SourceHanSansSC-ExtraLight.otf",
-            title_font_path="./resources/fonts/Microsoft-YaHei-Bold.ttc",
-            avatar_image_path=".",
+            bubble_font_path,
+            nickname_font_path,
+            title_font_path,
+            avatar_image_path,
             bubble_font_size=34,
             nickname_font_size=25,
             title_font_size=19,
@@ -336,7 +366,10 @@ class ChatBubbleGenerator:
             avatar_size=(89, 89),
             margin=20,
             title_bubble_name_offset=-1,
-            max_width=640
+            max_width=640,
+            bubble_position=(120, 60),
+            avatar_position=(23, 10),
+            background_color="#F0F0F2"
     ):
         self.SCALE = 4  # supersampling 倍率
 
@@ -366,16 +399,17 @@ class ChatBubbleGenerator:
         self.title_padding_y_offset = title_padding_y_offset
         self.title_bubble_name_offset = title_bubble_name_offset
         self.max_width = max_width
-
-        # 颜色映射
         self.color_map = {
             1: (181, 182, 181, 220),  # #B5B6B5
             2: (214, 154, 255, 220),  # #D69AFF
             3: (255, 198, 41, 220),  # #FFC629
             4: (82, 215, 197, 220)  # #52D7C5
         }
-
         self.avatar_image_path = avatar_image_path
+        self.bubble_position = bubble_position
+        self.avatar_position = avatar_position
+        self.background_color = background_color
+
 
     def _load_fonts(self, bubble_path, nickname_path, title_path, bubble_size, nickname_size, title_size):
         """加载字体文件，如果不存在则使用默认字体"""
@@ -446,7 +480,6 @@ class ChatBubbleGenerator:
                 else:
                     lines.append(current)
                     current = ch
-
         if current:
             lines.append(current)
 
@@ -696,21 +729,15 @@ class ChatBubbleGenerator:
     # ------------------------------------------------------------------------------
     # 创建完整聊天消息（异步版本）
     # ------------------------------------------------------------------------------
-    async def create_chat_message(
+    def create_chat_message(
             self,
             qq,
             text,
             image,
             qq_title_key=None,
-            user_info=None,  # 新增：避免重复获取用户信息
-            bubble_position=(120, 60),
-            avatar_position=(23, 10),
-            background_color="#F0F0F2"
+            user_info=None
     ):
-        # 如果未提供用户信息，则获取（但通常应该由调用者提供）
         if user_info is None:
-            # 注意：这里应该使用异步HTTP客户端，但当前函数签名不支持
-            # 建议在调用此方法前先获取用户信息
             raise ValueError("需要提供user_info参数，避免同步HTTP调用")
 
         nickname = user_info["name"]
@@ -750,43 +777,43 @@ class ChatBubbleGenerator:
 
             # 计算背景宽度
             bg_w = max(
-                bubble_position[0] + bubble_w + self.margin,
-                avatar_position[0] + self.avatar_size[0] + self.margin,
-                bubble_position[0] + nickname_width + title_width + self.title_bubble_name_offset
+                self.bubble_position[0] + bubble_w + self.margin,
+                self.avatar_position[0] + self.avatar_size[0] + self.margin,
+                self.bubble_position[0] + nickname_width + title_width + self.title_bubble_name_offset
             )
         else:
             nickname_width = int(draw_tmp.textlength(nickname, font=self.nickname_font)) + self.bubble_padding
             bg_w = max(
-                bubble_position[0] + bubble_w + self.margin,
-                avatar_position[0] + self.avatar_size[0] + self.margin,
-                bubble_position[0] + nickname_width
+                self.bubble_position[0] + bubble_w + self.margin,
+                self.avatar_position[0] + self.avatar_size[0] + self.margin,
+                self.bubble_position[0] + nickname_width
             )
 
         # 计算背景高度
         bg_h = max(
-            bubble_position[1] + bubble_h + self.margin,
-            avatar_position[1] + self.avatar_size[1] + self.margin
+            self.bubble_position[1] + bubble_h + self.margin,
+            self.avatar_position[1] + self.avatar_size[1] + self.margin
         )
 
         # 创建背景
-        r = int(background_color[1:3], 16)
-        g = int(background_color[3:5], 16)
-        b = int(background_color[5:7], 16)
+        r = int(self.background_color[1:3], 16)
+        g = int(self.background_color[3:5], 16)
+        b = int(self.background_color[5:7], 16)
         background = Image.new("RGBA", (bg_w, bg_h), (r, g, b, 255))
 
         # 粘贴气泡
-        background.paste(bubble, bubble_position, bubble)
+        background.paste(bubble, self.bubble_position, bubble)
 
         # 加载并粘贴头像
         try:
             avatar = Image.open(avatar_path).convert("RGBA")
             avatar = avatar.resize(self.avatar_size, Image.Resampling.LANCZOS)
-            background.paste(avatar, avatar_position, avatar)
+            background.paste(avatar, self.avatar_position, avatar)
         except Exception as e:
             logger.error(f"加载头像失败: {e}")
             # 使用默认头像占位
             default_avatar = Image.new("RGBA", self.avatar_size, (200, 200, 200, 255))
-            background.paste(default_avatar, avatar_position)
+            background.paste(default_avatar, self.avatar_position)
 
         # 绘制昵称和头衔
         draw = ImageDraw.Draw(background)
@@ -799,13 +826,13 @@ class ChatBubbleGenerator:
             title_bubble = self.create_title_bubble(content, title_bg_color)
             background.paste(
                 title_bubble,
-                (bubble_position[0], avatar_position[1] + self.title_bubble_offset),
+                (self.bubble_position[0], self.avatar_position[1] + self.title_bubble_offset),
                 title_bubble
             )
 
             # 绘制昵称
             draw.text(
-                (bubble_position[0] + title_width + self.title_bubble_name_offset, avatar_position[1]),
+                (self.bubble_position[0] + title_width + self.title_bubble_name_offset, self.avatar_position[1]),
                 nickname,
                 fill=self.text_color,
                 font=self.nickname_font
@@ -813,14 +840,13 @@ class ChatBubbleGenerator:
         else:
             # 只绘制昵称
             draw.text(
-                (bubble_position[0], avatar_position[1]),
+                (self.bubble_position[0], self.avatar_position[1]),
                 nickname,
                 fill=self.text_color,
                 font=self.nickname_font
             )
 
         return background
-
 
 # ------------------------------------------------------------------------------
 # 辅助函数
@@ -833,7 +859,6 @@ def extract_help_parameters(s, directive):
         params = re.split(r'\s+', match.group(1).strip())
         return params
     return []
-
 
 async def get_qq_info(qq, avatar_cache_location=".", http_client=None):
     """异步获取QQ信息（缓存 + API）"""
@@ -908,7 +933,6 @@ async def get_qq_info(qq, avatar_cache_location=".", http_client=None):
         logger.error(f"获取QQ信息失败: {e}")
         return None
 
-
 async def download_circular_avatar(url, save_path, http_client=None, size=None):
     """异步下载并裁剪头像为圆形"""
     if http_client is None:
@@ -938,7 +962,6 @@ async def download_circular_avatar(url, save_path, http_client=None, size=None):
 
     return False
 
-
 def create_circular_avatar(img, size=None):
     """将图片裁剪为圆形"""
     # 获取图片尺寸
@@ -964,7 +987,6 @@ def create_circular_avatar(img, size=None):
     result = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     result.paste(img, (0, 0), mask)
     return result
-
 
 def create_default_avatar(qq, nickname, save_path):
     """创建默认头像"""
@@ -997,12 +1019,10 @@ def create_default_avatar(qq, nickname, save_path):
         logger.error(f"创建默认头像失败: {e}")
         return False
 
-
 def resize_by_scale(image, scale_factor):
     """按比例缩放图像"""
     w, h = image.size
     return image.resize((int(w * scale_factor), int(h * scale_factor)), Image.Resampling.LANCZOS)
-
 
 def image_to_base64(image_obj, format="PNG") -> str:
     """将PIL Image对象转换为Base64字符串"""
