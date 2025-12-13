@@ -14,19 +14,19 @@
   "bubble_font_path": {
     "description": "气泡字体路径",
     "type": "string",
-    "default": "./data/plugins/astrbot_plugin_QQbox/resources/fonts/Microsoft-YaHei-Semilight.ttc",
+    "default": "./data/plugins/astrbot_plugin_qqbox/resources/fonts/Microsoft-YaHei-Semilight.ttc",
     "hint": "例如：/home/root/fonts/Microsoft-YaHei-Semilight.ttc"
   },
   "nickname_font_path": {
     "description": "名称字体路径",
     "type": "string",
-    "default": "./data/plugins/astrbot_plugin_QQbox/resources/fonts/SourceHanSansSC-ExtraLight.otf",
+    "default": "./data/plugins/astrbot_plugin_qqbox/resources/fonts/SourceHanSansSC-ExtraLight.otf",
     "hint": "例如：/home/root/fonts/SourceHanSansSC-ExtraLight.otf"
   },
   "title_font_path": {
     "description": "头衔字体路径",
     "type": "string",
-    "default": "./data/plugins/astrbot_plugin_QQbox/resources/fonts/Microsoft-YaHei-Bold.ttc",
+    "default": "./data/plugins/astrbot_plugin_qqbox/resources/fonts/Microsoft-YaHei-Bold.ttc",
     "hint": "例如：/home/root/fonts/Microsoft-YaHei-Bold.ttc"
   }
 }
