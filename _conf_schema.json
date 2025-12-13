@@ -5,6 +5,12 @@
     "default": "./img/avatar",
     "hint": "例如：/home/root/img/avatar"
   },
+  "corner_radius": {
+    "description": "气泡圆角大小",
+    "type": "int",
+    "default": 27,
+    "hint": "为了打败ai,我付出了太多太多"
+  },
   "temp_path": {
     "description": "临时存储路径",
     "type": "string",

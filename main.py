@@ -15,12 +15,18 @@ import json
 import re
 import os
 
-
 @register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.0.0")
 class QQbox(Star):
     def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)
         self.Config = config
+
+        # 圆角大小获取
+        try:
+            self.corner_radius = int(self.Config.get("corner_radius",27))
+        except Exception as e:
+            self.corner_radius = 27
+            logger.warning(f"配置文件中corner_radius配置出现问题:{e}")
 
         # 使用框架提供的标准数据目录
         self.data_dir = str(StarTools.get_data_dir())
@@ -53,6 +59,7 @@ class QQbox(Star):
             nickname_font_path=self.nickname_font_path,
             title_font_path=self.title_font_path,
             avatar_image_path=self.avatar_image_path,
+            corner_radius=self.corner_radius
         )
 
         # 初始化HTTP客户端（异步）
@@ -135,6 +142,9 @@ class QQbox(Star):
         text = event.message_str
         params = extract_help_parameters(text, "QQbox_echo")
         logger.info(f"进入QQbox_echo, params: {params}")
+        if not self.qqbox.is_load_fonts:
+            yield event.plain_result("字体没有被正确的加载,请尝试修改配置文件到正确的文字路径")
+            return
         if len(params) < 2:
             yield event.plain_result("请修正指令，应为 /echo [qq] [text]")
             return
@@ -158,7 +168,7 @@ class QQbox(Star):
                 yield event.plain_result("服务暂时不可用，请稍后重试")
                 return
             try:
-                image = await asyncio.to_thread(
+                img_bytes = await asyncio.to_thread(
                     self.qqbox.create_chat_message,
                     qq=qq,
                     text=text,
@@ -175,8 +185,6 @@ class QQbox(Star):
                 yield event.plain_result("系统组件异常，请联系管理员")
                 return
             try:
-                img_bytes = BytesIO()
-                image.save(img_bytes, format='PNG')
                 image_data = img_bytes.getvalue()
             except (IOError, OSError) as e:
                 logger.error(f"图片保存失败，QQ: {qq}, 错误: {e}")
@@ -371,132 +379,214 @@ class ChatBubbleGenerator:
             avatar_position=(23, 10),
             background_color="#F0F0F2"
     ):
+        # 常量配置
         self.SCALE = 4  # supersampling 倍率
 
-        # 加载字体（如果文件存在）
-        self._load_fonts(
-            bubble_font_path,
-            nickname_font_path,
-            title_font_path,
-            bubble_font_size,
-            nickname_font_size,
-            title_font_size
-        )
+        # 字体配置
+        self._font_configs = {
+            'bubble': (bubble_font_path, bubble_font_size),
+            'nickname': (nickname_font_path, nickname_font_size),
+            'title': (title_font_path, title_font_size)
+        }
 
-        # 配置参数
-        self.title_padding_x = title_padding_x
-        self.title_padding_y = title_padding_y
-        self.bubble_font_size = bubble_font_size
-        self.nickname_font_size = nickname_font_size
-        self.title_font_size = title_font_size
-        self.bubble_padding = bubble_padding
-        self.bubble_bg_color = bubble_bg_color
-        self.text_color = text_color
-        self.corner_radius = corner_radius
-        self.avatar_size = avatar_size
-        self.margin = margin
-        self.title_bubble_offset = title_bubble_offset
-        self.title_padding_y_offset = title_padding_y_offset
-        self.title_bubble_name_offset = title_bubble_name_offset
-        self.max_width = max_width
+        # 颜色配置
         self.color_map = {
             1: (181, 182, 181, 220),  # #B5B6B5
             2: (214, 154, 255, 220),  # #D69AFF
             3: (255, 198, 41, 220),  # #FFC629
             4: (82, 215, 197, 220)  # #52D7C5
         }
-        self.avatar_image_path = avatar_image_path
+
+        # 缓存
+        self._temp_canvas = None
+        self._temp_draw = None
+
+        # 初始化字体
+        self.is_load_fonts = self._load_fonts()
+
+        # 布局参数
+        self.bubble_padding = bubble_padding
+        self.title_padding_x = title_padding_x
+        self.title_padding_y = title_padding_y
+        self.title_padding_y_offset = title_padding_y_offset
+        self.title_bubble_offset = title_bubble_offset
+        self.title_bubble_name_offset = title_bubble_name_offset
+        self.margin = margin
+        self.max_width = max_width
+        self.corner_radius = corner_radius
+        self.avatar_size = avatar_size
         self.bubble_position = bubble_position
         self.avatar_position = avatar_position
-        self.background_color = background_color
 
+        # 样式参数
+        self.bubble_bg_color = bubble_bg_color
+        self.text_color = text_color
+        self.avatar_image_path = avatar_image_path
 
-    def _load_fonts(self, bubble_path, nickname_path, title_path, bubble_size, nickname_size, title_size):
-        """加载字体文件，如果不存在则使用默认字体"""
-        try:
-            if bubble_path and os.path.exists(bubble_path):
-                self.bubble_font = ImageFont.truetype(bubble_path, bubble_size * self.SCALE)
-            else:
-                self.bubble_font = ImageFont.load_default()
-                logger.warning("使用默认气泡字体")
-        except Exception as e:
-            self.bubble_font = ImageFont.load_default()
-            logger.warning(f"加载气泡字体失败，使用默认字体: {e}")
-
-        try:
-            if nickname_path and os.path.exists(nickname_path):
-                self.nickname_font = ImageFont.truetype(nickname_path, nickname_size)
-            else:
-                self.nickname_font = ImageFont.load_default()
-                logger.warning("使用默认昵称字体")
-        except Exception as e:
-            self.nickname_font = ImageFont.load_default()
-            logger.warning(f"加载昵称字体失败，使用默认字体: {e}")
-
-        try:
-            if title_path and os.path.exists(title_path):
-                self.title_SCALE_font = ImageFont.truetype(title_path, title_size * self.SCALE)
-                self.title_font = ImageFont.truetype(title_path, title_size)
-            else:
-                self.title_SCALE_font = ImageFont.load_default()
-                self.title_font = ImageFont.load_default()
-                logger.warning("使用默认头衔字体")
-        except Exception as e:
-            self.title_SCALE_font = ImageFont.load_default()
-            self.title_font = ImageFont.load_default()
-            logger.warning(f"加载头衔字体失败，使用默认字体: {e}")
+        # 背景颜色处理
+        if background_color.startswith("#"):
+            self.background_color = tuple(
+                int(background_color[i:i + 2], 16) for i in (1, 3, 5)
+            ) + (255,)
+        else:
+            self.background_color = (240, 240, 242, 255)  # 默认颜色
 
     # ------------------------------------------------------------------------------
-    # 创建聊天气泡（高 DPI supersampling）
+    # 字体管理
+    # ------------------------------------------------------------------------------
+    def _load_fonts(self):
+        """加载并缓存字体"""
+        try:
+            # 气泡字体（高DPI）
+            b_path, b_size = self._font_configs['bubble']
+            self.bubble_font = self._safe_load_font(
+                b_path, b_size * self.SCALE, "气泡"
+            )
+
+            # 昵称字体（正常DPI）
+            n_path, n_size = self._font_configs['nickname']
+            self.nickname_font = self._safe_load_font(
+                n_path, n_size, "昵称"
+            )
+
+            # 头衔字体（双DPI版本）
+            t_path, t_size = self._font_configs['title']
+            self.title_SCALE_font = self._safe_load_font(
+                t_path, t_size * self.SCALE, "头衔高DPI"
+            )
+            self.title_font = self._safe_load_font(
+                t_path, t_size, "头衔"
+            )
+
+            return True
+        except Exception as e:
+            logger.error(f"字体加载失败: {e}")
+            return False
+
+    def _safe_load_font(self, path, size, name):
+        """安全加载字体，失败时使用默认字体"""
+        try:
+            if path and os.path.exists(path):
+                return ImageFont.truetype(path, size)
+            else:
+                logger.warning(f"使用默认{name}字体")
+                return ImageFont.load_default()
+        except Exception as e:
+            logger.warning(f"加载{name}字体失败: {e}")
+            return ImageFont.load_default()
+
+    # ------------------------------------------------------------------------------
+    # 工具方法
+    # ------------------------------------------------------------------------------
+    def _get_temp_draw(self):
+        """获取临时绘图上下文（延迟初始化）"""
+        if self._temp_canvas is None:
+            self._temp_canvas = Image.new("RGBA", (10, 10))
+            self._temp_draw = ImageDraw.Draw(self._temp_canvas)
+        return self._temp_draw
+
+    def _wrap_text(self, text, font):
+        """文本自动换行"""
+        draw = self._get_temp_draw()
+        padding = self.bubble_padding * self.SCALE
+        max_width = self.max_width * self.SCALE - padding * 2
+
+        lines = []
+        current_line = ""
+
+        for char in text:
+            if char == "\n":
+                lines.append(current_line)
+                current_line = ""
+                continue
+
+            test_line = current_line + char
+            try:
+                line_width = draw.textlength(test_line, font=font)
+            except:
+                # 处理无法渲染的字符
+                char = " "
+                test_line = current_line + char
+                line_width = draw.textlength(test_line, font=font)
+
+            if line_width <= max_width:
+                current_line = test_line
+            else:
+                if current_line:  # 避免空行
+                    lines.append(current_line)
+                current_line = char
+
+        if current_line:
+            lines.append(current_line)
+
+        return lines
+
+    def _create_rounded_mask(self, width, height):
+        """创建圆角遮罩"""
+        mask = Image.new("L", (width, height), 0)
+        draw_mask = ImageDraw.Draw(mask)
+
+        # 动态计算圆角半径
+        min_side = min(width, height)
+        dynamic_radius = int(min_side * 0.05)
+        final_radius = min(dynamic_radius, 50 * self.SCALE)
+
+        draw_mask.rounded_rectangle(
+            (0, 0, width, height),
+            radius=final_radius,
+            fill=255
+        )
+        return mask
+
+    def _resize_image_for_bubble(self, image, padding=None):
+        """调整图片大小以适应气泡"""
+        if padding is None:
+            padding = self.bubble_padding * self.SCALE
+
+        max_width = self.max_width * self.SCALE - padding * 2
+        orig_width, orig_height = image.size
+
+        if orig_width <= max_width:
+            return image
+
+        # 按比例缩放
+        ratio = max_width / orig_width
+        new_width = int(orig_width * ratio)
+        new_height = int(orig_height * ratio)
+
+        return image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+    # ------------------------------------------------------------------------------
+    # 气泡创建方法
     # ------------------------------------------------------------------------------
     def create_chat_bubble(self, text):
+        """创建纯文本聊天气泡"""
         SCALE = self.SCALE
         font = self.bubble_font
         padding = self.bubble_padding * SCALE
-        max_width = self.max_width * SCALE
 
-        # 测量文本
-        tmp = Image.new("RGBA", (10, 10))
-        draw_tmp = ImageDraw.Draw(tmp)
+        # 文本换行
+        lines = self._wrap_text(text, font)
+        if not lines:
+            lines = [""]
 
-        # 文本分行
-        lines = []
-        current = ""
-        for ch in text:
-            test = current + ch
-            if ch == "\n":
-                lines.append(current)
-                current = ""
-            else:
-                try:
-                    w = draw_tmp.textlength(test, font=font)
-                except:
-                    ch = " "
-                    test = current + ch
-                    w = draw_tmp.textlength(test, font=font)
-
-                if w <= max_width - padding * 2:
-                    current = test
-                else:
-                    lines.append(current)
-                    current = ch
-        if current:
-            lines.append(current)
-
-        # 计算文本高度
+        # 计算尺寸
+        draw = self._get_temp_draw()
         bbox = font.getbbox("字")
-        line_height = int(bbox[3] - bbox[1] + 4 * SCALE)
+        line_height = bbox[3] - bbox[1] + 4 * SCALE
+
+        text_width = max(draw.textlength(line, font=font) for line in lines)
         text_height = line_height * len(lines)
-        text_width = max(draw_tmp.textlength(line, font=font) for line in lines)
 
-        # 创建气泡图像
         width = int(text_width + padding * 2)
-        height = text_height + padding * (2 + len(lines))
-        img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(img)
+        height = int(text_height + padding * (2 + len(lines)))
 
-        # 绘制圆角矩形背景
-        draw.rounded_rectangle(
+        # 创建画布
+        canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        draw_canvas = ImageDraw.Draw(canvas)
+
+        # 绘制气泡背景
+        draw_canvas.rounded_rectangle(
             (0, 0, width, height),
             radius=self.corner_radius * SCALE,
             fill=self.bubble_bg_color,
@@ -507,19 +597,15 @@ class ChatBubbleGenerator:
         # 绘制文本
         y = padding
         for line in lines:
-            draw.text((padding, y), line, fill=self.text_color, font=font)
+            draw_canvas.text((padding, y), line, fill=self.text_color, font=font)
             y += line_height + padding
 
         # 缩放到正常尺寸
-        img = img.resize((width // SCALE, height // SCALE), Image.Resampling.LANCZOS)
-        return img
+        return canvas.resize((width // SCALE, height // SCALE), Image.Resampling.LANCZOS)
 
-    # ------------------------------------------------------------------------------
-    # 创建聊天气泡（图片）
-    # ------------------------------------------------------------------------------
     def create_chat_img_bubble(self, image):
+        """创建纯图片聊天气泡"""
         SCALE = self.SCALE
-        max_width = self.max_width * SCALE
 
         # 加载图片
         if isinstance(image, str):
@@ -528,131 +614,60 @@ class ChatBubbleGenerator:
             img = image
 
         # 缩放图片
-        img = resize_by_scale(img, SCALE * 0.8)
-        orig_width, orig_height = img.size
+        img = self._resize_image_for_bubble(img)
+        width, height = img.size
 
-        # 调整大小以适应最大宽度
-        if orig_width > max_width:
-            width_ratio = max_width / orig_width
-            new_width = int(orig_width * width_ratio)
-            new_height = int(orig_height * width_ratio)
-            img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
-        else:
-            new_width, new_height = orig_width, orig_height
-
-        # 创建圆角遮罩
-        canvas = Image.new("RGBA", (new_width, new_height), (0, 0, 0, 0))
-        mask = Image.new("L", (new_width, new_height), 0)
-        draw_mask = ImageDraw.Draw(mask)
-
-        # 计算动态圆角半径
-        min_side = min(new_width, new_height)
-        radius_percentage = 0.05
-        dynamic_radius = int(min_side * radius_percentage)
-        max_radius = 50 * SCALE
-        final_radius = min(dynamic_radius, max_radius)
-
-        # 绘制圆角矩形遮罩
-        draw_mask.rounded_rectangle(
-            (0, 0, new_width, new_height),
-            radius=final_radius,
-            fill=255
-        )
-
-        # 应用遮罩
+        # 创建圆角图片
+        canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        mask = self._create_rounded_mask(width, height)
         canvas.paste(img, (0, 0), mask)
 
         # 缩放到正常尺寸
         if SCALE > 1:
             canvas = canvas.resize(
-                (new_width // SCALE, new_height // SCALE),
+                (width // SCALE, height // SCALE),
                 Image.Resampling.LANCZOS
             )
 
         return canvas
 
-    # ------------------------------------------------------------------------------
-    # 创建聊天气泡（图片 + 文字）
-    # ------------------------------------------------------------------------------
     def create_chat_text_img_bubble(self, text, image):
+        """创建图文混合聊天气泡"""
         SCALE = self.SCALE
         font = self.bubble_font
         padding = self.bubble_padding * SCALE
-        max_width = self.max_width * SCALE
 
         # 处理图片部分
-        image = resize_by_scale(image, SCALE * 0.8)
-        orig_width, orig_height = image.size
-
-        if orig_width > max_width - 2 * padding:
-            width_ratio = (max_width - 2 * padding) / orig_width
-            new_width = int(orig_width * width_ratio)
-            new_height = int(orig_height * width_ratio)
-            image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
-        else:
-            new_width, new_height = orig_width, orig_height
-
-        # 创建圆角图片
-        canvas = Image.new("RGBA", (new_width, new_height), (0, 0, 0, 0))
-        mask = Image.new("L", (new_width, new_height), 0)
-        draw_mask = ImageDraw.Draw(mask)
-
-        min_side = min(new_width, new_height)
-        radius_percentage = 0.05
-        dynamic_radius = int(min_side * radius_percentage)
-        max_radius = 50 * SCALE
-        final_radius = min(dynamic_radius, max_radius)
-
-        draw_mask.rounded_rectangle(
-            (0, 0, new_width, new_height),
-            radius=final_radius,
-            fill=255
-        )
-        canvas.paste(image, (0, 0), mask)
+        img_canvas = self.create_chat_img_bubble(image)
+        if SCALE > 1:
+            img_canvas = img_canvas.resize(
+                (img_canvas.width * SCALE, img_canvas.height * SCALE),
+                Image.Resampling.LANCZOS
+            )
 
         # 处理文本部分
-        tmp = Image.new("RGBA", (10, 10))
-        draw_tmp = ImageDraw.Draw(tmp)
+        lines = self._wrap_text(text, font) if text else []
 
-        lines = []
-        current = ""
-        for ch in text:
-            test = current + ch
-            if ch == "\n":
-                lines.append(current)
-                current = ""
-            else:
-                try:
-                    w = draw_tmp.textlength(test, font=font)
-                except:
-                    ch = " "
-                    test = current + ch
-                    w = draw_tmp.textlength(test, font=font)
-
-                if w <= max_width - padding * 2:
-                    current = test
-                else:
-                    lines.append(current)
-                    current = ch
-
-        if current:
-            lines.append(current)
-
-        # 计算总尺寸
+        # 计算尺寸
+        draw = self._get_temp_draw()
         bbox = font.getbbox("字")
-        line_height = int(bbox[3] - bbox[1] + 4 * SCALE)
-        text_height = line_height * len(lines)
-        text_width = max(draw_tmp.textlength(line, font=font) for line in lines)
+        line_height = bbox[3] - bbox[1] + 4 * SCALE
 
-        width = int(text_width + padding * 2)
-        height = text_height + padding * (2 + len(lines)) + canvas.height + padding
+        if lines:
+            text_width = max(draw.textlength(line, font=font) for line in lines)
+            text_height = line_height * len(lines)
+        else:
+            text_width = text_height = 0
 
-        # 创建最终气泡
-        img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(img)
+        width = int(max(text_width, img_canvas.width) + padding * 2)
+        height = int(text_height + padding * (2 + len(lines)) + img_canvas.height + padding)
 
-        # 绘制背景
-        draw.rounded_rectangle(
+        # 创建最终画布
+        canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        draw_canvas = ImageDraw.Draw(canvas)
+
+        # 绘制气泡背景
+        draw_canvas.rounded_rectangle(
             (0, 0, width, height),
             radius=self.corner_radius * SCALE,
             fill=self.bubble_bg_color,
@@ -661,61 +676,50 @@ class ChatBubbleGenerator:
         )
 
         # 绘制文本
-        y = padding
-        for line in lines:
-            draw.text((padding, y), line, fill=self.text_color, font=font)
-            y += line_height + padding
+        if lines:
+            y = padding
+            for line in lines:
+                draw_canvas.text((padding, y), line, fill=self.text_color, font=font)
+                y += line_height + padding
 
         # 粘贴图片
-        img.paste(
-            canvas,
-            (
-                padding,
-                text_height + padding * (2 + len(lines) + 1),
-                padding + new_width,
-                text_height + padding * (2 + len(lines) + 1) + new_height
-            ),
-            canvas
-        )
+        img_x = (width - img_canvas.width) // 2
+        img_y = text_height + padding * (2 + len(lines) if lines else 1)
+        canvas.paste(img_canvas, (img_x, img_y), img_canvas)
 
         # 缩放到正常尺寸
-        img = img.resize((width // SCALE, height // SCALE), Image.Resampling.LANCZOS)
-        return img
+        return canvas.resize((width // SCALE, height // SCALE), Image.Resampling.LANCZOS)
 
-    # ------------------------------------------------------------------------------
-    # 创建头衔气泡
-    # ------------------------------------------------------------------------------
     def create_title_bubble(self, text, bg_color):
         """创建头衔气泡"""
         SCALE = self.SCALE
         font = self.title_SCALE_font
 
         # 测量文本
-        tmp = Image.new("RGBA", (10, 10))
-        draw_tmp = ImageDraw.Draw(tmp)
-        text_width = int(draw_tmp.textlength(text, font=font))
+        draw = self._get_temp_draw()
+        text_width = int(draw.textlength(text, font=font))
 
         # 计算字体高度
         bbox = font.getbbox(text)
-        text_height = int(bbox[3] - bbox[1] + 4 * SCALE)
+        text_height = bbox[3] - bbox[1] + 4 * SCALE
 
-        # 添加内边距
+        # 计算尺寸
         width = int(text_width + self.title_padding_x * 2)
         height = int(text_height + self.title_padding_y * 3)
 
         # 创建气泡
-        img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(img)
+        canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        draw_canvas = ImageDraw.Draw(canvas)
 
         # 绘制背景
-        draw.rounded_rectangle(
+        draw_canvas.rounded_rectangle(
             (0, 0, width, height),
             radius=8 * SCALE,
             fill=bg_color
         )
 
         # 绘制文本
-        draw.text(
+        draw_canvas.text(
             (self.title_padding_x, self.title_padding_y_offset),
             text,
             fill=(255, 255, 255, 255),
@@ -723,11 +727,10 @@ class ChatBubbleGenerator:
         )
 
         # 缩放到正常尺寸
-        img = img.resize((width // SCALE, height // SCALE), Image.Resampling.LANCZOS)
-        return img
+        return canvas.resize((width // SCALE, height // SCALE), Image.Resampling.LANCZOS)
 
     # ------------------------------------------------------------------------------
-    # 创建完整聊天消息（异步版本）
+    # 主要接口（保持签名不变）
     # ------------------------------------------------------------------------------
     def create_chat_message(
             self,
@@ -740,99 +743,134 @@ class ChatBubbleGenerator:
         if user_info is None:
             raise ValueError("需要提供user_info参数，避免同步HTTP调用")
 
-        nickname = user_info["name"]
-        avatar_path = user_info["avatar_path"]
+        # 提取用户信息
+        nickname = user_info.get("name", "未知用户")
+        avatar_path = user_info.get("avatar_path")
 
-        # 创建气泡
-        if text and (image is None):
+        # 选择合适的气泡类型
+        if text and not image:
             bubble = self.create_chat_bubble(text)
         elif image and not text:
             bubble = self.create_chat_img_bubble(image)
-        else:
+        elif text and image:
             bubble = self.create_chat_text_img_bubble(text, image)
+        else:
+            # 空消息，创建一个最小气泡
+            bubble = self.create_chat_bubble(" ")
 
+        # 处理头衔信息
+        title_info = None
+        if qq_title_key and qq in qq_title_key:
+            title_info = qq_title_key[qq]
+            # 优先使用备注名
+            if title_info.get("notes"):
+                nickname = title_info["notes"]
+
+        # 计算布局尺寸
+        bg_size = self._calculate_background_size(bubble, nickname, title_info)
+        background = self._create_background_canvas(*bg_size)
+
+        # 添加气泡
+        background.paste(bubble, self.bubble_position, bubble)
+
+        # 添加头像
+        self._add_avatar(background, avatar_path)
+
+        # 添加昵称和头衔
+        self._add_name_and_title(background, nickname, title_info)
+
+        # 返回字节流
+        img_bytes = BytesIO()
+        background.save(img_bytes, format='PNG', optimize=True)
+        img_bytes.seek(0)
+        return img_bytes
+
+    # ------------------------------------------------------------------------------
+    # 辅助方法
+    # ------------------------------------------------------------------------------
+    def _calculate_background_size(self, bubble, nickname, title_info=None):
+        """计算背景画布尺寸"""
         bubble_w, bubble_h = bubble.size
 
         # 测量文本宽度
-        tmp = Image.new("RGBA", (10, 10))
-        draw_tmp = ImageDraw.Draw(tmp)
+        draw = self._get_temp_draw()
+        nickname_width = draw.textlength(nickname, font=self.nickname_font) + self.bubble_padding
 
-        # 处理头衔信息
-        qq_title = qq_title_key.get(qq, None) if qq_title_key else None
-        is_title = qq_title is not None
-        title_color = title_width = content = None
+        # 计算基础宽度
+        width_candidates = [
+            self.bubble_position[0] + bubble_w + self.margin,
+            self.avatar_position[0] + self.avatar_size[0] + self.margin,
+            self.bubble_position[0] + nickname_width
+        ]
 
-        if is_title:
-            # 获取备注名（如果有）
-            tmp_nickname = qq_title.get("notes", None)
-            content = qq_title.get("content", "")
-            title_color = qq_title.get("color", "1")
-
-            if tmp_nickname is not None:
-                nickname = tmp_nickname
-
-            # 测量宽度
-            nickname_width = int(draw_tmp.textlength(nickname, font=self.nickname_font)) + self.bubble_padding
-            title_width = int(draw_tmp.textlength(content, font=self.title_font)) + self.bubble_padding
-
-            # 计算背景宽度
-            bg_w = max(
-                self.bubble_position[0] + bubble_w + self.margin,
-                self.avatar_position[0] + self.avatar_size[0] + self.margin,
+        # 如果有头衔，调整宽度
+        if title_info:
+            title_width = draw.textlength(
+                title_info.get("content", ""),
+                font=self.title_font
+            ) + self.bubble_padding
+            width_candidates.append(
                 self.bubble_position[0] + nickname_width + title_width + self.title_bubble_name_offset
             )
-        else:
-            nickname_width = int(draw_tmp.textlength(nickname, font=self.nickname_font)) + self.bubble_padding
-            bg_w = max(
-                self.bubble_position[0] + bubble_w + self.margin,
-                self.avatar_position[0] + self.avatar_size[0] + self.margin,
-                self.bubble_position[0] + nickname_width
-            )
 
-        # 计算背景高度
-        bg_h = max(
+        # 计算高度
+        height_candidates = [
             self.bubble_position[1] + bubble_h + self.margin,
             self.avatar_position[1] + self.avatar_size[1] + self.margin
-        )
+        ]
 
-        # 创建背景
-        r = int(self.background_color[1:3], 16)
-        g = int(self.background_color[3:5], 16)
-        b = int(self.background_color[5:7], 16)
-        background = Image.new("RGBA", (bg_w, bg_h), (r, g, b, 255))
+        return int(max(width_candidates)), int(max(height_candidates))
 
-        # 粘贴气泡
-        background.paste(bubble, self.bubble_position, bubble)
+    def _create_background_canvas(self, width, height):
+        """创建背景画布"""
+        return Image.new("RGBA", (width, height), self.background_color)
 
-        # 加载并粘贴头像
+    def _add_avatar(self, background, avatar_path):
+        """添加头像到背景"""
         try:
-            avatar = Image.open(avatar_path).convert("RGBA")
-            avatar = avatar.resize(self.avatar_size, Image.Resampling.LANCZOS)
-            background.paste(avatar, self.avatar_position, avatar)
+            if avatar_path and os.path.exists(avatar_path):
+                avatar = Image.open(avatar_path).convert("RGBA")
+                avatar = avatar.resize(self.avatar_size, Image.Resampling.LANCZOS)
+                background.paste(avatar, self.avatar_position, avatar)
+            else:
+                self._create_default_avatar(background)
         except Exception as e:
             logger.error(f"加载头像失败: {e}")
-            # 使用默认头像占位
-            default_avatar = Image.new("RGBA", self.avatar_size, (200, 200, 200, 255))
-            background.paste(default_avatar, self.avatar_position)
+            self._create_default_avatar(background)
 
-        # 绘制昵称和头衔
+    def _create_default_avatar(self, background):
+        """创建默认头像"""
+        default_avatar = Image.new("RGBA", self.avatar_size, (200, 200, 200, 255))
+        background.paste(default_avatar, self.avatar_position)
+
+    def _add_name_and_title(self, background, nickname, title_info=None):
+        """添加昵称和头衔到背景"""
         draw = ImageDraw.Draw(background)
 
-        if is_title:
-            # 获取头衔颜色
-            title_bg_color = self.color_map.get(int(title_color), self.color_map[1])
+        if title_info:
+            # 处理头衔
+            title_color = self.color_map.get(
+                int(title_info.get("color", 1)),
+                self.color_map[1]
+            )
+            title_content = title_info.get("content", "")
 
-            # 创建并粘贴头衔气泡
-            title_bubble = self.create_title_bubble(content, title_bg_color)
+            # 创建头衔气泡
+            title_bubble = self.create_title_bubble(title_content, title_color)
             background.paste(
                 title_bubble,
                 (self.bubble_position[0], self.avatar_position[1] + self.title_bubble_offset),
                 title_bubble
             )
 
+            # 测量头衔宽度
+            draw_temp = self._get_temp_draw()
+            title_width = draw_temp.textlength(title_content, font=self.title_font) + self.bubble_padding
+
             # 绘制昵称
+            name_x = self.bubble_position[0] + title_width + self.title_bubble_name_offset
             draw.text(
-                (self.bubble_position[0] + title_width + self.title_bubble_name_offset, self.avatar_position[1]),
+                (name_x, self.avatar_position[1]),
                 nickname,
                 fill=self.text_color,
                 font=self.nickname_font
@@ -845,8 +883,6 @@ class ChatBubbleGenerator:
                 fill=self.text_color,
                 font=self.nickname_font
             )
-
-        return background
 
 # ------------------------------------------------------------------------------
 # 辅助函数
@@ -894,7 +930,7 @@ async def get_qq_info(qq, avatar_cache_location=".", http_client=None):
             # 可以添加更多备用API
         ]
 
-        nickname = qq  # 默认值
+        nickname = qq  # 如果API访问失败,使用qq当默认值,让用户使用提供的备注接口修改名称
         avatar_url = f"https://q1.qlogo.cn/g?b=qq&nk={qq}&s=640"
 
         # 尝试多个API
