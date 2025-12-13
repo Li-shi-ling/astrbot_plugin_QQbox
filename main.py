@@ -72,8 +72,9 @@ class QQbox(Star):
         """异步初始化，创建HTTP客户端"""
         # 创建异步HTTP客户端
         self.http_client = httpx.AsyncClient(timeout=30.0)
-        logger.info("QQbox 插件初始化完成")
         self.qq_title_key = await self._load_qq_data()
+        self.qqbox.is_load_fonts = await self.qqbox.load_fonts()
+        logger.info("QQbox 插件初始化完成")
 
     async def terminate(self):
         """清理资源"""
@@ -143,12 +144,12 @@ class QQbox(Star):
         params = extract_help_parameters(text, "QQbox_echo")
         logger.info(f"进入QQbox_echo, params: {params}")
         if not self.qqbox.is_load_fonts:
-            yield event.plain_result("字体没有被正确的加载,请尝试修改配置文件到正确的文字路径")
+            yield event.plain_result("字体在加载中或字体没有被正确的加载,请尝试修改配置文件到正确的文字路径")
             return
         if len(params) < 2:
             yield event.plain_result("请修正指令，应为 /echo [qq] [text]")
             return
-        qq, text = params[0], " ".join(params[1:])
+        qq, text = params[0], params[1]
         if not self._validate_qq(qq):
             yield event.plain_result("QQ号格式错误，请使用纯数字")
             return
@@ -248,7 +249,7 @@ class QQbox(Star):
             yield event.plain_result("请修正指令，应为 /QQbox_title [qq] [title]")
             return
 
-        qq, title = params[0], " ".join(params[1:])
+        qq, title = params[0], params[1]
 
         if not self._validate_qq(qq):
             yield event.plain_result("QQ号格式错误，请使用纯数字")
@@ -261,18 +262,14 @@ class QQbox(Star):
     async def QQbox_note(self, event: AstrMessageEvent):
         text = event.message_str
         params = extract_help_parameters(text, "QQbox_note")
-        logger.info(f"进入QQbox_note, params: {params}")
-
+        logger.info(f"进入QQbox_note, 原始文本: {text}")
         if len(params) < 2:
-            yield event.plain_result("请修正指令，应为 /QQbox_note [qq] [note]")
+            yield event.plain_result("请修正指令，应为 /QQbox_note [qq] [title]")
             return
-
-        qq, note = params[0], " ".join(params[1:])
-
+        qq, note = params[0], params[1]
         if not self._validate_qq(qq):
             yield event.plain_result("QQ号格式错误，请使用纯数字")
             return
-
         await self._set_note(qq, note)
         yield event.plain_result(f"设置成功 qq:{qq}, note:{note}")
 
@@ -402,7 +399,8 @@ class ChatBubbleGenerator:
         self._temp_draw = None
 
         # 初始化字体
-        self.is_load_fonts = self._load_fonts()
+        # self.is_load_fonts = self._load_fonts()
+        self.is_load_fonts = False
 
         # 布局参数
         self.bubble_padding = bubble_padding
@@ -434,46 +432,42 @@ class ChatBubbleGenerator:
     # ------------------------------------------------------------------------------
     # 字体管理
     # ------------------------------------------------------------------------------
-    def _load_fonts(self):
-        """加载并缓存字体"""
+    async def load_fonts(self):
+        """异步加载字体"""
         try:
             # 气泡字体（高DPI）
             b_path, b_size = self._font_configs['bubble']
-            self.bubble_font = self._safe_load_font(
+            self.bubble_font = await self._async_safe_load_font(
                 b_path, b_size * self.SCALE, "气泡"
             )
-
             # 昵称字体（正常DPI）
             n_path, n_size = self._font_configs['nickname']
-            self.nickname_font = self._safe_load_font(
+            self.nickname_font = await self._async_safe_load_font(
                 n_path, n_size, "昵称"
             )
-
             # 头衔字体（双DPI版本）
             t_path, t_size = self._font_configs['title']
-            self.title_SCALE_font = self._safe_load_font(
+            self.title_SCALE_font = await self._async_safe_load_font(
                 t_path, t_size * self.SCALE, "头衔高DPI"
             )
-            self.title_font = self._safe_load_font(
+            self.title_font = await self._async_safe_load_font(
                 t_path, t_size, "头衔"
             )
-
             return True
         except Exception as e:
             logger.error(f"字体加载失败: {e}")
             return False
 
-    def _safe_load_font(self, path, size, name):
-        """安全加载字体，失败时使用默认字体"""
+    async def _async_safe_load_font(self, path, size, name):
         try:
             if path and os.path.exists(path):
-                return ImageFont.truetype(path, size)
+                return await asyncio.to_thread(ImageFont.truetype, path, size)
             else:
-                logger.warning(f"使用默认{name}字体")
-                return ImageFont.load_default()
+                logger.warning(f"字体文件不存在: {path}")
+                raise FileNotFoundError(f"字体文件不存在: {name} ({path})")
         except Exception as e:
             logger.warning(f"加载{name}字体失败: {e}")
-            return ImageFont.load_default()
+            raise f"加载{name}字体失败: {e}"
 
     # ------------------------------------------------------------------------------
     # 工具方法
@@ -890,10 +884,13 @@ class ChatBubbleGenerator:
 def extract_help_parameters(s, directive):
     """提取指令参数"""
     escaped_directive = re.escape(directive)
-    match = re.search(f'{escaped_directive}' + r'\s+(.*)', s)
+    match = re.search(f'{escaped_directive}' + r'\s+(\S+)\s*(.*)', s, re.DOTALL)
     if match:
-        params = re.split(r'\s+', match.group(1).strip())
-        return params
+        # 第一个参数（通常是QQ号）
+        first_param = match.group(1).strip()
+        # 剩余的所有文本（保留原始空格）
+        remaining_text = match.group(2)
+        return [first_param, remaining_text] if remaining_text else [first_param]
     return []
 
 async def get_qq_info(qq, avatar_cache_location=".", http_client=None):
