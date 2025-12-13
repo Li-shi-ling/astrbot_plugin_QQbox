@@ -5,6 +5,12 @@
     "default": "./img/avatar",
     "hint": "例如：/home/root/img/avatar"
   },
+  "temp_path": {
+    "description": "临时存储路径",
+    "type": "string",
+    "default": "./img/temp",
+    "hint": "例如：/home/root/img/temp"
+  },
   "bubble_font_path": {
     "description": "气泡字体路径",
     "type": "string",

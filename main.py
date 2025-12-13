@@ -31,6 +31,9 @@ class QQbox(Star):
                 self.qq_title_key = read_json_file(os.path.join(self.avatar_image_path,"qq_data.json"))
             except:
                 self.qq_title_key = {}
+        self.temp_path = self.Config.get("temp_path")
+        if not os.path.exists(self.temp_path):
+            os.mkdir(self.temp_path)
 
     @filter.command("QQbox_echo")
     async def echo(self, event: AstrMessageEvent):
@@ -51,13 +54,18 @@ class QQbox(Star):
             yield event.plain_result(f"创建气泡错误:{e}")
             logger.warning(f"创建气泡错误:{e}")
             return
+        image.save(os.path.join(self.temp_path,"temp.png"))
+        yield event.make_result().file_image(os.path.join(self.temp_path,"temp.png"))
         try:
-            images_base64 = image_to_base64(image)
+            os.remove(os.path.join(self.temp_path,"temp.png"))
+            logger.info(f"文件 {os.path.join(self.temp_path,'temp.png')} 已成功删除")
+        except FileNotFoundError:
+            logger.warning(f"文件 {os.path.join(self.temp_path,'temp.png')} 不存在")
+        except PermissionError:
+            logger.warning(f"没有权限删除文件 {os.path.join(self.temp_path,'temp.png')}")
         except Exception as e:
-            yield event.plain_result(f"图片转变为base64错误:{e}")
-            logger.warning(f"图片转变为base64错误:{e}")
-            return
-        yield event.make_result().file_image(str(Comp.Image(file=f"base64://{images_base64}").convert_to_file_path()))
+            logger.error(f"删除文件时发生错误: {e}")
+        return
 
     @filter.command("QQbox_color")
     async def Set_color(self, event: AstrMessageEvent):
