@@ -16,10 +16,10 @@ class QQbox(Star):
     def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)
         self.Config = config
-        self.avatar_image_path = self.Config.get("avatar_image_path")
-        self.bubble_font_path = self.Config.get("bubble_font_path")
-        self.nickname_font_path = self.Config.get("nickname_font_path")
-        self.title_font_path = self.Config.get("title_font_path")
+        self.avatar_image_path = self._get_absolute_path(self.Config.get("avatar_image_path"))
+        self.bubble_font_path = self._get_absolute_path(self.Config.get("bubble_font_path"))
+        self.nickname_font_path = self._get_absolute_path(self.Config.get("nickname_font_path"))
+        self.title_font_path = self._get_absolute_path(self.Config.get("title_font_path"))
         self.qqbox = ChatBubbleGenerator(
             bubble_font_path=self.bubble_font_path,
             nickname_font_path=self.nickname_font_path,
@@ -50,6 +50,12 @@ class QQbox(Star):
 
     async def initialize(self):
         logger.info("QQbox 插件初始化完成")
+
+    def _get_absolute_path(self, path):
+        """将路径转换为绝对路径"""
+        if not path:  # 如果是空路径，直接返回
+            return path
+        return os.path.abspath(path)
 
     @filter.command("QQbox_echo")
     async def QQbox_echo(self, event: AstrMessageEvent):
