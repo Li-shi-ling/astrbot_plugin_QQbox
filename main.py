@@ -17,10 +17,13 @@ class QQbox(Star):
         super().__init__(context)
         self.Config = config
         self.avatar_image_path = self.Config.get("avatar_image_path")
+        self.bubble_font_path = self.Config.get("bubble_font_path")
+        self.nickname_font_path = self.Config.get("nickname_font_path")
+        self.title_font_path = self.Config.get("title_font_path")
         self.qqbox = ChatBubbleGenerator(
-            bubble_font_path="./data/plugins/astrbot_plugin_QQbox/resources/fonts/Microsoft-YaHei-Semilight.ttc",
-            nickname_font_path="./data/plugins/astrbot_plugin_QQbox/resources/fonts/SourceHanSansSC-ExtraLight.otf",
-            title_font_path="./data/plugins/astrbot_plugin_QQbox/resources/fonts/Microsoft-YaHei-Bold.ttc",
+            bubble_font_path=self.bubble_font_path,
+            nickname_font_path=self.nickname_font_path,
+            title_font_path=self.title_font_path,
             avatar_image_path = self.avatar_image_path,
         )
         if not os.path.exists(os.path.join(self.avatar_image_path,"qq_data.json")):
@@ -35,8 +38,21 @@ class QQbox(Star):
         if not os.path.exists(self.temp_path):
             os.mkdir(self.temp_path)
 
+        current_dir = os.getcwd()
+        logger.info(f"当前工作目录: {current_dir}")
+
+        if not os.path.exists(self.bubble_font_path):
+            logger.info(f"找不到路径{self.bubble_font_path}")
+        if not os.path.exists(self.nickname_font_path):
+            logger.info(f"找不到路径{self.nickname_font_path}")
+        if not os.path.exists(self.title_font_path):
+            logger.info(f"找不到路径{self.title_font_path}")
+
+    async def initialize(self):
+        logger.info("QQbox 插件初始化完成")
+
     @filter.command("QQbox_echo")
-    async def echo(self, event: AstrMessageEvent):
+    async def QQbox_echo(self, event: AstrMessageEvent):
         text = event.message_str
         params = extract_help_parameters(text, "QQbox_echo")
         if len(params) < 2:
@@ -68,7 +84,7 @@ class QQbox(Star):
         return
 
     @filter.command("QQbox_color")
-    async def Set_color(self, event: AstrMessageEvent):
+    async def QQbox_color(self, event: AstrMessageEvent):
         text = event.message_str
         params = extract_help_parameters(text, "QQbox_color")
         if len(params) < 2:
@@ -80,7 +96,7 @@ class QQbox(Star):
         return
 
     @filter.command("QQbox_title")
-    async def Set_title(self, event: AstrMessageEvent):
+    async def QQbox_title(self, event: AstrMessageEvent):
         text = event.message_str
         params = extract_help_parameters(text, "QQbox_title")
         if len(params) < 2:
@@ -92,7 +108,7 @@ class QQbox(Star):
         return
 
     @filter.command("QQbox_note")
-    async def Set_note(self, event: AstrMessageEvent):
+    async def QQbox_note(self, event: AstrMessageEvent):
         text = event.message_str
         params = extract_help_parameters(text, "QQbox_note")
         if len(params) < 2:
@@ -104,7 +120,7 @@ class QQbox(Star):
         return
 
     @filter.command("QQbox_help")
-    async def Set_note(self, event: AstrMessageEvent):
+    async def QQbox_note(self, event: AstrMessageEvent):
         output_text = """
         1.生成聊天气泡
         命令：/QQbox_echo [QQ号] [消息内容]
