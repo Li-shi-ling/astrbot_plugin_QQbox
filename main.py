@@ -123,34 +123,8 @@ class QQbox(Star):
         return
 
     @filter.command("QQbox_help")
-    async def QQbox_note(self, event: AstrMessageEvent):
-        output_text = """
-        1.生成聊天气泡
-        命令：/QQbox_echo [QQ号] [消息内容]
-        说明：生成指定QQ用户发送消息的气泡图片
-        示例：/QQbox_echo 123456 你好，今天天气不错！
-        
-        2.设置头衔颜色
-        命令：/QQbox_color [QQ号] [颜色编号]
-        说明：设置用户的头衔气泡背景颜色
-        颜色编号：
-          1 - 灰色（默认）
-          2 - 紫色
-          3 - 黄色
-          4 - 绿色
-        示例：/QQbox_color 123456 3
-        
-        3.设置头衔内容
-        命令：/QQbox_title [QQ号] [头衔文字]
-        说明：设置用户显示的头衔内容
-        示例：/QQbox_title 123456 管理员
-        
-        4.设置备注名
-        命令：/QQbox_note [QQ号] [备注名]
-        说明：设置用户的显示备注名（会覆盖原昵称）
-        示例：/QQbox_note 123456 张三
-        """
-        yield event.plain_result(output_text)
+    async def QQbox_help(self, event: AstrMessageEvent):
+        yield event.plain_result("1.生成聊天气泡\n命令：/QQbox_echo [QQ号] [消息内容]\n说明：生成指定QQ用户发送消息的气泡图片\n2.设置头衔颜色\n命令：/QQbox_color [QQ号] [颜色编号]\n说明：设置用户的头衔气泡背景颜色\n颜色编号：\n1 - 灰色（默认）\n2 - 紫色\n3 - 黄色\n4 - 绿色\n3.设置头衔内容\n命令：/QQbox_title [QQ号] [头衔文字]\n说明：设置用户显示的头衔内容\n4.设置备注名\n命令：/QQbox_note [QQ号] [备注名]\n说明：设置用户的显示备注名（会覆盖原昵称）\n")
         return
 
     def _set_note(self, qq, note):
