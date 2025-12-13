@@ -62,7 +62,7 @@ class QQbox(Star):
         if len(params) < 2:
             yield event.plain_result("请修正指令,应为 /echo [qq] [text]")
             return
-        qq, text = params[0], " ".join(params[1])
+        qq, text = params[0], " ".join(params[1:])
         try:
             image = self.qqbox.create_chat_message(
                 qq = qq,
