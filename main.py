@@ -154,71 +154,73 @@ class QQbox(Star):
             yield event.plain_result("QQ号格式错误，请使用纯数字")
             return
         tmp_path = None
+
         try:
-            try:
-                info = await get_qq_info(qq, self.avatar_image_path, self.http_client)
-                if not info:
-                    yield event.plain_result("获取QQ信息失败，请检查网络或稍后重试")
-                    return
-            except httpx.RequestError as e:
-                logger.error(f"网络请求失败，QQ: {qq}, 错误: {e}")
-                yield event.plain_result("网络请求失败，请检查网络连接")
+            info = await get_qq_info(qq, self.avatar_image_path, self.http_client)
+            if not info:
+                yield event.plain_result("获取QQ信息失败，请检查网络或稍后重试")
                 return
-            except httpx.HTTPStatusError as e:
-                logger.error(f"HTTP请求异常，状态码: {e.response.status_code}, QQ: {qq}")
-                yield event.plain_result("服务暂时不可用，请稍后重试")
-                return
-            try:
-                img_bytes = await asyncio.to_thread(
-                    self.qqbox.create_chat_message,
-                    qq=qq,
-                    text=text,
-                    image=None,
-                    qq_title_key=self.qq_title_key,
-                    user_info=info
-                )
-            except (MemoryError, OSError) as e:
-                logger.error(f"图片生成失败，QQ: {qq}, 错误类型: {type(e).__name__}, 详情: {e}")
-                yield event.plain_result("图片生成失败，可能是内存不足或系统资源限制")
-                return
-            except ImportError as e:
-                logger.error(f"依赖库错误: {e}\n{traceback.format_exc()}")
-                yield event.plain_result("系统组件异常，请联系管理员")
-                return
-            try:
-                image_data = img_bytes.getvalue()
-            except (IOError, OSError) as e:
-                logger.error(f"图片保存失败，QQ: {qq}, 错误: {e}")
-                yield event.plain_result("图片处理失败，请稍后重试")
-                return
-            try:
-                fd, tmp_path = tempfile.mkstemp(suffix='.png', dir=self.temp_path)
-                with os.fdopen(fd, 'wb') as f:
-                    f.write(image_data)
-            except (OSError, IOError) as e:
-                logger.error(f"临时文件创建失败，QQ: {qq}, 错误: {e}")
-                yield event.plain_result("文件操作失败，请检查磁盘空间")
-                return
-            try:
-                yield event.make_result().file_image(tmp_path)
-            except Exception as e:
-                logger.error(f"消息发送失败，QQ: {qq}, 错误类型: {type(e).__name__}")
-                yield event.plain_result("消息发送失败，请稍后重试")
-                return
-        except Exception as e:
-            logger.error(
-                f"未知错误，QQ: {qq}, 错误类型: {type(e).__name__}\n"
-                f"完整堆栈: {traceback.format_exc()}\n"
-                f"错误消息: {e}"
+        except httpx.RequestError as e:
+            logger.error(f"网络请求失败，QQ: {qq}, 错误: {e}")
+            yield event.plain_result("网络请求失败，请检查网络连接")
+            return
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP请求异常，状态码: {e.response.status_code}, QQ: {qq}")
+            yield event.plain_result("服务暂时不可用，请稍后重试")
+            return
+
+        try:
+            img_bytes = await asyncio.to_thread(
+                self.qqbox.create_chat_message,
+                qq=qq,
+                text=text,
+                image=None,
+                qq_title_key=self.qq_title_key,
+                user_info=info
             )
-            yield event.plain_result("系统内部错误，请联系管理员")
-        finally:
-            if tmp_path and os.path.exists(tmp_path):
-                try:
-                    os.unlink(tmp_path)
-                    logger.debug(f"临时文件已清理: {tmp_path}")
-                except OSError as e:
-                    logger.warning(f"清理临时文件失败: {e}")
+        except (MemoryError, OSError) as e:
+            logger.error(f"图片生成失败，QQ: {qq}, 错误类型: {type(e).__name__}, 详情: {e}")
+            yield event.plain_result("图片生成失败，可能是内存不足或系统资源限制")
+            return
+        except ImportError as e:
+            logger.error(f"依赖库错误: {e}\n{traceback.format_exc()}")
+            yield event.plain_result("系统组件异常，请联系管理员")
+            return
+
+        try:
+            image_data = img_bytes.getvalue()
+        except (IOError, OSError) as e:
+            logger.error(f"图片保存失败，QQ: {qq}, 错误: {e}")
+            yield event.plain_result("图片处理失败，请稍后重试")
+            return
+
+        try:
+            fd, tmp_path = tempfile.mkstemp(suffix='.png', dir=self.temp_path)
+            with os.fdopen(fd, 'wb') as f:
+                f.write(image_data)
+        except (OSError, IOError) as e:
+            logger.error(f"临时文件创建失败，QQ: {qq}, 错误: {e}")
+            yield event.plain_result("文件操作失败，请检查磁盘空间")
+            self.clear_temp(tmp_path)
+            return
+
+        try:
+            yield event.make_result().file_image(tmp_path)
+        except Exception as e:
+            logger.error(f"消息发送失败，QQ: {qq}, 错误类型: {type(e).__name__}")
+            yield event.plain_result("消息发送失败，请稍后重试")
+            self.clear_temp(tmp_path)
+            return
+
+        self.clear_temp(tmp_path)
+
+    def clear_temp(self, tmp_path):
+        if tmp_path and os.path.exists(tmp_path):
+            try:
+                os.unlink(tmp_path)
+                logger.debug(f"临时文件已清理: {tmp_path}")
+            except OSError as e:
+                logger.warning(f"清理临时文件失败: {e}")
 
     @filter.command("QQbox_color")
     async def QQbox_color(self, event: AstrMessageEvent):
@@ -459,15 +461,11 @@ class ChatBubbleGenerator:
             return False
 
     async def _async_safe_load_font(self, path, size, name):
-        try:
-            if path and os.path.exists(path):
-                return await asyncio.to_thread(ImageFont.truetype, path, size)
-            else:
-                logger.warning(f"字体文件不存在: {path}")
-                raise FileNotFoundError(f"字体文件不存在: {name} ({path})")
-        except Exception as e:
-            logger.warning(f"加载{name}字体失败: {e}")
-            raise f"加载{name}字体失败: {e}"
+        if path and os.path.exists(path):
+            return await asyncio.to_thread(ImageFont.truetype, path, size)
+        else:
+            logger.warning(f"字体文件不存在: {path}")
+            raise FileNotFoundError(f"字体文件不存在: {name} ({path})")
 
     # ------------------------------------------------------------------------------
     # 工具方法
