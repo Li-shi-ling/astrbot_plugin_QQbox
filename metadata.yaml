@@ -1,6 +1,6 @@
 name: astrbot_plugin_QQbox # 插件唯一识别名，以 astrbot_plugin_ 前缀开头
 display_name: QQbox # 用于展示的名字，可以是方便人类阅读的名字（需要版本 >= v4.5.0，低版本不会报错，请放心填写）
 desc: QQbox是仿QQ聊天气泡生成插件，可将文字转换为高度还原的QQ风格聊天图片。支持自定义用户头衔、颜色和备注名，自动获取QQ头像与昵称，生成气泡消息。如有问题，请先尝试重载插件。 # 插件简短描述
-version: v1.0.9 # 插件版本号。格式：v1.1.1 或者 v1.1
+version: v1.1.0 # 插件版本号。格式：v1.1.1 或者 v1.1
 author: lishining # 作者
 repo: https://github.com/Li-shi-ling/astrbot_plugin_QQbox # 插件的仓库地址

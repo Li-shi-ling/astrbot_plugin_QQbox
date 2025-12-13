@@ -1,22 +1,151 @@
-from astrbot.api.event import filter, AstrMessageEvent, MessageEventResult
-from astrbot.api.star import Context, Star, register
-import astrbot.api.message_components as Comp
-from PIL import Image, ImageDraw, ImageFont
-from astrbot.api import AstrBotConfig
-from astrbot.api import logger
-from io import BytesIO
-import requests
-import base64
-import json
-import os
 import re
+import os
+import json
+import base64
+import aiohttp
+import tempfile
+from io import BytesIO
+from astrbot.api import logger
+from astrbot.api import AstrBotConfig
+from PIL import Image, ImageDraw, ImageFont
+from astrbot.api.event import filter, AstrMessageEvent
+from astrbot.api.star import Context, Star, register, StarTools
+
+# ------------------------------------------------------------------------------
+# 读取json文件
+# ------------------------------------------------------------------------------
+def read_json_file(file_path):
+    with open(file_path, 'r', encoding='utf-8') as file:
+        data = json.load(file)
+    return data
+
+# ------------------------------------------------------------------------------
+# 写入json文件
+# ------------------------------------------------------------------------------
+def write_json_file(data, file_path, indent=4, ensure_ascii=False):
+    with open(file_path, 'w', encoding='utf-8') as file:
+        json.dump(data, file, indent=indent, ensure_ascii=ensure_ascii)
+
+# ------------------------------------------------------------------------------
+# 获取指令后面的参数
+# ------------------------------------------------------------------------------
+def extract_help_parameters(s, directives):
+    escaped_directives = re.escape(directives)
+    match = re.search(f'{escaped_directives}' + r'\s+(.*)', s)
+    if match:
+        params = re.split(r'\s+', match.group(1).strip())
+        return params
+    return []
+
+# ------------------------------------------------------------------------------
+# 获取 QQ 信息（缓存 + API）
+# ------------------------------------------------------------------------------
+async def get_qq_info(qq, avatar_cache_location = None):
+    if avatar_cache_location is None:
+        avatar_cache = "./img/avatar"
+    else:
+        avatar_cache = avatar_cache_location
+    if not os.path.exists(avatar_cache):
+        os.makedirs(avatar_cache)
+    # 先查缓存
+    for filename in os.listdir(avatar_cache):
+        if filename.startswith(f"{qq}-") and filename.endswith(".png"):
+            nickname = filename[len(f"{qq}-"):-4]
+            return {
+                "qq": qq,
+                "name": nickname,
+                "avatar_path": os.path.join(avatar_cache, filename)
+            }
+
+    # 请求 API
+    url = f"http://api.mmp.cc/api/qqname?qq={qq}"
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as res:
+                if res.status != 200:
+                    nickname = qq
+                else:
+                    data = await res.json()
+                    try:
+                        nickname = data["data"]["name"]
+                    except:
+                        nickname = qq
+    except Exception as e:
+        logger.error(f"请求失败: {e}")
+        nickname = qq
+
+    avatar_url = f"https://q1.qlogo.cn/g?b=qq&nk={qq}&s=640"
+    save_path = os.path.join(avatar_cache, f"{qq}-{nickname}.png")
+    await download_circular_avatar(avatar_url, save_path)  # 使用异步的头像下载函数
+    return {
+        "qq": qq,
+        "name": nickname,
+        "avatar_path": save_path
+    }
+
+# ------------------------------------------------------------------------------
+# 下载头像并裁剪为圆形
+# ------------------------------------------------------------------------------
+async def download_circular_avatar(url, save_path="avatar.png", size=None):
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as r:
+                r.raise_for_status()
+                img = Image.open(BytesIO(await r.read())).convert("RGBA")
+                result = create_circular_avatar(img)
+                result.save(save_path)
+                return save_path
+    except Exception as e:
+        logger.error(f"下载头像失败: {e}")
+        return None
+
+# ------------------------------------------------------------------------------
+# 剪为圆形 QQ 头像
+# ------------------------------------------------------------------------------
+def create_circular_avatar(img, size=None):
+    # 中心裁剪正方形
+    w, h = img.size
+    side = min(w, h)
+    left = (w - side) // 2
+    top = (h - side) // 2
+    img = img.crop((left, top, left + side, top + side))
+    if size is None:
+        size = min(w,h)
+    # 调整大小
+    img = img.resize((size, size), Image.Resampling.LANCZOS)
+
+    # 创建圆形遮罩
+    mask = Image.new("L", (size, size), 0)
+    draw = ImageDraw.Draw(mask)
+    draw.ellipse((0, 0, size, size), fill=255)
+
+    result = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    result.paste(img, (0, 0), mask)
+    return result
+
+# ------------------------------------------------------------------------------
+# 兼容性函数：按比例缩放图像
+# ------------------------------------------------------------------------------
+def resize_by_scale(image, scale_factor):
+    w, h = image.size
+    return image.resize((int(w * scale_factor), int(h * scale_factor)), Image.Resampling.LANCZOS)
+
+# ------------------------------------------------------------------------------
+# 将 PIL Image 对象转换为 Base64 字符串
+# ------------------------------------------------------------------------------
+def image_to_base64(image_obj, format="PNG") -> str:
+    img_buffer = BytesIO()
+    image_obj.save(img_buffer, format=format)
+    img_bytes = img_buffer.getvalue()
+    base64_str = base64.b64encode(img_bytes).decode("utf-8")
+    return base64_str
 
 @register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.0.0")
 class QQbox(Star):
     def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)
         self.Config = config
-        self.avatar_image_path = self._get_absolute_path(self.Config.get("avatar_image_path"))
+        self.avatar_image_path = StarTools.get_data_dir()  # 使用框架提供的方法获取数据目录
         self.bubble_font_path = self._get_absolute_path(self.Config.get("bubble_font_path"))
         self.nickname_font_path = self._get_absolute_path(self.Config.get("nickname_font_path"))
         self.title_font_path = self._get_absolute_path(self.Config.get("title_font_path"))
@@ -24,26 +153,19 @@ class QQbox(Star):
             bubble_font_path=self.bubble_font_path,
             nickname_font_path=self.nickname_font_path,
             title_font_path=self.title_font_path,
-            avatar_image_path = self.avatar_image_path,
+            avatar_image_path=self.avatar_image_path,
         )
-        if not os.path.exists(os.path.join(self.avatar_image_path,"qq_data.json")):
+        if not os.path.exists(os.path.join(self.avatar_image_path, "qq_data.json")):
             os.makedirs(os.path.dirname(self.avatar_image_path), exist_ok=True)
             self.qq_title_key = {}
         else:
             try:
-                self.qq_title_key = read_json_file(os.path.join(self.avatar_image_path,"qq_data.json"))
-            except:
+                self.qq_title_key = read_json_file(os.path.join(self.avatar_image_path, "qq_data.json"))
+            except (json.JSONDecodeError, IOError):
                 self.qq_title_key = {}
         self.temp_path = self.Config.get("temp_path")
         if not os.path.exists(self.temp_path):
             os.mkdir(self.temp_path)
-
-        if not os.path.exists(self.bubble_font_path):
-            logger.info(f"找不到路径{self.bubble_font_path}")
-        if not os.path.exists(self.nickname_font_path):
-            logger.info(f"找不到路径{self.nickname_font_path}")
-        if not os.path.exists(self.title_font_path):
-            logger.info(f"找不到路径{self.title_font_path}")
 
     async def initialize(self):
         logger.info("QQbox 插件初始化完成")
@@ -65,26 +187,21 @@ class QQbox(Star):
         qq, text = params[0], " ".join(params[1:])
         try:
             image = self.qqbox.create_chat_message(
-                qq = qq,
-                text = text,
-                image = None,
-                qq_title_key = self.qq_title_key
+                qq=qq,
+                text=text,
+                image=None,
+                qq_title_key=self.qq_title_key
             )
         except Exception as e:
             yield event.plain_result(f"创建气泡错误:{e}")
             logger.warning(f"创建气泡错误:{e}")
             return
-        image.save(os.path.join(self.temp_path,"temp.png"))
-        yield event.make_result().file_image(os.path.join(self.temp_path,"temp.png"))
-        try:
-            os.remove(os.path.join(self.temp_path,"temp.png"))
-            logger.info(f"文件 {os.path.join(self.temp_path,'temp.png')} 已成功删除")
-        except FileNotFoundError:
-            logger.warning(f"文件 {os.path.join(self.temp_path,'temp.png')} 不存在")
-        except PermissionError:
-            logger.warning(f"没有权限删除文件 {os.path.join(self.temp_path,'temp.png')}")
-        except Exception as e:
-            logger.error(f"删除文件时发生错误: {e}")
+
+        # 使用 tempfile 生成临时文件
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as temp_file:
+            image.save(temp_file.name)
+            yield event.make_result().file_image(temp_file.name)
+            os.remove(temp_file.name)  # 删除临时文件
         return
 
     @filter.command("QQbox_color")
@@ -113,60 +230,31 @@ class QQbox(Star):
         yield event.plain_result(f"设置成功qq:{qq},title:{title}")
         return
 
-    @filter.command("QQbox_note")
-    async def QQbox_note(self, event: AstrMessageEvent):
+    @filter.command("QQbox_info")
+    async def QQbox_info(self, event: AstrMessageEvent):
         text = event.message_str
-        params = extract_help_parameters(text, "QQbox_note")
-        logger.info(f"进入QQbox_note,params:{params}")
-        if len(params) < 2:
-            yield event.plain_result("请修正指令,应为 /QQbox_note [qq] [note]")
+        params = extract_help_parameters(text, "QQbox_info")
+        logger.info(f"进入QQbox_info,params:{params}")
+        if len(params) < 1:
+            yield event.plain_result("请修正指令,应为 /QQbox_info [qq]")
             return
-        qq, note = params[0], " ".join(params[1:])
-        self._set_note(qq, note)
-        yield event.plain_result(f"设置成功qq:{qq},note:{note}")
+        qq = params[0]
+        info = await get_qq_info(qq, self.avatar_image_path)
+        yield event.plain_result(f"QQ信息：\nQQ号: {info['qq']}\n昵称: {info['name']}\n头像: {info['avatar_path']}")
         return
 
-    @filter.command("QQbox_help")
-    async def QQbox_help(self, event: AstrMessageEvent):
-        yield event.plain_result("1.生成聊天气泡\n命令：/QQbox_echo [QQ号] [消息内容]\n说明：生成指定QQ用户发送消息的气泡图片\n2.设置头衔颜色\n命令：/QQbox_color [QQ号] [颜色编号]\n说明：设置用户的头衔气泡背景颜色\n颜色编号：\n1 - 灰色（默认）\n2 - 紫色\n3 - 黄色\n4 - 绿色\n3.设置头衔内容\n命令：/QQbox_title [QQ号] [头衔文字]\n说明：设置用户显示的头衔内容\n4.设置备注名\n命令：/QQbox_note [QQ号] [备注名]\n说明：设置用户的显示备注名（会覆盖原昵称）\n")
-        return
-
-    def _set_note(self, qq, note):
-        if self.qq_title_key.get(str(qq),None) is None:
-            self.qq_title_key[str(qq)] = {
-                "color" : None,
-                "content" : None,
-                "notes": note
-            }
-        else:
-            self.qq_title_key[str(qq)]["notes"] = note
-        write_json_file(self.qq_title_key, os.path.join(self.avatar_image_path,"qq_data.json"))
-
-    def _set_title_color(self, qq, color_id):
-        match = re.search(r'[1-4]', color_id)
-        color_clean = match.group() if match else "1"
-        if self.qq_title_key.get(str(qq),None) is None:
-            self.qq_title_key[str(qq)] = {
-                "color" : color_clean,
-                "content" : "站位符",
-                "notes" : None
-            }
-        else:
-            self.qq_title_key[str(qq)]["color"] = color_clean
-        write_json_file(self.qq_title_key, os.path.join(self.avatar_image_path,"qq_data.json"))
+    def _set_title_color(self, qq, color):
+        """设置 QQ 昵称的颜色"""
+        if not qq.isdigit():
+            raise ValueError("QQ号无效，必须是纯数字")
+        self.qq_title_key[qq] = {"title_color": color}
+        write_json_file(self.qq_title_key, os.path.join(self.avatar_image_path, "qq_data.json"))
 
     def _set_title_name(self, qq, title):
-        if self.qq_title_key.get(str(qq),None) is None:
-            self.qq_title_key[str(qq)] = {
-                "color" : "1",
-                "content" : title,
-                "notes" : None
-            }
-        else:
-            self.qq_title_key[str(qq)]["content"] = title
-        write_json_file(self.qq_title_key, os.path.join(self.avatar_image_path,"qq_data.json"))
-
-    async def terminate(self):
+        """设置 QQ 昵称"""
+        if not qq.isdigit():
+            raise ValueError("QQ号无效，必须是纯数字")
+        self.qq_title_key[qq] = {"title_name": title}
         write_json_file(self.qq_title_key, os.path.join(self.avatar_image_path, "qq_data.json"))
 
 # ------------------------------------------------------------------------------
@@ -178,7 +266,7 @@ class ChatBubbleGenerator:
         bubble_font_path="./resources/fonts/Microsoft-YaHei-Semilight.ttc",
         nickname_font_path="./resources/fonts/SourceHanSansSC-ExtraLight.otf",
         title_font_path="./resources/fonts/Microsoft-YaHei-Bold.ttc",
-        avatar_image_path = ".",
+        avatar_image_path = None,
         bubble_font_size=34,
         nickname_font_size=25,
         title_font_size=19,
@@ -228,7 +316,10 @@ class ChatBubbleGenerator:
             3: (255, 198, 41, 220),  # #FFC629
             4: (82, 215, 197, 220)  # #52D7C5
         }
-        self.avatar_image_path = avatar_image_path
+        if avatar_image_path is None:
+            self.avatar_image_path = "./img/avatar"
+        else:
+            self.avatar_image_path = avatar_image_path
 
 
     # ------------------------------------------------------------------------------
@@ -576,123 +667,3 @@ class ChatBubbleGenerator:
                 font=self.nickname_font
             )
         return background
-
-# ------------------------------------------------------------------------------
-# 读取json文件
-# ------------------------------------------------------------------------------
-def read_json_file(file_path):
-    with open(file_path, 'r', encoding='utf-8') as file:
-        data = json.load(file)
-    return data
-
-# ------------------------------------------------------------------------------
-# 写入json文件
-# ------------------------------------------------------------------------------
-def write_json_file(data, file_path, indent=4, ensure_ascii=False):
-    with open(file_path, 'w', encoding='utf-8') as file:
-        json.dump(data, file, indent=indent, ensure_ascii=ensure_ascii)
-
-# ------------------------------------------------------------------------------
-# 获取指令后面的参数
-# ------------------------------------------------------------------------------
-def extract_help_parameters(s, directives):
-    escaped_directives = re.escape(directives)
-    match = re.search(f'{escaped_directives}' + r'\s+(.*)', s)
-    if match:
-        params = re.split(r'\s+', match.group(1).strip())
-        return params
-    return []
-
-# ------------------------------------------------------------------------------
-# 获取 QQ 信息（缓存 + API）
-# ------------------------------------------------------------------------------
-def get_qq_info(qq ,avatar_cache_location="."):
-    avatar_cache = avatar_cache_location
-    if not os.path.exists(avatar_cache):
-        os.makedirs(avatar_cache)
-    # 先查缓存
-    for filename in os.listdir(avatar_cache):
-        if filename.startswith(f"{qq}-") and filename.endswith(".png"):
-            nickname = filename[len(f"{qq}-"):-4]
-            return {
-                "qq": qq,
-                "name": nickname,
-                "avatar_path": os.path.join(avatar_cache, filename)
-            }
-    # 请求 API
-    # url = f"https://uapis.cn/api/v1/social/qq/userinfo?qq={qq}"
-    url = f"http://api.mmp.cc/api/qqname?qq={qq}"
-    res = requests.get(url)
-    if res.status_code != 200:
-        nickname = qq
-    else:
-        data = res.json()
-        try:
-            nickname = data["data"]["name"]
-        except:
-            nickname = qq
-    # avatar_url = data.get("avatar_url")
-    avatar_url = f"https://q1.qlogo.cn/g?b=qq&nk={qq}&s=640"
-    # avatar_url = f"http://q.qlogo.cn/headimg_dl?dst_uin={qq}&spec=640&img_type=png"
-    save_path = os.path.join(avatar_cache, f"{qq}-{nickname}.png")
-    download_circular_avatar(avatar_url, save_path)
-    return {
-        "qq": qq,
-        "name": nickname,
-        "avatar_path": save_path
-    }
-
-# ------------------------------------------------------------------------------
-# 剪为圆形 QQ 头像
-# ------------------------------------------------------------------------------
-def create_circular_avatar(img,size=None):
-    # 中心裁剪正方形
-    w, h = img.size
-    side = min(w, h)
-    left = (w - side) // 2
-    top = (h - side) // 2
-    img = img.crop((left, top, left + side, top + side))
-    if size is None:
-        size = min(w,h)
-    # 调整大小
-    img = img.resize((size, size), Image.Resampling.LANCZOS)
-
-    # 创建圆形遮罩
-    mask = Image.new("L", (size, size), 0)
-    draw = ImageDraw.Draw(mask)
-    draw.ellipse((0, 0, size, size), fill=255)
-
-    result = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    result.paste(img, (0, 0), mask)
-    return result
-
-# ------------------------------------------------------------------------------
-# 下载头像并裁剪为圆形
-# ------------------------------------------------------------------------------
-def download_circular_avatar(url, save_path="avatar.png", size=None):
-    try:
-        r = requests.get(url)
-        r.raise_for_status()
-        img = Image.open(BytesIO(r.content)).convert("RGBA")
-        result = create_circular_avatar(img)
-        result.save(save_path)
-        return save_path
-    except:
-        return None
-
-# ------------------------------------------------------------------------------
-# 兼容性函数：按比例缩放图像
-# ------------------------------------------------------------------------------
-def resize_by_scale(image, scale_factor):
-    w, h = image.size
-    return image.resize((int(w * scale_factor), int(h * scale_factor)), Image.Resampling.LANCZOS)
-
-# ------------------------------------------------------------------------------
-# 将 PIL Image 对象转换为 Base64 字符串
-# ------------------------------------------------------------------------------
-def image_to_base64(image_obj, format="PNG") -> str:
-    img_buffer = BytesIO()
-    image_obj.save(img_buffer, format=format)
-    img_bytes = img_buffer.getvalue()
-    base64_str = base64.b64encode(img_bytes).decode("utf-8")
-    return base64_str
