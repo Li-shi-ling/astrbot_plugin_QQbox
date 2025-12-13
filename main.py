@@ -58,6 +58,7 @@ class QQbox(Star):
     async def QQbox_echo(self, event: AstrMessageEvent):
         text = event.message_str
         params = extract_help_parameters(text, "QQbox_echo")
+        logger.info(f"进入QQbox_echo,params:{params}")
         if len(params) < 2:
             yield event.plain_result("请修正指令,应为 /echo [qq] [text]")
             return
@@ -90,8 +91,9 @@ class QQbox(Star):
     async def QQbox_color(self, event: AstrMessageEvent):
         text = event.message_str
         params = extract_help_parameters(text, "QQbox_color")
+        logger.info(f"进入QQbox_color,params:{params}")
         if len(params) < 2:
-            yield event.plain_result("请修正指令,应为 /color [qq] [color]")
+            yield event.plain_result("请修正指令,应为 /QQbox_color [qq] [color]")
             return
         qq, color = params[0], params[1]
         self._set_title_color(qq, color)
@@ -102,10 +104,11 @@ class QQbox(Star):
     async def QQbox_title(self, event: AstrMessageEvent):
         text = event.message_str
         params = extract_help_parameters(text, "QQbox_title")
+        logger.info(f"进入QQbox_title,params:{params}")
         if len(params) < 2:
-            yield event.plain_result("请修正指令,应为 /title [qq] [title]")
+            yield event.plain_result("请修正指令,应为 /QQbox_title [qq] [title]")
             return
-        qq, title = params[0], params[1]
+        qq, title = params[0], "".join(params[1:])
         self._set_title_name(qq, title)
         yield event.plain_result(f"设置成功qq:{qq},title:{title}")
         return
@@ -114,10 +117,11 @@ class QQbox(Star):
     async def QQbox_note(self, event: AstrMessageEvent):
         text = event.message_str
         params = extract_help_parameters(text, "QQbox_note")
+        logger.info(f"进入QQbox_note,params:{params}")
         if len(params) < 2:
-            yield event.plain_result("请修正指令,应为 /note [qq] [note]")
+            yield event.plain_result("请修正指令,应为 /QQbox_note [qq] [note]")
             return
-        qq, note = params[0], params[1]
+        qq, note = params[0], "".join(params[1:])
         self._set_note(qq, note)
         yield event.plain_result(f"设置成功qq:{qq},note:{note}")
         return
