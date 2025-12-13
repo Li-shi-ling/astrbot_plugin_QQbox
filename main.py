@@ -38,9 +38,6 @@ class QQbox(Star):
         if not os.path.exists(self.temp_path):
             os.mkdir(self.temp_path)
 
-        current_dir = os.getcwd()
-        logger.info(f"当前工作目录: {current_dir}")
-
         if not os.path.exists(self.bubble_font_path):
             logger.info(f"找不到路径{self.bubble_font_path}")
         if not os.path.exists(self.nickname_font_path):
