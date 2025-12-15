@@ -5,7 +5,9 @@ from astrbot.api.star import StarTools
 from astrbot.api import AstrBotConfig
 from astrbot.api import logger
 from io import BytesIO
+import unicodedata
 import traceback
+import platform
 import tempfile
 import aiofiles
 import asyncio
@@ -941,6 +943,7 @@ async def get_qq_info(qq, avatar_cache_location=".", http_client=None):
                     elif "name" in data:
                         nickname = data["name"]
                         break
+                nickname = clean_filename_for_platform(nickname)
             except Exception as e:
                 logger.debug(f"API请求失败 {api_url}: {e}")
                 continue
@@ -1062,3 +1065,24 @@ def image_to_base64(image_obj, format="PNG") -> str:
     img_bytes = img_buffer.getvalue()
     base64_str = base64.b64encode(img_bytes).decode("utf-8")
     return base64_str
+
+def clean_filename_for_platform(filename, replace_char='_'):
+    current_os = platform.system()
+    filename = unicodedata.normalize('NFKD', filename)
+    filename = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', filename)
+    if current_os == 'Windows':
+        # Windows特定处理
+        illegal = r'[<>:"/\\|?*]'
+        max_len = 260
+    elif current_os == 'Darwin':  # macOS
+        illegal = r'[/:]'
+        max_len = 255
+    else:  # Linux/Unix
+        illegal = r'[/]'
+        max_len = 255
+    filename = re.sub(illegal, replace_char, filename)
+    filename = filename.strip('. ')
+    if len(filename.encode('utf-8')) > max_len:
+        encoded = filename.encode('utf-8')[:max_len]
+        filename = encoded.decode('utf-8', 'ignore').rstrip('\x00')
+    return filename if filename else "unnamed"
