@@ -922,6 +922,7 @@ async def get_qq_info(qq, avatar_cache_location=".", http_client=None):
     try:
         # 备用API列表
         apis = [
+            f"https://uapis.cn/api/v1/social/qq/userinfo?qq={qq}",
             f"https://api.mmp.cc/api/qqname?qq={qq}",
             f"https://api.uomg.com/api/qq.info?qq={qq}",
             # 可以添加更多备用API
@@ -942,6 +943,9 @@ async def get_qq_info(qq, avatar_cache_location=".", http_client=None):
                         break
                     elif "name" in data:
                         nickname = data["name"]
+                        break
+                    elif "nickname" in data:
+                        nickname = data["nickname"]
                         break
                 nickname = clean_filename_for_platform(nickname)
             except Exception as e:
