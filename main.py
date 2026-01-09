@@ -1,9 +1,8 @@
 from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.star import Context, Star, register
+from astrbot.api import AstrBotConfig, logger
 from PIL import Image, ImageDraw, ImageFont
 from astrbot.api.star import StarTools
-from astrbot.api import AstrBotConfig
-from astrbot.api import logger
 from io import BytesIO
 import unicodedata
 import traceback
@@ -142,6 +141,7 @@ class QQbox(Star):
 
     @filter.command("QQbox_echo")
     async def QQbox_echo(self, event: AstrMessageEvent):
+        """通过对应qq的设置发送消息/echo [qq] [text]"""
         text = event.message_str
         params = extract_help_parameters(text, "QQbox_echo")
         logger.info(f"进入QQbox_echo, params: {params}")
@@ -156,7 +156,6 @@ class QQbox(Star):
             yield event.plain_result("QQ号格式错误，请使用纯数字")
             return
         tmp_path = None
-
         try:
             info = await get_qq_info(qq, self.avatar_image_path, self.http_client)
             if not info:
@@ -170,7 +169,6 @@ class QQbox(Star):
             logger.error(f"HTTP请求异常，状态码: {e.response.status_code}, QQ: {qq}")
             yield event.plain_result("服务暂时不可用，请稍后重试")
             return
-
         try:
             img_bytes = await asyncio.to_thread(
                 self.qqbox.create_chat_message,
@@ -226,6 +224,7 @@ class QQbox(Star):
 
     @filter.command("QQbox_color")
     async def QQbox_color(self, event: AstrMessageEvent):
+        """设置对应qq的头衔颜色(color:1:灰色,2:紫色,3:黄色,4:绿色) /QQbox_color [qq] [color]"""
         text = event.message_str
         params = extract_help_parameters(text, "QQbox_color")
         logger.info(f"进入QQbox_color, params: {params}")
@@ -245,6 +244,7 @@ class QQbox(Star):
 
     @filter.command("QQbox_title")
     async def QQbox_title(self, event: AstrMessageEvent):
+        """设置对应qq的头衔文字 /QQbox_color [qq] [title]"""
         text = event.message_str
         params = extract_help_parameters(text, "QQbox_title")
         logger.info(f"进入QQbox_title, params: {params}")
@@ -264,6 +264,7 @@ class QQbox(Star):
 
     @filter.command("QQbox_note")
     async def QQbox_note(self, event: AstrMessageEvent):
+        """设置对应qq的名字 /QQbox_note [qq] [title]"""
         text = event.message_str
         params = extract_help_parameters(text, "QQbox_note")
         logger.info(f"进入QQbox_note, 原始文本: {text}")
@@ -279,6 +280,7 @@ class QQbox(Star):
 
     @filter.command("QQbox_help")
     async def QQbox_help(self, event: AstrMessageEvent):
+        """获取帮助 /QQbox_help"""
         help_text = """QQbox 插件使用说明
 
 1. 生成聊天气泡
