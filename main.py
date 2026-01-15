@@ -34,7 +34,8 @@ class QQbox(Star):
 
         # 优先使用配置的路径，如果没有则使用标准数据目录
         avatar_path = self.Config.get("avatar_image_path")
-        self.avatar_image_path = self._get_absolute_path(avatar_path) if avatar_path else os.path.join(self.data_dir,"avatars")
+        # self.avatar_image_path = self._get_absolute_path(avatar_path) if avatar_path else os.path.join(self.data_dir,"avatars")
+        self.avatar_image_path = os.path.join(self.data_dir, avatar_path) if avatar_path else os.path.join(self.data_dir, "avatars")
 
         # 字体路径使用绝对路径
         self.bubble_font_path = self._get_absolute_path(self.Config.get("bubble_font_path", ""))
@@ -488,32 +489,70 @@ class ChatBubbleGenerator:
         max_width = self.max_width * self.SCALE - padding * 2
 
         lines = []
-        current_line = ""
 
-        for char in text:
-            if char == "\n":
-                lines.append(current_line)
-                current_line = ""
+        # 首先按显式换行符分割成段落
+        paragraphs = text.split('\n')
+
+        for paragraph in paragraphs:
+            if not paragraph:
+                # 空段落（连续换行符）
+                lines.append("")
                 continue
 
-            test_line = current_line + char
-            try:
-                line_width = draw.textlength(test_line, font=font)
-            except:
-                # 处理无法渲染的字符
-                char = " "
+            current_line = ""
+            current_line_width = 0
+
+            # 按字符处理段落
+            for char in paragraph:
+                # 测试添加字符后的宽度
                 test_line = current_line + char
-                line_width = draw.textlength(test_line, font=font)
 
-            if line_width <= max_width:
-                current_line = test_line
-            else:
-                if current_line:  # 避免空行
-                    lines.append(current_line)
-                current_line = char
+                try:
+                    # 使用 textbbox 替代 textlength（更可靠）
+                    if hasattr(draw, 'textbbox'):
+                        bbox = draw.textbbox((0, 0), test_line, font=font)
+                        line_width = bbox[2] - bbox[0]
+                    else:
+                        # 旧版本 Pillow 兼容
+                        line_width = draw.textlength(test_line, font=font)
 
-        if current_line:
-            lines.append(current_line)
+                    # 检查是否需要换行
+                    if line_width <= max_width:
+                        current_line = test_line
+                        current_line_width = line_width
+                    else:
+                        # 当前行已满，开始新行
+                        if current_line:
+                            lines.append(current_line)
+                        current_line = char
+                        # 计算新行的初始宽度
+                        if hasattr(draw, 'textbbox'):
+                            bbox = draw.textbbox((0, 0), char, font=font)
+                            current_line_width = bbox[2] - bbox[0]
+                        else:
+                            current_line_width = draw.textlength(char, font=font)
+
+                except Exception as e:
+                    # 如果测量失败，使用保守的字符宽度估计
+                    logger.debug(f"测量文本宽度失败: {e}, 字符: {repr(char)}")
+
+                    # 估计字符宽度：中文字符≈字体大小，英文字符≈字体大小/2
+                    char_width_estimate = self._font_configs['bubble'][1] * self.SCALE
+                    if ord(char) < 128:  # ASCII字符
+                        char_width_estimate = char_width_estimate // 2
+
+                    if current_line_width + char_width_estimate > max_width:
+                        if current_line:
+                            lines.append(current_line)
+                        current_line = char
+                        current_line_width = char_width_estimate
+                    else:
+                        current_line = test_line
+                        current_line_width += char_width_estimate
+
+            # 添加段落的最后一行
+            if current_line:
+                lines.append(current_line)
 
         return lines
 
