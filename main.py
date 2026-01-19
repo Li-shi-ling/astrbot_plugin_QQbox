@@ -1,11 +1,14 @@
+from astrbot.api.message_components import Image as BotImage, Reply, Plain, At
 from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.star import Context, Star, register
 from astrbot.api import AstrBotConfig, logger
+import astrbot.api.message_components as Comp
 from PIL import Image, ImageDraw, ImageFont
 from astrbot.api.star import StarTools
 from io import BytesIO
 import tempfile
 import aiofiles
+import aiohttp
 import asyncio
 import httpx
 import json
@@ -67,27 +70,7 @@ class QQbox(Star):
 
     @qb.command("echo")
     async def echo(self, event: AstrMessageEvent, qq: str, text: str):
-        """通过对应qq的设置发送消息/echo [qq] [text]"""
-        self.qqbox_echo(event,qq,text)
-
-    @qb.command("sc")
-    async def set_color(self, event: AstrMessageEvent, qq: str, color: int):
-        """通过对应qq的设置发送消息/echo [qq] [color]"""
-        self.qqbox_color(event,qq,color)
-
-    @qb.command("st")
-    async def set_title(self, event: AstrMessageEvent, qq: str, title: str):
-        """通过对应qq的设置发送消息/echo [qq] [title]"""
-        self.qqbox_title(event, qq, title)
-
-    @qb.command("sn")
-    async def set_note(self, event: AstrMessageEvent, qq: str, note: str):
-        """通过对应qq的设置发送消息/echo [qq] [note]"""
-        self.qqbox_note(event, qq, note)
-
-    # 公用插件函数
-    async def qqbox_echo(self, event: AstrMessageEvent, qq: str, text: str):
-        """通过对应qq的设置发送消息/echo [qq] [text]"""
+        """通过对应qq的设置发送消息 /qb echo [qq] [text]"""
         if not self.qqbox.is_load_fonts:
             yield event.plain_result("字体在加载中或字体没有被正确的加载,请尝试修改配置文件到正确的文字路径")
             return
@@ -111,38 +94,73 @@ class QQbox(Star):
         yield event.make_result().file_image(tmp_path)
         self.clear_temp(tmp_path)
 
-    async def qqbox_color(self, event: AstrMessageEvent, qq: str, color: int):
-        """设置对应qq的头衔颜色(color:1:灰色,2:紫色,3:黄色,4:绿色) /QQbox_color [qq] [color]"""
+    @qb.command("img")
+    async def echo_img(self, event: AstrMessageEvent, qq: str):
+        """获取消息链或回复的图片,生成聊天气泡 /qb [qq] [图片] 或者 [图片] 回复 /qb [qq]"""
+        if not self.qqbox.is_load_fonts:
+            yield event.plain_result("字体在加载中或字体没有被正确的加载,请尝试修改配置文件到正确的文字路径")
+            return
+        if not self._validate_qq(qq):
+            yield event.plain_result("QQ号格式错误，请使用纯数字")
+            return
+        bot = getattr(event, "bot", None)
+        info = await self.get_qq_info(qq, bot)
+        image_bytes = await self._get_images(event)
+        if image_bytes is None:
+            yield event.plain_result("获取图片失败")
+            return
+        pil_image = Image.open(BytesIO(image_bytes))
+        img_bytes = await asyncio.to_thread(
+            self.qqbox.create_chat_message,
+            qq=qq,
+            text=None,
+            image=pil_image,
+            qq_title_key=self.qq_title_key,
+            user_info=info
+        )
+        image_data = img_bytes.getvalue()
+        fd, tmp_path = tempfile.mkstemp(suffix='.png', dir=self.temp_path)
+        with os.fdopen(fd, 'wb') as f:
+            f.write(image_data)
+        yield event.make_result().file_image(tmp_path)
+        self.clear_temp(tmp_path)
+
+    @qb.command("sc")
+    async def set_color(self, event: AstrMessageEvent, qq: str, color: int):
+        """设置对应qq的头衔颜色(color:1:灰色,2:紫色,3:黄色,4:绿色) /qb sc [qq] [color]"""
         if not self._validate_qq(qq):
             yield event.plain_result("QQ号格式错误，请使用纯数字")
             return
         await self.update_qq_title_key(qq, color = color)
         yield event.plain_result(f"设置成功 qq:{qq}, color:{color}")
 
-    async def qqbox_title(self, event: AstrMessageEvent, qq: str, title: str):
-        """设置对应qq的头衔文字 /QQbox_color [qq] [title]"""
+    @qb.command("st")
+    async def set_title(self, event: AstrMessageEvent, qq: str, title: str):
+        """设置对应qq的头衔文字 /qb st [qq] [title]"""
         if not self._validate_qq(qq):
             yield event.plain_result("QQ号格式错误，请使用纯数字")
             return
         await self.update_qq_title_key(qq, content = title)
         yield event.plain_result(f"设置成功 qq:{qq}, title:{title}")
 
-    async def qqbox_note(self, event: AstrMessageEvent, qq: str, note: str):
-        """设置对应qq的名字 /QQbox_note [qq] [note]"""
+    @qb.command("sn")
+    async def set_note(self, event: AstrMessageEvent, qq: str, note: str):
+        """设置对应qq的名字 /qb sn [qq] [note]"""
         if not self._validate_qq(qq):
             yield event.plain_result("QQ号格式错误，请使用纯数字")
             return
         await self.update_qq_title_key(qq, notes = note)
         yield event.plain_result(f"设置成功 qq:{qq}, note:{note}")
 
-    async def qqbox_help(self, event: AstrMessageEvent):
-        """获取帮助 /QQbox_help"""
+    @qb.command("help")
+    async def get_help(self, event: AstrMessageEvent):
+        """获取帮助 /qb help [qq]"""
         help_text = """QQbox 插件使用说明
 1. 生成聊天气泡
-   命令：/QQbox_echo [QQ号] [消息内容]
+   命令：/qb echo [QQ号] [消息内容]
    说明：生成指定QQ用户发送消息的气泡图片
 2. 设置头衔颜色
-   命令：/QQbox_color [QQ号] [颜色编号]
+   命令：/qb st [QQ号] [颜色编号]
    说明：设置用户的头衔气泡背景颜色
    颜色编号：
    1 - 灰色（默认）
@@ -150,10 +168,10 @@ class QQbox(Star):
    3 - 黄色
    4 - 绿色
 3. 设置头衔内容
-   命令：/QQbox_title [QQ号] [头衔文字]
+   命令：/qb st [QQ号] [头衔文字]
    说明：设置用户显示的头衔内容
 4. 设置备注名
-   命令：/QQbox_note [QQ号] [备注名]
+   命令：/qb sn [QQ号] [备注名]
    说明：设置用户的显示备注名（会覆盖原昵称）
 注意：所有QQ号都必须是纯数字格式"""
         yield event.plain_result(help_text)
@@ -414,6 +432,35 @@ class QQbox(Star):
                 logger.debug(f"临时文件已清理: {tmp_path}")
             except OSError as e:
                 logger.warning(f"清理临时文件失败: {e}")
+
+    async def _get_images(self, event: AstrMessageEvent) -> bytes | None:
+        """获取图片数据，支持从消息、回复和@用户头像中获取"""
+        # 查找直接发送的图片或回复中的图片
+        for component in event.message_obj.message:
+            if isinstance(component, BotImage):
+                if component.url:
+                    return await self._download_image(component.url)
+                elif component.file:
+                    return open(component.file, 'rb').read()
+            elif isinstance(component, Reply) and component.chain:
+                for reply_component in component.chain:
+                    if isinstance(reply_component, BotImage):
+                        if reply_component.url:
+                            return await self._download_image(reply_component.url)
+                        elif reply_component.file:
+                            return open(reply_component.file, 'rb').read()
+        return None
+
+    async def _download_image(self, url: str) -> bytes | None:
+        """下载图片"""
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url) as resp:
+                    resp.raise_for_status()
+                    return await resp.read()
+        except Exception as e:
+            logger.error(f"下载图片失败: {url}, 错误: {e}")
+            return None
 
 # ------------------------------------------------------------------------------
 # 高 DPI 超清聊天气泡生成器
@@ -880,11 +927,6 @@ class ChatBubbleGenerator:
         background.save(img_bytes, format='PNG', optimize=True)
         img_bytes.seek(0)
         return img_bytes
-
-    def create_chat_img(
-            self
-    ):
-        pass
 
     # ------------------------------------------------------------------------------
     # 辅助方法
