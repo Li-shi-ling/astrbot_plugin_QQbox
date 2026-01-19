@@ -4,16 +4,11 @@ from astrbot.api import AstrBotConfig, logger
 from PIL import Image, ImageDraw, ImageFont
 from astrbot.api.star import StarTools
 from io import BytesIO
-import unicodedata
-import traceback
-import platform
 import tempfile
 import aiofiles
 import asyncio
 import httpx
-import base64
 import json
-import re
 import os
 
 @register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.0.0")
@@ -22,19 +17,14 @@ class QQbox(Star):
         super().__init__(context)
         self.Config = config
 
-        # 圆角大小获取
-        try:
-            self.corner_radius = int(self.Config.get("corner_radius",27))
-        except Exception as e:
-            self.corner_radius = 27
-            logger.warning(f"配置文件中corner_radius配置出现问题:{e}")
+        # 获取圆角
+        self.corner_radius = int(self.Config.get("corner_radius", 27))
 
         # 使用框架提供的标准数据目录
         self.data_dir = str(StarTools.get_data_dir())
 
         # 优先使用配置的路径，如果没有则使用标准数据目录
-        avatar_path = self.Config.get("avatar_image_path")
-        # self.avatar_image_path = self._get_absolute_path(avatar_path) if avatar_path else os.path.join(self.data_dir,"avatars")
+        avatar_path = self.Config.get("avatar_image_path", "")
         self.avatar_image_path = os.path.join(self.data_dir, avatar_path) if avatar_path else os.path.join(self.data_dir, "avatars")
 
         # 字体路径使用绝对路径
@@ -70,6 +60,106 @@ class QQbox(Star):
         # 检查字体文件是否存在
         self._check_fonts()
 
+    # 插件函数
+    @filter.command_group("qb")
+    async def qb(self):
+        pass
+
+    @qb.command("echo")
+    async def echo(self, event: AstrMessageEvent, qq: str, text: str):
+        """通过对应qq的设置发送消息/echo [qq] [text]"""
+        self.qqbox_echo(event,qq,text)
+
+    @qb.command("sc")
+    async def set_color(self, event: AstrMessageEvent, qq: str, color: int):
+        """通过对应qq的设置发送消息/echo [qq] [color]"""
+        self.qqbox_color(event,qq,color)
+
+    @qb.command("st")
+    async def set_title(self, event: AstrMessageEvent, qq: str, title: str):
+        """通过对应qq的设置发送消息/echo [qq] [title]"""
+        self.qqbox_title(event, qq, title)
+
+    @qb.command("sn")
+    async def set_note(self, event: AstrMessageEvent, qq: str, note: str):
+        """通过对应qq的设置发送消息/echo [qq] [note]"""
+        self.qqbox_note(event, qq, note)
+
+    # 公用插件函数
+    async def qqbox_echo(self, event: AstrMessageEvent, qq: str, text: str):
+        """通过对应qq的设置发送消息/echo [qq] [text]"""
+        if not self.qqbox.is_load_fonts:
+            yield event.plain_result("字体在加载中或字体没有被正确的加载,请尝试修改配置文件到正确的文字路径")
+            return
+        if not self._validate_qq(qq):
+            yield event.plain_result("QQ号格式错误，请使用纯数字")
+            return
+        bot = getattr(event, "bot", None)
+        info = await self.get_qq_info(qq, bot)
+        img_bytes = await asyncio.to_thread(
+            self.qqbox.create_chat_message,
+            qq=qq,
+            text=text,
+            image=None,
+            qq_title_key=self.qq_title_key,
+            user_info=info
+        )
+        image_data = img_bytes.getvalue()
+        fd, tmp_path = tempfile.mkstemp(suffix='.png', dir=self.temp_path)
+        with os.fdopen(fd, 'wb') as f:
+            f.write(image_data)
+        yield event.make_result().file_image(tmp_path)
+        self.clear_temp(tmp_path)
+
+    async def qqbox_color(self, event: AstrMessageEvent, qq: str, color: int):
+        """设置对应qq的头衔颜色(color:1:灰色,2:紫色,3:黄色,4:绿色) /QQbox_color [qq] [color]"""
+        if not self._validate_qq(qq):
+            yield event.plain_result("QQ号格式错误，请使用纯数字")
+            return
+        await self.update_qq_title_key(qq, color = color)
+        yield event.plain_result(f"设置成功 qq:{qq}, color:{color}")
+
+    async def qqbox_title(self, event: AstrMessageEvent, qq: str, title: str):
+        """设置对应qq的头衔文字 /QQbox_color [qq] [title]"""
+        if not self._validate_qq(qq):
+            yield event.plain_result("QQ号格式错误，请使用纯数字")
+            return
+        await self.update_qq_title_key(qq, content = title)
+        yield event.plain_result(f"设置成功 qq:{qq}, title:{title}")
+
+    async def qqbox_note(self, event: AstrMessageEvent, qq: str, note: str):
+        """设置对应qq的名字 /QQbox_note [qq] [note]"""
+        if not self._validate_qq(qq):
+            yield event.plain_result("QQ号格式错误，请使用纯数字")
+            return
+        await self.update_qq_title_key(qq, notes = note)
+        yield event.plain_result(f"设置成功 qq:{qq}, note:{note}")
+
+    async def qqbox_help(self, event: AstrMessageEvent):
+        """获取帮助 /QQbox_help"""
+        help_text = """QQbox 插件使用说明
+1. 生成聊天气泡
+   命令：/QQbox_echo [QQ号] [消息内容]
+   说明：生成指定QQ用户发送消息的气泡图片
+2. 设置头衔颜色
+   命令：/QQbox_color [QQ号] [颜色编号]
+   说明：设置用户的头衔气泡背景颜色
+   颜色编号：
+   1 - 灰色（默认）
+   2 - 紫色
+   3 - 黄色
+   4 - 绿色
+3. 设置头衔内容
+   命令：/QQbox_title [QQ号] [头衔文字]
+   说明：设置用户显示的头衔内容
+4. 设置备注名
+   命令：/QQbox_note [QQ号] [备注名]
+   说明：设置用户的显示备注名（会覆盖原昵称）
+注意：所有QQ号都必须是纯数字格式"""
+        yield event.plain_result(help_text)
+
+    # 生命周期管理
+    # 启动插件时
     async def initialize(self):
         """异步初始化，创建HTTP客户端"""
         # 创建异步HTTP客户端
@@ -78,6 +168,7 @@ class QQbox(Star):
         self.qqbox.is_load_fonts = await self.qqbox.load_fonts()
         logger.info("QQbox 插件初始化完成")
 
+    # 关闭插件时
     async def terminate(self):
         """清理资源"""
         # 保存QQ数据
@@ -88,26 +179,17 @@ class QQbox(Star):
             await self.http_client.aclose()
             logger.info("HTTP客户端已关闭")
 
-    def _get_absolute_path(self, path):
-        """将路径转换为绝对路径"""
-        if not path:
-            return ""
-        return os.path.abspath(path)
+    # 工具方法
+    # 保存QQ数据
+    async def _save_qq_data(self):
+        """保存QQ数据"""
+        try:
+            async with aiofiles.open(self.qq_data_file, 'w', encoding='utf-8') as f:
+                await f.write(json.dumps(self.qq_title_key, indent=4, ensure_ascii=False))
+        except OSError as e:
+            logger.error(f"保存QQ数据失败: {e}")
 
-    def _check_fonts(self):
-        """检查字体文件是否存在"""
-        missing_fonts = []
-        if self.bubble_font_path and not os.path.exists(self.bubble_font_path):
-            missing_fonts.append(("气泡字体", self.bubble_font_path))
-        if self.nickname_font_path and not os.path.exists(self.nickname_font_path):
-            missing_fonts.append(("昵称字体", self.nickname_font_path))
-        if self.title_font_path and not os.path.exists(self.title_font_path):
-            missing_fonts.append(("头衔字体", self.title_font_path))
-
-        if missing_fonts:
-            for font_name, font_path in missing_fonts:
-                logger.warning(f"找不到{font_name}文件: {font_path}")
-
+    # 获取qq数据
     async def _load_qq_data(self):
         """异步加载QQ数据"""
         try:
@@ -122,14 +204,29 @@ class QQbox(Star):
             logger.error(f"加载QQ数据失败: {e}")
             return {}
 
-    async def _save_qq_data(self):
-        """保存QQ数据"""
-        try:
-            async with aiofiles.open(self.qq_data_file, 'w', encoding='utf-8') as f:
-                await f.write(json.dumps(self.qq_title_key, indent=4, ensure_ascii=False))
-        except OSError as e:
-            logger.error(f"保存QQ数据失败: {e}")
+    # 检测字体是否存在
+    def _check_fonts(self):
+        """检查字体文件是否存在"""
+        missing_fonts = []
+        if self.bubble_font_path and not os.path.exists(self.bubble_font_path):
+            missing_fonts.append(("气泡字体", self.bubble_font_path))
+        if self.nickname_font_path and not os.path.exists(self.nickname_font_path):
+            missing_fonts.append(("昵称字体", self.nickname_font_path))
+        if self.title_font_path and not os.path.exists(self.title_font_path):
+            missing_fonts.append(("头衔字体", self.title_font_path))
 
+        if missing_fonts:
+            for font_name, font_path in missing_fonts:
+                logger.warning(f"[QQbox] 找不到{font_name}文件: {font_path}")
+
+    # 获取绝路径
+    def _get_absolute_path(self, path):
+        """将路径转换为绝对路径"""
+        if not path:
+            return ""
+        return os.path.abspath(path)
+
+    # 检测qq号是否合法
     def _validate_qq(self, qq):
         """验证QQ号是否合法（只包含数字）"""
         if not qq or not isinstance(qq, str):
@@ -140,81 +237,176 @@ class QQbox(Star):
             return False
         return True
 
-    @filter.command("QQbox_echo")
-    async def QQbox_echo(self, event: AstrMessageEvent):
-        """通过对应qq的设置发送消息/echo [qq] [text]"""
-        text = event.message_str
-        params = extract_help_parameters(text, "QQbox_echo")
-        logger.info(f"进入QQbox_echo, params: {params}")
-        if not self.qqbox.is_load_fonts:
-            yield event.plain_result("字体在加载中或字体没有被正确的加载,请尝试修改配置文件到正确的文字路径")
-            return
-        if len(params) < 2:
-            yield event.plain_result("请修正指令，应为 /echo [qq] [text]")
-            return
-        qq, text = params[0], params[1]
-        if not self._validate_qq(qq):
-            yield event.plain_result("QQ号格式错误，请使用纯数字")
-            return
-        tmp_path = None
+    # 获取qq信息
+    async def get_qq_info(self, qq, bot = None):
+        # 确保头像保存目录存在
+        os.makedirs(self.avatar_image_path, exist_ok=True)
+
+        nickname = self.qq_title_key.get(qq, {}).get("nickname",None)
+
+        if nickname is None:
+            nickname = await self.get_nickname_by_onebot(qq, bot)
+            if nickname:
+                await self.update_qq_title_key(qq=qq, nickname=nickname)
+
+        # [兼容] 先检查缓存
+        for filename in os.listdir(self.avatar_image_path):
+            if filename.startswith(f"{qq}-") and filename.endswith(".png"):
+                # [兼容]通过老方法获取名称数据
+                if nickname is None:
+                    nickname = filename[len(f"{qq}-"):-4]
+                    if nickname:
+                        await self.update_qq_title_key(qq=qq, nickname=nickname)
+                    else:
+                        nickname = qq
+                        await self.update_qq_title_key(qq=qq, nickname=nickname)
+
+                return {
+                    "qq": qq,
+                    "name": nickname,
+                    "avatar_path": os.path.join(self.avatar_image_path, filename)
+                }
+
+        # 如果不存在头像文件,进行获取
+        if self.http_client is None:
+            logger.error("HTTP客户端未初始化")
+            return None
+
+        if nickname is None:
+            nickname = await self.get_nickname_by_api(qq, self.http_client)
+            if nickname:
+                await self.update_qq_title_key(qq=qq, nickname=nickname)
+
+        # 下载头像
+        avatar_url = f"https://q1.qlogo.cn/g?b=qq&nk={qq}&s=640"
+        save_path = os.path.join(self.avatar_image_path, f"{qq}-.png")
+        success = await self.download_circular_avatar(avatar_url,save_path, self.http_client)
+
+        if not success:
+            raise RuntimeError(f"下载头像失败: {qq}")
+
+        return {
+            "qq": qq,
+            "name": nickname,
+            "avatar_path": save_path
+        }
+
+    # 更新self.qq_title_key
+    async def update_qq_title_key(self, qq, nickname = None, color = None, content = None, notes = None):
+        qq_title = self.qq_title_key.get(qq, {})
+        self.qq_title_key[qq] = {
+            "nickname": nickname if not nickname is None else qq_title.get("nickname",None),
+            "color": color if not color is None else qq_title.get("color",None),
+            "content": content if not content is None else qq_title.get("content",None),
+            "notes": notes if not notes is None else qq_title.get("notes",None),
+        }
+        await self._save_qq_data()
+
+    # 通过onebot获取nickname
+    async def get_nickname_by_onebot(self, qq, bot = None):
+        if bot is None:
+            return None
+        else:
+            try:
+                payloads = {
+                    "user_id": int(qq),
+                    "no_cache": True
+                }
+                qq_info = await bot.api.call_action('get_stranger_info', **payloads)
+                return qq_info.get("nick", None)
+            except:
+                logger.error("通过onebot获取nick失败")
+
+    # 通过api获取nickname
+    async def get_nickname_by_api(self, qq, http_client):
+        # 备用API列表
+        apis = [
+            f"https://uapis.cn/api/v1/social/qq/userinfo?qq={qq}",
+            f"https://api.mmp.cc/api/qqname?qq={qq}",
+            f"https://api.uomg.com/api/qq.info?qq={qq}",
+        ]
+
+        nickname = qq  # 如果API访问失败,使用qq当默认值,让用户使用提供的备注接口修改名称
+
+        # 尝试多个API
+        for api_url in apis:
+            try:
+                response = await http_client.get(api_url, timeout=10.0)
+                if response.status_code == 200:
+                    data = response.json()
+                    # 尝试解析不同API的响应格式
+                    if "data" in data and "name" in data["data"]:
+                        nickname = data["data"]["name"]
+                        break
+                    elif "name" in data:
+                        nickname = data["name"]
+                        break
+                    elif "nickname" in data:
+                        nickname = data["nickname"]
+                        break
+            except Exception as e:
+                logger.debug(f"API请求失败 {api_url}: {e}")
+                continue
+        return nickname
+
+    # 下载并裁剪头像为圆形
+    async def download_circular_avatar(self, url, save_path, http_client=None, size=None):
+        """异步下载并裁剪头像为圆形"""
+        if http_client is None:
+            logger.error("HTTP客户端未初始化")
+            return False
+
         try:
-            info = await get_qq_info(qq, self.avatar_image_path, self.http_client)
-            if not info:
-                yield event.plain_result("获取QQ信息失败，请检查网络或稍后重试")
-                return
+            response = await http_client.get(url, timeout=15.0)
+            response.raise_for_status()
+
+            # 加载图片
+            img_data = response.content
+            img = Image.open(BytesIO(img_data)).convert("RGBA")
+
+            # 创建圆形头像
+            result = self.create_circular_avatar(img, size)
+
+            # 保存头像
+            result.save(save_path)
+            logger.debug(f"头像已保存: {save_path}")
+            return True
+
         except httpx.RequestError as e:
-            logger.error(f"网络请求失败，QQ: {qq}, 错误: {e}")
-            yield event.plain_result("网络请求失败，请检查网络连接")
-            return
-        except httpx.HTTPStatusError as e:
-            logger.error(f"HTTP请求异常，状态码: {e.response.status_code}, QQ: {qq}")
-            yield event.plain_result("服务暂时不可用，请稍后重试")
-            return
-        try:
-            img_bytes = await asyncio.to_thread(
-                self.qqbox.create_chat_message,
-                qq=qq,
-                text=text,
-                image=None,
-                qq_title_key=self.qq_title_key,
-                user_info=info
-            )
-        except (MemoryError, OSError) as e:
-            logger.error(f"图片生成失败，QQ: {qq}, 错误类型: {type(e).__name__}, 详情: {e}")
-            yield event.plain_result("图片生成失败，可能是内存不足或系统资源限制")
-            return
-        except ImportError as e:
-            logger.error(f"依赖库错误: {e}\n{traceback.format_exc()}")
-            yield event.plain_result("系统组件异常，请联系管理员")
-            return
-
-        try:
-            image_data = img_bytes.getvalue()
-        except (IOError, OSError) as e:
-            logger.error(f"图片保存失败，QQ: {qq}, 错误: {e}")
-            yield event.plain_result("图片处理失败，请稍后重试")
-            return
-
-        try:
-            fd, tmp_path = tempfile.mkstemp(suffix='.png', dir=self.temp_path)
-            with os.fdopen(fd, 'wb') as f:
-                f.write(image_data)
-        except (OSError, IOError) as e:
-            logger.error(f"临时文件创建失败，QQ: {qq}, 错误: {e}")
-            yield event.plain_result("文件操作失败，请检查磁盘空间")
-            self.clear_temp(tmp_path)
-            return
-
-        try:
-            yield event.make_result().file_image(tmp_path)
+            logger.error(f"下载头像请求失败: {e}")
         except Exception as e:
-            logger.error(f"消息发送失败，QQ: {qq}, 错误类型: {type(e).__name__}")
-            yield event.plain_result("消息发送失败，请稍后重试")
-            self.clear_temp(tmp_path)
-            return
+            logger.error(f"处理头像失败: {e}")
 
-        self.clear_temp(tmp_path)
+        return False
 
+    # 将图片裁剪为圆形
+    def create_circular_avatar(self, img, size=None):
+        """将图片裁剪为圆形"""
+        # 获取图片尺寸
+        w, h = img.size
+        side = min(w, h)
+
+        # 中心裁剪为正方形
+        left = (w - side) // 2
+        top = (h - side) // 2
+        img = img.crop((left, top, left + side, top + side))
+
+        # 调整大小
+        if size is None:
+            size = side
+        img = img.resize((size, size), Image.Resampling.LANCZOS)
+
+        # 创建圆形遮罩
+        mask = Image.new("L", (size, size), 0)
+        draw = ImageDraw.Draw(mask)
+        draw.ellipse((0, 0, size, size), fill=255)
+
+        # 应用遮罩
+        result = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+        result.paste(img, (0, 0), mask)
+        return result
+
+    # 清理临时文件
     def clear_temp(self, tmp_path):
         if tmp_path and os.path.exists(tmp_path):
             try:
@@ -222,137 +414,6 @@ class QQbox(Star):
                 logger.debug(f"临时文件已清理: {tmp_path}")
             except OSError as e:
                 logger.warning(f"清理临时文件失败: {e}")
-
-    @filter.command("QQbox_color")
-    async def QQbox_color(self, event: AstrMessageEvent):
-        """设置对应qq的头衔颜色(color:1:灰色,2:紫色,3:黄色,4:绿色) /QQbox_color [qq] [color]"""
-        text = event.message_str
-        params = extract_help_parameters(text, "QQbox_color")
-        logger.info(f"进入QQbox_color, params: {params}")
-
-        if len(params) < 2:
-            yield event.plain_result("请修正指令，应为 /QQbox_color [qq] [color]")
-            return
-
-        qq, color = params[0], params[1]
-
-        if not self._validate_qq(qq):
-            yield event.plain_result("QQ号格式错误，请使用纯数字")
-            return
-
-        await self._set_title_color(qq, color)
-        yield event.plain_result(f"设置成功 qq:{qq}, color:{color}")
-
-    @filter.command("QQbox_title")
-    async def QQbox_title(self, event: AstrMessageEvent):
-        """设置对应qq的头衔文字 /QQbox_color [qq] [title]"""
-        text = event.message_str
-        params = extract_help_parameters(text, "QQbox_title")
-        logger.info(f"进入QQbox_title, params: {params}")
-
-        if len(params) < 2:
-            yield event.plain_result("请修正指令，应为 /QQbox_title [qq] [title]")
-            return
-
-        qq, title = params[0], params[1]
-
-        if not self._validate_qq(qq):
-            yield event.plain_result("QQ号格式错误，请使用纯数字")
-            return
-
-        await self._set_title_name(qq, title)
-        yield event.plain_result(f"设置成功 qq:{qq}, title:{title}")
-
-    @filter.command("QQbox_note")
-    async def QQbox_note(self, event: AstrMessageEvent):
-        """设置对应qq的名字 /QQbox_note [qq] [title]"""
-        text = event.message_str
-        params = extract_help_parameters(text, "QQbox_note")
-        logger.info(f"进入QQbox_note, 原始文本: {text}")
-        if len(params) < 2:
-            yield event.plain_result("请修正指令，应为 /QQbox_note [qq] [title]")
-            return
-        qq, note = params[0], params[1]
-        if not self._validate_qq(qq):
-            yield event.plain_result("QQ号格式错误，请使用纯数字")
-            return
-        await self._set_note(qq, note)
-        yield event.plain_result(f"设置成功 qq:{qq}, note:{note}")
-
-    @filter.command("QQbox_help")
-    async def QQbox_help(self, event: AstrMessageEvent):
-        """获取帮助 /QQbox_help"""
-        help_text = """QQbox 插件使用说明
-
-1. 生成聊天气泡
-   命令：/QQbox_echo [QQ号] [消息内容]
-   说明：生成指定QQ用户发送消息的气泡图片
-
-2. 设置头衔颜色
-   命令：/QQbox_color [QQ号] [颜色编号]
-   说明：设置用户的头衔气泡背景颜色
-   颜色编号：
-   1 - 灰色（默认）
-   2 - 紫色
-   3 - 黄色
-   4 - 绿色
-
-3. 设置头衔内容
-   命令：/QQbox_title [QQ号] [头衔文字]
-   说明：设置用户显示的头衔内容
-
-4. 设置备注名
-   命令：/QQbox_note [QQ号] [备注名]
-   说明：设置用户的显示备注名（会覆盖原昵称）
-
-注意：所有QQ号都必须是纯数字格式"""
-        yield event.plain_result(help_text)
-
-    async def _set_note(self, qq, note):
-        """设置备注名"""
-        qq_str = str(qq)
-        if qq_str not in self.qq_title_key:
-            self.qq_title_key[qq_str] = {
-                "color": None,
-                "content": None,
-                "notes": note
-            }
-        else:
-            self.qq_title_key[qq_str]["notes"] = note
-
-        await self._save_qq_data()
-
-    async def _set_title_color(self, qq, color_id):
-        """设置头衔颜色"""
-        qq_str = str(qq)
-        # 验证颜色ID
-        match = re.search(r'[1-4]', color_id)
-        color_clean = match.group() if match else "1"
-
-        if qq_str not in self.qq_title_key:
-            self.qq_title_key[qq_str] = {
-                "color": color_clean,
-                "content": "头衔",
-                "notes": None
-            }
-        else:
-            self.qq_title_key[qq_str]["color"] = color_clean
-
-        await self._save_qq_data()
-
-    async def _set_title_name(self, qq, title):
-        """设置头衔名称"""
-        qq_str = str(qq)
-        if qq_str not in self.qq_title_key:
-            self.qq_title_key[qq_str] = {
-                "color": "1",
-                "content": title,
-                "notes": None
-            }
-        else:
-            self.qq_title_key[qq_str]["content"] = title
-
-        await self._save_qq_data()
 
 # ------------------------------------------------------------------------------
 # 高 DPI 超清聊天气泡生成器
@@ -820,6 +881,11 @@ class ChatBubbleGenerator:
         img_bytes.seek(0)
         return img_bytes
 
+    def create_chat_img(
+            self
+    ):
+        pass
+
     # ------------------------------------------------------------------------------
     # 辅助方法
     # ------------------------------------------------------------------------------
@@ -918,216 +984,3 @@ class ChatBubbleGenerator:
                 fill=self.text_color,
                 font=self.nickname_font
             )
-
-# ------------------------------------------------------------------------------
-# 辅助函数
-# ------------------------------------------------------------------------------
-def extract_help_parameters(s, directive):
-    """提取指令参数"""
-    escaped_directive = re.escape(directive)
-    match = re.search(f'{escaped_directive}' + r'\s+(\S+)\s*(.*)', s, re.DOTALL)
-    if match:
-        # 第一个参数（通常是QQ号）
-        first_param = match.group(1).strip()
-        # 剩余的所有文本（保留原始空格）
-        remaining_text = match.group(2)
-        return [first_param, remaining_text] if remaining_text else [first_param]
-    return []
-
-async def get_qq_info(qq, avatar_cache_location=".", http_client=None):
-    """异步获取QQ信息（缓存 + API）"""
-    # 验证QQ号
-    if not qq or not isinstance(qq, str) or not qq.isdigit():
-        logger.warning(f"无效的QQ号格式: {qq}")
-        return None
-
-    # 确保缓存目录存在
-    os.makedirs(avatar_cache_location, exist_ok=True)
-
-    # 先检查缓存
-    for filename in os.listdir(avatar_cache_location):
-        if filename.startswith(f"{qq}-") and filename.endswith(".png"):
-            nickname = filename[len(f"{qq}-"):-4]
-            return {
-                "qq": qq,
-                "name": nickname,
-                "avatar_path": os.path.join(avatar_cache_location, filename)
-            }
-
-    # 需要HTTP客户端
-    if http_client is None:
-        logger.error("HTTP客户端未初始化")
-        return None
-
-    # 异步请求API
-    try:
-        # 备用API列表
-        apis = [
-            f"https://uapis.cn/api/v1/social/qq/userinfo?qq={qq}",
-            f"https://api.mmp.cc/api/qqname?qq={qq}",
-            f"https://api.uomg.com/api/qq.info?qq={qq}",
-            # 可以添加更多备用API
-        ]
-
-        nickname = qq  # 如果API访问失败,使用qq当默认值,让用户使用提供的备注接口修改名称
-        avatar_url = f"https://q1.qlogo.cn/g?b=qq&nk={qq}&s=640"
-
-        # 尝试多个API
-        for api_url in apis:
-            try:
-                response = await http_client.get(api_url, timeout=10.0)
-                if response.status_code == 200:
-                    data = response.json()
-                    # 尝试解析不同API的响应格式
-                    if "data" in data and "name" in data["data"]:
-                        nickname = data["data"]["name"]
-                        break
-                    elif "name" in data:
-                        nickname = data["name"]
-                        break
-                    elif "nickname" in data:
-                        nickname = data["nickname"]
-                        break
-                nickname = clean_filename_for_platform(nickname)
-            except Exception as e:
-                logger.debug(f"API请求失败 {api_url}: {e}")
-                continue
-
-        # 下载头像
-        save_path = os.path.join(avatar_cache_location, f"{qq}-{nickname}.png")
-        success = await download_circular_avatar(avatar_url, save_path, http_client)
-
-        if not success:
-            logger.warning(f"下载头像失败: {qq}")
-            # 创建默认头像
-            create_default_avatar(qq, nickname, save_path)
-
-        return {
-            "qq": qq,
-            "name": nickname,
-            "avatar_path": save_path
-        }
-
-    except Exception as e:
-        logger.error(f"获取QQ信息失败: {e}")
-        return None
-
-async def download_circular_avatar(url, save_path, http_client=None, size=None):
-    """异步下载并裁剪头像为圆形"""
-    if http_client is None:
-        logger.error("HTTP客户端未初始化")
-        return False
-
-    try:
-        response = await http_client.get(url, timeout=15.0)
-        response.raise_for_status()
-
-        # 加载图片
-        img_data = response.content
-        img = Image.open(BytesIO(img_data)).convert("RGBA")
-
-        # 创建圆形头像
-        result = create_circular_avatar(img, size)
-
-        # 保存头像
-        result.save(save_path)
-        logger.debug(f"头像已保存: {save_path}")
-        return True
-
-    except httpx.RequestError as e:
-        logger.error(f"下载头像请求失败: {e}")
-    except Exception as e:
-        logger.error(f"处理头像失败: {e}")
-
-    return False
-
-def create_circular_avatar(img, size=None):
-    """将图片裁剪为圆形"""
-    # 获取图片尺寸
-    w, h = img.size
-    side = min(w, h)
-
-    # 中心裁剪为正方形
-    left = (w - side) // 2
-    top = (h - side) // 2
-    img = img.crop((left, top, left + side, top + side))
-
-    # 调整大小
-    if size is None:
-        size = side
-    img = img.resize((size, size), Image.Resampling.LANCZOS)
-
-    # 创建圆形遮罩
-    mask = Image.new("L", (size, size), 0)
-    draw = ImageDraw.Draw(mask)
-    draw.ellipse((0, 0, size, size), fill=255)
-
-    # 应用遮罩
-    result = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    result.paste(img, (0, 0), mask)
-    return result
-
-def create_default_avatar(qq, nickname, save_path):
-    """创建默认头像"""
-    try:
-        size = 200
-        # 创建简单头像
-        img = Image.new("RGB", (size, size), (100, 150, 200))
-        draw = ImageDraw.Draw(img)
-
-        # 绘制字母
-        text = nickname[0].upper() if nickname else "Q"
-        try:
-            font = ImageFont.truetype("arial.ttf", 80)
-        except:
-            font = ImageFont.load_default()
-
-        # 居中绘制文字
-        bbox = draw.textbbox((0, 0), text, font=font)
-        text_width = bbox[2] - bbox[0]
-        text_height = bbox[3] - bbox[1]
-        position = ((size - text_width) // 2, (size - text_height) // 2)
-
-        draw.text(position, text, fill=(255, 255, 255), font=font)
-
-        # 转换为圆形并保存
-        circular = create_circular_avatar(img.convert("RGBA"))
-        circular.save(save_path)
-        return True
-    except Exception as e:
-        logger.error(f"创建默认头像失败: {e}")
-        return False
-
-def resize_by_scale(image, scale_factor):
-    """按比例缩放图像"""
-    w, h = image.size
-    return image.resize((int(w * scale_factor), int(h * scale_factor)), Image.Resampling.LANCZOS)
-
-def image_to_base64(image_obj, format="PNG") -> str:
-    """将PIL Image对象转换为Base64字符串"""
-    img_buffer = BytesIO()
-    image_obj.save(img_buffer, format=format)
-    img_bytes = img_buffer.getvalue()
-    base64_str = base64.b64encode(img_bytes).decode("utf-8")
-    return base64_str
-
-def clean_filename_for_platform(filename, replace_char='_'):
-    current_os = platform.system()
-    filename = unicodedata.normalize('NFKD', filename)
-    filename = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', filename)
-    if current_os == 'Windows':
-        # Windows特定处理
-        illegal = r'[<>:"/\\|?*]'
-        max_len = 260
-    elif current_os == 'Darwin':  # macOS
-        illegal = r'[/:]'
-        max_len = 255
-    else:  # Linux/Unix
-        illegal = r'[/]'
-        max_len = 255
-    filename = re.sub(illegal, replace_char, filename)
-    filename = filename.strip('. ')
-    if len(filename.encode('utf-8')) > max_len:
-        encoded = filename.encode('utf-8')[:max_len]
-        filename = encoded.decode('utf-8', 'ignore').rstrip('\x00')
-    return filename if filename else "unnamed"
