@@ -1,8 +1,7 @@
-from astrbot.api.message_components import Image as BotImage, Reply, Plain, At
+from astrbot.api.message_components import Image as BotImage, Reply
 from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.star import Context, Star, register
 from astrbot.api import AstrBotConfig, logger
-import astrbot.api.message_components as Comp
 from PIL import Image, ImageDraw, ImageFont
 from astrbot.api.star import StarTools
 from io import BytesIO
@@ -69,7 +68,7 @@ class QQbox(Star):
         pass
 
     @qb.command("echo")
-    async def echo(self, event: AstrMessageEvent, qq: str, text: str):
+    async def echo(self, event: AstrMessageEvent, qq: str):
         """通过对应qq的设置发送消息 /qb echo [qq] [text]"""
         if not self.qqbox.is_load_fonts:
             yield event.plain_result("字体在加载中或字体没有被正确的加载,请尝试修改配置文件到正确的文字路径")
@@ -77,6 +76,7 @@ class QQbox(Star):
         if not self._validate_qq(qq):
             yield event.plain_result("QQ号格式错误，请使用纯数字")
             return
+        text = event.message_str.replace("qb", "", 1).replace(qq, "", 1).replace("echo", "", 1).strip()
         bot = getattr(event, "bot", None)
         info = await self.get_qq_info(qq, bot)
         img_bytes = await asyncio.to_thread(
@@ -135,20 +135,22 @@ class QQbox(Star):
         yield event.plain_result(f"设置成功 qq:{qq}, color:{color}")
 
     @qb.command("st")
-    async def set_title(self, event: AstrMessageEvent, qq: str, title: str):
+    async def set_title(self, event: AstrMessageEvent, qq: str):
         """设置对应qq的头衔文字 /qb st [qq] [title]"""
         if not self._validate_qq(qq):
             yield event.plain_result("QQ号格式错误，请使用纯数字")
             return
+        title = event.message_str.replace("qb", "", 1).replace(qq, "", 1).replace("st", "", 1).strip()
         await self.update_qq_title_key(qq, content = title)
         yield event.plain_result(f"设置成功 qq:{qq}, title:{title}")
 
     @qb.command("sn")
-    async def set_note(self, event: AstrMessageEvent, qq: str, note: str):
+    async def set_note(self, event: AstrMessageEvent, qq: str):
         """设置对应qq的名字 /qb sn [qq] [note]"""
         if not self._validate_qq(qq):
             yield event.plain_result("QQ号格式错误，请使用纯数字")
             return
+        note = event.message_str.replace("qb", "", 1).replace(qq, "", 1).replace("sn", "", 1).strip()
         await self.update_qq_title_key(qq, notes = note)
         yield event.plain_result(f"设置成功 qq:{qq}, note:{note}")
 
@@ -591,64 +593,76 @@ class ChatBubbleGenerator:
         return self._temp_draw
 
     def _wrap_text(self, text, font):
-        """
-        聊天气泡专用文本换行
-        - 英文按词
-        - 中文按字
-        - 保留显式换行
-        - O(n) 贪心算法（高性能）
-        """
+        """文本自动换行"""
         draw = self._get_temp_draw()
-
         padding = self.bubble_padding * self.SCALE
         max_width = self.max_width * self.SCALE - padding * 2
 
         lines = []
 
-        for para in text.splitlines() or [""]:
-            if para == "":
+        # 首先按显式换行符分割成段落
+        paragraphs = text.split('\n')
+
+        for paragraph in paragraphs:
+            if not paragraph:
+                # 空段落（连续换行符）
                 lines.append("")
                 continue
 
-            has_space = " " in para
-            units = para.split(" ") if has_space else list(para)
-            buf = ""
+            current_line = ""
+            current_line_width = 0
 
-            def join(a: str, b: str) -> str:
-                if not a:
-                    return b
-                return a + (" " if has_space else "") + b
+            # 按字符处理段落
+            for char in paragraph:
+                # 测试添加字符后的宽度
+                test_line = current_line + char
 
-            for u in units:
-                trial = join(buf, u)
-                w = draw.textlength(trial, font=font)
+                try:
+                    # 使用 textbbox 替代 textlength（更可靠）
+                    if hasattr(draw, 'textbbox'):
+                        bbox = draw.textbbox((0, 0), test_line, font=font)
+                        line_width = bbox[2] - bbox[0]
+                    else:
+                        # 旧版本 Pillow 兼容
+                        line_width = draw.textlength(test_line, font=font)
 
-                # 当前单元可以直接放入
-                if w <= max_width:
-                    buf = trial
-                    continue
-
-                # buf 已经是完整一行
-                if buf:
-                    lines.append(buf)
-                    buf = ""
-
-                # 当前单元自身就超宽（长英文 / emoji 串）
-                if draw.textlength(u, font=font) > max_width:
-                    tmp = ""
-                    for ch in u:
-                        if draw.textlength(tmp + ch, font=font) <= max_width:
-                            tmp += ch
+                    # 检查是否需要换行
+                    if line_width <= max_width:
+                        current_line = test_line
+                        current_line_width = line_width
+                    else:
+                        # 当前行已满，开始新行
+                        if current_line:
+                            lines.append(current_line)
+                        current_line = char
+                        # 计算新行的初始宽度
+                        if hasattr(draw, 'textbbox'):
+                            bbox = draw.textbbox((0, 0), char, font=font)
+                            current_line_width = bbox[2] - bbox[0]
                         else:
-                            if tmp:
-                                lines.append(tmp)
-                            tmp = ch
-                    buf = tmp
-                else:
-                    buf = u
+                            current_line_width = draw.textlength(char, font=font)
 
-            if buf:
-                lines.append(buf)
+                except Exception as e:
+                    # 如果测量失败，使用保守的字符宽度估计
+                    logger.debug(f"测量文本宽度失败: {e}, 字符: {repr(char)}")
+
+                    # 估计字符宽度：中文字符≈字体大小，英文字符≈字体大小/2
+                    char_width_estimate = self._font_configs['bubble'][1] * self.SCALE
+                    if ord(char) < 128:  # ASCII字符
+                        char_width_estimate = char_width_estimate // 2
+
+                    if current_line_width + char_width_estimate > max_width:
+                        if current_line:
+                            lines.append(current_line)
+                        current_line = char
+                        current_line_width = char_width_estimate
+                    else:
+                        current_line = test_line
+                        current_line_width += char_width_estimate
+
+            # 添加段落的最后一行
+            if current_line:
+                lines.append(current_line)
 
         return lines
 
@@ -745,6 +759,8 @@ class ChatBubbleGenerator:
             img = image
 
         # 缩放图片
+        # 在qq会被tx压缩图片,所以要先放大图片
+        img = self.resize_by_scale(img, 2)
         img = self._resize_image_for_bubble(img)
         width, height = img.size
 
@@ -935,7 +951,7 @@ class ChatBubbleGenerator:
         ]
 
         # 如果有头衔，调整宽度
-        if title_info:
+        if title_info and title_info.get("content", None):
             title_width = draw.textlength(
                 title_info.get("content", ""),
                 font=self.title_font
@@ -978,7 +994,7 @@ class ChatBubbleGenerator:
         """添加昵称和头衔到背景"""
         draw = ImageDraw.Draw(background)
 
-        if title_info:
+        if title_info and title_info.get("content", None):
             # 处理头衔
             title_color = self.color_map.get(
                 int(title_info.get("color", 1)),
@@ -1014,3 +1030,41 @@ class ChatBubbleGenerator:
                 fill=self.text_color,
                 font=self.nickname_font
             )
+
+    def resize_by_scale(self, image, scale_factor):
+        w, h = image.size
+        return image.resize((int(w * scale_factor), int(h * scale_factor)), Image.Resampling.LANCZOS)
+
+    def _safe_text_width(self, draw, text, font, fallback_char_width):
+        """
+        永不抛异常的文本宽度测量
+        - 兼容 Pillow 新旧版本
+        - font 为 None / glyph 缺失 / emoji 均可兜底
+        """
+        if not text:
+            return 0
+
+        try:
+            if font is None:
+                raise ValueError("font is None")
+
+            # Pillow >= 8.x
+            if hasattr(draw, "textbbox"):
+                bbox = draw.textbbox((0, 0), text, font=font)
+                w = bbox[2] - bbox[0]
+            else:
+                # Pillow < 8.x
+                w = draw.textlength(text, font=font)
+
+            # 非法结果兜底
+            if not isinstance(w, (int, float)) or w <= 0:
+                raise ValueError("invalid width")
+
+            return int(w)
+
+        except Exception:
+            # 最终兜底：字符数 × 估算宽度
+            try:
+                return len(text) * int(fallback_char_width)
+            except Exception:
+                return 0
