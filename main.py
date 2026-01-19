@@ -591,76 +591,64 @@ class ChatBubbleGenerator:
         return self._temp_draw
 
     def _wrap_text(self, text, font):
-        """文本自动换行"""
+        """
+        聊天气泡专用文本换行
+        - 英文按词
+        - 中文按字
+        - 保留显式换行
+        - O(n) 贪心算法（高性能）
+        """
         draw = self._get_temp_draw()
+
         padding = self.bubble_padding * self.SCALE
         max_width = self.max_width * self.SCALE - padding * 2
 
         lines = []
 
-        # 首先按显式换行符分割成段落
-        paragraphs = text.split('\n')
-
-        for paragraph in paragraphs:
-            if not paragraph:
-                # 空段落（连续换行符）
+        for para in text.splitlines() or [""]:
+            if para == "":
                 lines.append("")
                 continue
 
-            current_line = ""
-            current_line_width = 0
+            has_space = " " in para
+            units = para.split(" ") if has_space else list(para)
+            buf = ""
 
-            # 按字符处理段落
-            for char in paragraph:
-                # 测试添加字符后的宽度
-                test_line = current_line + char
+            def join(a: str, b: str) -> str:
+                if not a:
+                    return b
+                return a + (" " if has_space else "") + b
 
-                try:
-                    # 使用 textbbox 替代 textlength（更可靠）
-                    if hasattr(draw, 'textbbox'):
-                        bbox = draw.textbbox((0, 0), test_line, font=font)
-                        line_width = bbox[2] - bbox[0]
-                    else:
-                        # 旧版本 Pillow 兼容
-                        line_width = draw.textlength(test_line, font=font)
+            for u in units:
+                trial = join(buf, u)
+                w = draw.textlength(trial, font=font)
 
-                    # 检查是否需要换行
-                    if line_width <= max_width:
-                        current_line = test_line
-                        current_line_width = line_width
-                    else:
-                        # 当前行已满，开始新行
-                        if current_line:
-                            lines.append(current_line)
-                        current_line = char
-                        # 计算新行的初始宽度
-                        if hasattr(draw, 'textbbox'):
-                            bbox = draw.textbbox((0, 0), char, font=font)
-                            current_line_width = bbox[2] - bbox[0]
+                # 当前单元可以直接放入
+                if w <= max_width:
+                    buf = trial
+                    continue
+
+                # buf 已经是完整一行
+                if buf:
+                    lines.append(buf)
+                    buf = ""
+
+                # 当前单元自身就超宽（长英文 / emoji 串）
+                if draw.textlength(u, font=font) > max_width:
+                    tmp = ""
+                    for ch in u:
+                        if draw.textlength(tmp + ch, font=font) <= max_width:
+                            tmp += ch
                         else:
-                            current_line_width = draw.textlength(char, font=font)
+                            if tmp:
+                                lines.append(tmp)
+                            tmp = ch
+                    buf = tmp
+                else:
+                    buf = u
 
-                except Exception as e:
-                    # 如果测量失败，使用保守的字符宽度估计
-                    logger.debug(f"测量文本宽度失败: {e}, 字符: {repr(char)}")
-
-                    # 估计字符宽度：中文字符≈字体大小，英文字符≈字体大小/2
-                    char_width_estimate = self._font_configs['bubble'][1] * self.SCALE
-                    if ord(char) < 128:  # ASCII字符
-                        char_width_estimate = char_width_estimate // 2
-
-                    if current_line_width + char_width_estimate > max_width:
-                        if current_line:
-                            lines.append(current_line)
-                        current_line = char
-                        current_line_width = char_width_estimate
-                    else:
-                        current_line = test_line
-                        current_line_width += char_width_estimate
-
-            # 添加段落的最后一行
-            if current_line:
-                lines.append(current_line)
+            if buf:
+                lines.append(buf)
 
         return lines
 
