@@ -2,10 +2,9 @@ from astrbot.api.message_components import Image as BotImage, Reply
 from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.star import Context, Star, register
 from astrbot.api import AstrBotConfig, logger
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageSequence, ImageFilter, ImageOps, ImageEnhance
 from astrbot.api.star import StarTools
 from io import BytesIO
-import tempfile
 import aiofiles
 import aiohttp
 import asyncio
@@ -34,12 +33,8 @@ class QQbox(Star):
         self.nickname_font_path = self._get_absolute_path(self.Config.get("nickname_font_path", ""))
         self.title_font_path = self._get_absolute_path(self.Config.get("title_font_path", ""))
 
-        # 临时文件目录
-        self.temp_path = os.path.join(self.data_dir, "temp")
-
         # 创建必要的目录
         os.makedirs(self.avatar_image_path, exist_ok=True)
-        os.makedirs(self.temp_path, exist_ok=True)
 
         # QQ数据文件路径
         self.qq_data_file = os.path.join(self._get_absolute_path(avatar_path), "qq_data.json")
@@ -87,12 +82,9 @@ class QQbox(Star):
             qq_title_key=self.qq_title_key,
             user_info=info
         )
-        image_data = img_bytes.getvalue()
-        fd, tmp_path = tempfile.mkstemp(suffix='.png', dir=self.temp_path)
-        with os.fdopen(fd, 'wb') as f:
-            f.write(image_data)
-        yield event.make_result().file_image(tmp_path)
-        self.clear_temp(tmp_path)
+        yield event.chain_result([
+            BotImage.fromBytes(img_bytes.getvalue())
+        ])
 
     @qb.command("img")
     async def echo_img(self, event: AstrMessageEvent, qq: str):
@@ -118,12 +110,9 @@ class QQbox(Star):
             qq_title_key=self.qq_title_key,
             user_info=info
         )
-        image_data = img_bytes.getvalue()
-        fd, tmp_path = tempfile.mkstemp(suffix='.png', dir=self.temp_path)
-        with os.fdopen(fd, 'wb') as f:
-            f.write(image_data)
-        yield event.make_result().file_image(tmp_path)
-        self.clear_temp(tmp_path)
+        yield event.chain_result([
+            BotImage.fromBytes(img_bytes.getvalue())
+        ])
 
     @qb.command("sc")
     async def set_color(self, event: AstrMessageEvent, qq: str, color: int):
@@ -426,17 +415,9 @@ class QQbox(Star):
         result.paste(img, (0, 0), mask)
         return result
 
-    # 清理临时文件
-    def clear_temp(self, tmp_path):
-        if tmp_path and os.path.exists(tmp_path):
-            try:
-                os.unlink(tmp_path)
-                logger.debug(f"临时文件已清理: {tmp_path}")
-            except OSError as e:
-                logger.warning(f"清理临时文件失败: {e}")
-
+    # 获取消息里面的img
     async def _get_images(self, event: AstrMessageEvent) -> bytes | None:
-        """获取图片数据，支持从消息、回复和@用户头像中获取"""
+        """获取图片数据，支持从消息、回复中获取"""
         # 查找直接发送的图片或回复中的图片
         for component in event.message_obj.message:
             if isinstance(component, BotImage):
@@ -453,6 +434,7 @@ class QQbox(Star):
                             return open(reply_component.file, 'rb').read()
         return None
 
+    # 通过url下载img
     async def _download_image(self, url: str) -> bytes | None:
         """下载图片"""
         try:
@@ -463,6 +445,46 @@ class QQbox(Star):
         except Exception as e:
             logger.error(f"下载图片失败: {url}, 错误: {e}")
             return None
+
+    # 获取图片url
+    def _get_image_url(self, event: AstrMessageEvent) -> str | None:
+        if hasattr(event, "get_images"):
+            images = event.get_images()
+            if images: return images[0].url
+
+        if hasattr(event.message_obj, "message"):
+            for seg in event.message_obj.message:
+                if isinstance(seg, Reply) and seg.chain:
+                    for item in seg.chain:
+                        if isinstance(item, BotImage) and item.url: return item.url
+                        if isinstance(item, dict) and item.get('type') == 'image':
+                            return item.get('data', {}).get('url') or item.get('url')
+                if isinstance(seg, dict) and seg.get('type') == 'image':
+                    return seg.get('data', {}).get('url') or seg.get('url')
+                if isinstance(seg, BotImage) and seg.url:
+                    return seg.url
+        return None
+
+    # 获取gif
+    async def get_gif(self, event: AstrMessageEvent):
+        img_url = self._get_image_url(event)
+        if not img_url:
+            yield event.plain_result("❌ 未检测到图片")
+            return
+
+        img_data = await self._download_image(img_url)
+        if not img_data:
+            yield event.plain_result("❌ 图片下载失败")
+            return
+
+        img = Image.open(BytesIO(img_data)).convert("RGBA")
+        w, h = img.size
+        frames, durs = [], []
+        for frame in ImageSequence.Iterator(img):
+            durs.append(max(20, int(frame.info.get('duration', 100))))
+            frames.append(frame.copy())
+        output = BytesIO()
+        frames[0].save(output, format='GIF', save_all=True, append_images=frames[1:],duration=durs, loop=0, disposal=2, optimize=True)
 
 # ------------------------------------------------------------------------------
 # 高 DPI 超清聊天气泡生成器
