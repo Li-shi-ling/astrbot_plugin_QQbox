@@ -88,6 +88,7 @@ class QQbox(Star):
 
     @qb.command("gif")
     async def get_gif(self, event: AstrMessageEvent, qq: str):
+        """获取消息链或回复的gif,生成聊天气泡 /qb [qq] [图片] 或者 [图片] 回复 /qb [qq]"""
         img_url = self._get_image_url(event)
         if not img_url:
             yield event.plain_result("未检测到图片")
