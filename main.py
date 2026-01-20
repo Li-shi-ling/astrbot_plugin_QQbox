@@ -979,7 +979,6 @@ class ChatBubbleGenerator:
         title_info = None
         if qq_title_key and qq in qq_title_key:
             title_info = qq_title_key[qq]
-            # 优先使用备注名
             if title_info.get("notes"):
                 nickname = title_info["notes"]
 
@@ -987,84 +986,59 @@ class ChatBubbleGenerator:
         frames = []
         durations = []
 
-        # 获取GIF所有帧
         for frame in ImageSequence.Iterator(image):
-            # 保存每帧的持续时间（毫秒）
             durations.append(max(20, int(frame.info.get('duration', 100))))
-
-            # 转换帧为RGBA模式（确保透明度支持）
             frame_rgba = frame.copy().convert('RGBA')
             frames.append(frame_rgba)
 
         if not frames:
             raise ValueError("GIF图片没有有效帧")
 
-        # 优化步骤1: 预处理头像和昵称/头衔，创建静态部分
-        # ----------------------------------------------------
+        # 使用第一帧创建气泡并计算布局
+        first_bubble = self.create_chat_img_bubble(frames[0])
+        bg_size = self._calculate_background_size(first_bubble, nickname, title_info)
 
-        # 使用第一帧来计算气泡尺寸和布局
-        first_frame = frames[0]
-
-        # 创建一个临时气泡来计算布局（不实际渲染最终效果）
-        temp_bubble = self._create_single_gif_bubble_frame(first_frame, False)
-        bg_size = self._calculate_background_size(temp_bubble, nickname, title_info)
-
-        # 创建背景画布
-        base_background = self._create_background_canvas(*bg_size)
-
-        # 添加静态元素（头像、昵称、头衔）到基础背景
-        # 注意：这里使用一个干净的背景，稍后我们会与每一帧的气泡合成
-        static_background = base_background.copy()
+        # 创建静态背景（包含头像、昵称、头衔）
+        static_background = self._create_background_canvas(*bg_size)
         self._add_avatar(static_background, avatar_path)
         self._add_name_and_title(static_background, nickname, title_info)
 
-        # 优化步骤2: 批量处理所有帧，复用计算
-        # ----------------------------------------------------
-
-        # 计算气泡的位置和大小
-        bubble_pos = self.bubble_position
-        bubble_width, bubble_height = temp_bubble.size
-
-        # 预先计算气泡区域的遮罩（圆角效果）
-        bubble_mask = self._create_rounded_mask(bubble_width, bubble_height)
-
         # 批量处理所有帧
         processed_frames = []
+        bubble_pos = self.bubble_position
+
         for i, frame in enumerate(frames):
-            # 创建一个新的背景画布
-            current_background = base_background.copy()
+            # 创建当前帧的气泡
+            bubble = self.create_chat_img_bubble(frame)
 
-            # 快速处理当前帧的气泡
-            frame_bubble = self._create_single_gif_bubble_frame(frame, True)
+            # 创建新的背景
+            background = self._create_background_canvas(*bg_size)
 
-            # 将气泡粘贴到背景
-            current_background.paste(frame_bubble, bubble_pos, bubble_mask)
+            # 先粘贴气泡
+            background.paste(bubble, bubble_pos, bubble)
 
-            # 添加静态元素（从预处理的背景中复制）
-            # 使用alpha合成来合并静态元素
-            static_layer = static_background.copy()
+            # 再粘贴静态元素，但避开气泡区域
+            # 创建一个与背景相同大小的掩码
+            mask = Image.new("L", bg_size, 255)
 
-            # 在静态层上创建一个掩码，只保留非气泡区域
-            static_mask = Image.new("L", bg_size, 255)
-            draw_static_mask = ImageDraw.Draw(static_mask)
+            # 在气泡区域创建黑色（透明）区域
+            bubble_width, bubble_height = bubble.size
+            bubble_area = (bubble_pos[0], bubble_pos[1],
+                           bubble_pos[0] + bubble_width,
+                           bubble_pos[1] + bubble_height)
 
-            # 清除气泡区域的静态内容（防止重叠）
-            bubble_mask_resized = bubble_mask.resize(bubble_mask.size)
-            # 在静态掩码中移除气泡区域
-            static_mask.paste(0, (bubble_pos[0], bubble_pos[1],
-                                  bubble_pos[0] + bubble_width,
-                                  bubble_pos[1] + bubble_height),
-                              bubble_mask_resized)
+            # 在掩码中挖空气泡区域
+            draw_mask = ImageDraw.Draw(mask)
+            draw_mask.rectangle(bubble_area, fill=0)
 
-            # 合成：将静态层（头像、昵称等）添加到当前帧
-            current_background.paste(static_layer, (0, 0), static_mask)
+            # 粘贴静态元素（头像、昵称、头衔）
+            background.paste(static_background, (0, 0), mask)
 
-            processed_frames.append(current_background)
+            processed_frames.append(background)
 
         # 创建GIF
         gif_bytes = BytesIO()
 
-        # 保存为GIF，保持原始帧率
         if len(processed_frames) > 1:
             processed_frames[0].save(
                 gif_bytes,
@@ -1072,12 +1046,11 @@ class ChatBubbleGenerator:
                 save_all=True,
                 append_images=processed_frames[1:],
                 duration=durations,
-                loop=0,  # 无限循环
+                loop=0,
                 optimize=True,
-                disposal=2  # 恢复背景色
+                disposal=2
             )
         else:
-            # 单帧图片，保存为PNG
             processed_frames[0].save(gif_bytes, format='PNG', optimize=True)
 
         gif_bytes.seek(0)
