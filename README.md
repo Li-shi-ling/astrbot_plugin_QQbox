@@ -23,17 +23,6 @@ QQbox 是一个基于 AstrBot 框架的插件，用于生成高度仿真的QQ风
 - Pillow (PIL) 图像处理库
 - 必要的字体文件
 
-### 配置文件示例
-
-```yaml
-# config.yaml 中的插件配置部分
-corner_radius: 27  # 气泡圆角半径
-avatar_image_path: "avatars"  # 头像缓存路径（相对数据目录）
-bubble_font_path: "/path/to/Microsoft-YaHei-Semilight.ttc"
-nickname_font_path: "/path/to/SourceHanSansSC-ExtraLight.otf"
-title_font_path: "/path/to/Microsoft-YaHei-Bold.ttc"
-```
-
 ### 字体文件说明
 插件需要以下字体文件（请确保路径正确）：
 1. **气泡字体**：用于聊天消息内容显示
