@@ -2,9 +2,10 @@ from astrbot.api.message_components import Image as BotImage, Reply
 from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.star import Context, Star, register
 from astrbot.api import AstrBotConfig, logger
-from PIL import Image, ImageDraw, ImageFont, ImageSequence, ImageFilter, ImageOps, ImageEnhance
+from PIL import Image, ImageDraw, ImageFont, ImageSequence
 from astrbot.api.star import StarTools
 from io import BytesIO
+import traceback
 import aiofiles
 import aiohttp
 import asyncio
