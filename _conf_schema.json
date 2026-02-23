@@ -3,19 +3,13 @@
     "description": "头像和备注文件的存储路径",
     "type": "string",
     "default": "./img/avatar",
-    "hint": "例如：/home/root/img/avatar"
+    "hint": "例如：/home/root/img/avatar,默认使用astrbot插件持久化数据的目录"
   },
   "corner_radius": {
     "description": "气泡圆角大小",
     "type": "int",
     "default": 27,
-    "hint": "为了打败ai,我付出了太多太多"
-  },
-  "temp_path": {
-    "description": "临时存储路径",
-    "type": "string",
-    "default": "./img/temp",
-    "hint": "例如：/home/root/img/temp"
+    "hint": "例如：27"
   },
   "bubble_font_path": {
     "description": "气泡字体路径",

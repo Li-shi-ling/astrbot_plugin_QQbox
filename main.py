@@ -38,7 +38,9 @@ class QQbox(Star):
         os.makedirs(self.avatar_image_path, exist_ok=True)
 
         # QQ数据文件路径
-        self.qq_data_file = os.path.join(self._get_absolute_path(avatar_path), "qq_data.json")
+        self.qq_data_file = os.path.join(self.avatar_image_path, "qq_data.json")
+
+        logger.debug(f"[qqbox] 使用:{self.qq_data_file}作为持久化数据存储位置")
 
         # 初始化QQ数据
         self.qq_title_key = {}
