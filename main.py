@@ -5,7 +5,6 @@ from astrbot.api import AstrBotConfig, logger
 from PIL import Image, ImageDraw, ImageFont, ImageSequence
 from astrbot.api.star import StarTools
 from io import BytesIO
-import traceback
 import aiofiles
 import aiohttp
 import asyncio
@@ -1079,7 +1078,7 @@ class ChatBubbleGenerator:
         ]
 
         # 如果有头衔，调整宽度
-        if title_info and title_info.get("content", None):
+        if title_info and (not title_info.get("content", None) is None):
             title_width = draw.textlength(
                 title_info.get("content", ""),
                 font=self.title_font
@@ -1124,8 +1123,9 @@ class ChatBubbleGenerator:
 
         if title_info and title_info.get("content", None):
             # 处理头衔
+            t_c = title_info.get("color", None)
             title_color = self.color_map.get(
-                int(title_info.get("color", 1)),
+                int(1 if t_c is None else t_c),
                 self.color_map[1]
             )
             title_content = title_info.get("content", "")
