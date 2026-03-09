@@ -4,3 +4,5 @@ desc: QQbox是仿QQ聊天气泡生成插件，可将文字转换为高度还原�
 version: v1.2.8 # 插件版本号。格式：v1.1.1 或者 v1.1
 author: lishining # 作者
 repo: https://github.com/Li-shi-ling/astrbot_plugin_QQbox # 插件的仓库地址
+support_platforms:
+  - aiocqhttp
