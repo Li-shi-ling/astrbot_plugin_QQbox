@@ -1,16 +1,20 @@
-from astrbot.api.message_components import Image as BotImage, Reply
-from astrbot.api.event import filter, AstrMessageEvent
-from astrbot.api.star import Context, Star, register
-from astrbot.api import AstrBotConfig, logger
-from PIL import Image, ImageDraw, ImageFont, ImageSequence
-from astrbot.api.star import StarTools
-from io import BytesIO
-import aiofiles
-import aiohttp
 import asyncio
-import httpx
 import json
 import os
+from io import BytesIO
+from pathlib import Path
+
+import aiofiles
+import aiohttp
+import httpx
+from PIL import Image, ImageDraw, ImageFont, ImageSequence
+
+from astrbot.api import AstrBotConfig, logger
+from astrbot.api.event import AstrMessageEvent, filter
+from astrbot.api.message_components import Image as BotImage
+from astrbot.api.message_components import Reply
+from astrbot.api.star import Context, Star, StarTools, register
+
 
 @register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.0.0")
 class QQbox(Star):
@@ -26,12 +30,22 @@ class QQbox(Star):
 
         # 优先使用配置的路径，如果没有则使用标准数据目录
         avatar_path = self.Config.get("avatar_image_path", "")
-        self.avatar_image_path = os.path.join(self.data_dir, avatar_path) if avatar_path else os.path.join(self.data_dir, "avatars")
+        self.avatar_image_path = (
+            os.path.join(self.data_dir, avatar_path)
+            if avatar_path
+            else os.path.join(self.data_dir, "avatars")
+        )
 
         # 字体路径使用绝对路径
-        self.bubble_font_path = self._get_absolute_path(self.Config.get("bubble_font_path", ""))
-        self.nickname_font_path = self._get_absolute_path(self.Config.get("nickname_font_path", ""))
-        self.title_font_path = self._get_absolute_path(self.Config.get("title_font_path", ""))
+        self.bubble_font_path = self._get_absolute_path(
+            self.Config.get("bubble_font_path", "")
+        )
+        self.nickname_font_path = self._get_absolute_path(
+            self.Config.get("nickname_font_path", "")
+        )
+        self.title_font_path = self._get_absolute_path(
+            self.Config.get("title_font_path", "")
+        )
 
         # 创建必要的目录
         os.makedirs(self.avatar_image_path, exist_ok=True)
@@ -50,7 +64,7 @@ class QQbox(Star):
             nickname_font_path=self.nickname_font_path,
             title_font_path=self.title_font_path,
             avatar_image_path=self.avatar_image_path,
-            corner_radius=self.corner_radius
+            corner_radius=self.corner_radius,
         )
 
         # 初始化HTTP客户端（异步）
@@ -68,12 +82,19 @@ class QQbox(Star):
     async def echo(self, event: AstrMessageEvent, qq: str):
         """通过对应qq的设置发送消息 /qb echo [qq] [text]"""
         if not self.qqbox.is_load_fonts:
-            yield event.plain_result("字体在加载中或字体没有被正确的加载,请尝试修改配置文件到正确的文字路径")
+            yield event.plain_result(
+                "字体在加载中或字体没有被正确的加载,请尝试修改配置文件到正确的文字路径"
+            )
             return
         if not self._validate_qq(qq):
             yield event.plain_result("QQ号格式错误，请使用纯数字")
             return
-        text = event.message_str.replace("qb", "", 1).replace(qq, "", 1).replace("echo", "", 1).strip()
+        text = (
+            event.message_str.replace("qb", "", 1)
+            .replace(qq, "", 1)
+            .replace("echo", "", 1)
+            .strip()
+        )
         bot = getattr(event, "bot", None)
         info = await self.get_qq_info(qq, bot)
         img_bytes = await asyncio.to_thread(
@@ -82,11 +103,9 @@ class QQbox(Star):
             text=text,
             image=None,
             qq_title_key=self.qq_title_key,
-            user_info=info
+            user_info=info,
         )
-        yield event.chain_result([
-            BotImage.fromBytes(img_bytes.getvalue())
-        ])
+        yield event.chain_result([BotImage.fromBytes(img_bytes.getvalue())])
 
     @qb.command("gif")
     async def get_gif(self, event: AstrMessageEvent, qq: str):
@@ -110,17 +129,17 @@ class QQbox(Star):
             text=None,
             image=pil_gif,
             qq_title_key=self.qq_title_key,
-            user_info=info
+            user_info=info,
         )
-        yield event.chain_result([
-            BotImage.fromBytes(img_bytes.getvalue())
-        ])
+        yield event.chain_result([BotImage.fromBytes(img_bytes.getvalue())])
 
     @qb.command("img")
     async def echo_img(self, event: AstrMessageEvent, qq: str):
         """获取消息链或回复的图片,生成聊天气泡 /qb [qq] [图片] 或者 [图片] 回复 /qb [qq]"""
         if not self.qqbox.is_load_fonts:
-            yield event.plain_result("字体在加载中或字体没有被正确的加载,请尝试修改配置文件到正确的文字路径")
+            yield event.plain_result(
+                "字体在加载中或字体没有被正确的加载,请尝试修改配置文件到正确的文字路径"
+            )
             return
         if not self._validate_qq(qq):
             yield event.plain_result("QQ号格式错误，请使用纯数字")
@@ -138,11 +157,9 @@ class QQbox(Star):
             text=None,
             image=pil_image,
             qq_title_key=self.qq_title_key,
-            user_info=info
+            user_info=info,
         )
-        yield event.chain_result([
-            BotImage.fromBytes(img_bytes.getvalue())
-        ])
+        yield event.chain_result([BotImage.fromBytes(img_bytes.getvalue())])
 
     @qb.command("sc")
     async def set_color(self, event: AstrMessageEvent, qq: str, color: int):
@@ -150,7 +167,7 @@ class QQbox(Star):
         if not self._validate_qq(qq):
             yield event.plain_result("QQ号格式错误，请使用纯数字")
             return
-        await self.update_qq_title_key(qq, color = color)
+        await self.update_qq_title_key(qq, color=color)
         yield event.plain_result(f"设置成功 qq:{qq}, color:{color}")
 
     @qb.command("st")
@@ -159,8 +176,13 @@ class QQbox(Star):
         if not self._validate_qq(qq):
             yield event.plain_result("QQ号格式错误，请使用纯数字")
             return
-        title = event.message_str.replace("qb", "", 1).replace(qq, "", 1).replace("st", "", 1).strip()
-        await self.update_qq_title_key(qq, content = title)
+        title = (
+            event.message_str.replace("qb", "", 1)
+            .replace(qq, "", 1)
+            .replace("st", "", 1)
+            .strip()
+        )
+        await self.update_qq_title_key(qq, content=title)
         yield event.plain_result(f"设置成功 qq:{qq}, title:{title}")
 
     @qb.command("sn")
@@ -169,9 +191,29 @@ class QQbox(Star):
         if not self._validate_qq(qq):
             yield event.plain_result("QQ号格式错误，请使用纯数字")
             return
-        note = event.message_str.replace("qb", "", 1).replace(qq, "", 1).replace("sn", "", 1).strip()
-        await self.update_qq_title_key(qq, notes = note)
+        note = (
+            event.message_str.replace("qb", "", 1)
+            .replace(qq, "", 1)
+            .replace("sn", "", 1)
+            .strip()
+        )
+        await self.update_qq_title_key(qq, notes=note)
         yield event.plain_result(f"设置成功 qq:{qq}, note:{note}")
+
+    @qb.command("ua")
+    async def update_avatar(self, event: AstrMessageEvent, qq: str):
+        """更新qq头像 /qb ua [qq]"""
+        if not self._validate_qq(qq):
+            yield event.plain_result("QQ号格式错误，请使用纯数字")
+            return
+        bot = getattr(event, "bot", None)
+        try:
+            info = await self.get_qq_info(qq, bot, force_refresh=True)
+        except RuntimeError as exc:
+            yield event.plain_result(str(exc))
+            return
+        display_name = info.get("name") or qq
+        yield event.plain_result(f"更新qq头像 qq:{qq}, nickname:{display_name}")
 
     @qb.command("help")
     async def get_help(self, event: AstrMessageEvent):
@@ -194,6 +236,9 @@ class QQbox(Star):
 4. 设置备注名
    命令：/qb sn [QQ号] [备注名]
    说明：设置用户的显示备注名（会覆盖原昵称）
+5. 更新qq头像
+   命令：/qb ua [QQ号]
+   说明：更新qq头像
 注意：所有QQ号都必须是纯数字格式"""
         yield event.plain_result(help_text)
 
@@ -223,8 +268,10 @@ class QQbox(Star):
     async def _save_qq_data(self):
         """保存QQ数据"""
         try:
-            async with aiofiles.open(self.qq_data_file, 'w', encoding='utf-8') as f:
-                await f.write(json.dumps(self.qq_title_key, indent=4, ensure_ascii=False))
+            async with aiofiles.open(self.qq_data_file, "w", encoding="utf-8") as f:
+                await f.write(
+                    json.dumps(self.qq_title_key, indent=4, ensure_ascii=False)
+                )
         except OSError as e:
             logger.error(f"保存QQ数据失败: {e}")
 
@@ -233,7 +280,7 @@ class QQbox(Star):
         """异步加载QQ数据"""
         try:
             if os.path.exists(self.qq_data_file):
-                async with aiofiles.open(self.qq_data_file, 'r', encoding='utf-8') as f:
+                async with aiofiles.open(self.qq_data_file, "r", encoding="utf-8") as f:
                     content = await f.read()
                     if not content.strip():
                         return {}
@@ -277,23 +324,28 @@ class QQbox(Star):
         return True
 
     # 获取qq信息
-    async def get_qq_info(self, qq, bot = None):
+    async def get_qq_info(self, qq, bot=None, force_refresh: bool = False):
         # 确保头像保存目录存在
         os.makedirs(self.avatar_image_path, exist_ok=True)
 
-        nickname = self.qq_title_key.get(qq, {}).get("nickname",None)
+        nickname = self.qq_title_key.get(qq, {}).get("nickname", None)
 
-        if nickname is None:
+        if force_refresh or nickname is None:
             nickname = await self.get_nickname_by_onebot(qq, bot)
             if nickname:
                 await self.update_qq_title_key(qq=qq, nickname=nickname)
 
         # [兼容] 先检查缓存
+        avatar_dir = Path(self.avatar_image_path)
         for filename in os.listdir(self.avatar_image_path):
-            if filename.startswith(f"{qq}-") and filename.endswith(".png"):
+            if (
+                filename.startswith(f"{qq}-")
+                and filename.endswith(".png")
+                and not force_refresh
+            ):
                 # [兼容]通过老方法获取名称数据
                 if nickname is None:
-                    nickname = filename[len(f"{qq}-"):-4]
+                    nickname = filename[len(f"{qq}-") : -4]
                     if nickname:
                         await self.update_qq_title_key(qq=qq, nickname=nickname)
                     else:
@@ -303,7 +355,7 @@ class QQbox(Star):
                 return {
                     "qq": qq,
                     "name": nickname,
-                    "avatar_path": os.path.join(self.avatar_image_path, filename)
+                    "avatar_path": str(avatar_dir / filename),
                 }
 
         # 如果不存在头像文件,进行获取
@@ -311,47 +363,55 @@ class QQbox(Star):
             logger.error("HTTP客户端未初始化")
             return None
 
-        if nickname is None:
+        if force_refresh or nickname is None:
             nickname = await self.get_nickname_by_api(qq, self.http_client)
             if nickname:
                 await self.update_qq_title_key(qq=qq, nickname=nickname)
 
         # 下载头像
+        if force_refresh:
+            for old_avatar in avatar_dir.glob(f"{qq}-*.png"):
+                try:
+                    old_avatar.unlink()
+                except OSError as exc:
+                    logger.warning(f"鍒犻櫎鏃уご鍍忓け璐? {old_avatar}: {exc}")
+
         avatar_url = f"https://q1.qlogo.cn/g?b=qq&nk={qq}&s=640"
-        save_path = os.path.join(self.avatar_image_path, f"{qq}-.png")
-        success = await self.download_circular_avatar(avatar_url,save_path, self.http_client)
+        save_path = avatar_dir / f"{qq}-.png"
+        success = await self.download_circular_avatar(
+            avatar_url, str(save_path), self.http_client
+        )
 
         if not success:
             raise RuntimeError(f"下载头像失败: {qq}")
 
-        return {
-            "qq": qq,
-            "name": nickname,
-            "avatar_path": save_path
-        }
+        return {"qq": qq, "name": nickname, "avatar_path": str(save_path)}
 
     # 更新self.qq_title_key
-    async def update_qq_title_key(self, qq, nickname = None, color = None, content = None, notes = None):
+    async def update_qq_title_key(
+        self, qq, nickname=None, color=None, content=None, notes=None
+    ):
         qq_title = self.qq_title_key.get(qq, {})
         self.qq_title_key[qq] = {
-            "nickname": nickname if not nickname is None else qq_title.get("nickname",None),
-            "color": color if not color is None else qq_title.get("color",None),
-            "content": content if not content is None else qq_title.get("content",None),
-            "notes": notes if not notes is None else qq_title.get("notes",None),
+            "nickname": nickname
+            if not nickname is None
+            else qq_title.get("nickname", None),
+            "color": color if not color is None else qq_title.get("color", None),
+            "content": content
+            if not content is None
+            else qq_title.get("content", None),
+            "notes": notes if not notes is None else qq_title.get("notes", None),
         }
         await self._save_qq_data()
 
     # 通过onebot获取nickname
-    async def get_nickname_by_onebot(self, qq, bot = None):
+    async def get_nickname_by_onebot(self, qq, bot=None):
         if bot is None:
             return None
         else:
             try:
-                payloads = {
-                    "user_id": int(qq),
-                    "no_cache": True
-                }
-                qq_info = await bot.api.call_action('get_stranger_info', **payloads)
+                payloads = {"user_id": int(qq), "no_cache": True}
+                qq_info = await bot.api.call_action("get_stranger_info", **payloads)
                 return qq_info.get("nick", None)
             except:
                 logger.error("通过onebot获取nick失败")
@@ -389,7 +449,9 @@ class QQbox(Star):
         return nickname
 
     # 下载并裁剪头像为圆形
-    async def download_circular_avatar(self, url, save_path, http_client=None, size=None):
+    async def download_circular_avatar(
+        self, url, save_path, http_client=None, size=None
+    ):
         """异步下载并裁剪头像为圆形"""
         if http_client is None:
             logger.error("HTTP客户端未初始化")
@@ -454,14 +516,14 @@ class QQbox(Star):
                 if component.url:
                     return await self._download_image(component.url)
                 elif component.file:
-                    return open(component.file, 'rb').read()
+                    return open(component.file, "rb").read()
             elif isinstance(component, Reply) and component.chain:
                 for reply_component in component.chain:
                     if isinstance(reply_component, BotImage):
                         if reply_component.url:
                             return await self._download_image(reply_component.url)
                         elif reply_component.file:
-                            return open(reply_component.file, 'rb').read()
+                            return open(reply_component.file, "rb").read()
         return None
 
     # 通过url下载img
@@ -480,58 +542,61 @@ class QQbox(Star):
     def _get_image_url(self, event: AstrMessageEvent) -> str | None:
         if hasattr(event, "get_images"):
             images = event.get_images()
-            if images: return images[0].url
+            if images:
+                return images[0].url
 
         if hasattr(event.message_obj, "message"):
             for seg in event.message_obj.message:
                 if isinstance(seg, Reply) and seg.chain:
                     for item in seg.chain:
-                        if isinstance(item, BotImage) and item.url: return item.url
-                        if isinstance(item, dict) and item.get('type') == 'image':
-                            return item.get('data', {}).get('url') or item.get('url')
-                if isinstance(seg, dict) and seg.get('type') == 'image':
-                    return seg.get('data', {}).get('url') or seg.get('url')
+                        if isinstance(item, BotImage) and item.url:
+                            return item.url
+                        if isinstance(item, dict) and item.get("type") == "image":
+                            return item.get("data", {}).get("url") or item.get("url")
+                if isinstance(seg, dict) and seg.get("type") == "image":
+                    return seg.get("data", {}).get("url") or seg.get("url")
                 if isinstance(seg, BotImage) and seg.url:
                     return seg.url
         return None
+
 
 # ------------------------------------------------------------------------------
 # 高 DPI 超清聊天气泡生成器
 # ------------------------------------------------------------------------------
 class ChatBubbleGenerator:
     def __init__(
-            self,
-            bubble_font_path,
-            nickname_font_path,
-            title_font_path,
-            avatar_image_path,
-            bubble_font_size=34,
-            nickname_font_size=25,
-            title_font_size=19,
-            bubble_padding=20,
-            title_padding_x=25,
-            title_padding_y=15,
-            title_padding_y_offset=8,
-            title_bubble_offset=5,
-            bubble_bg_color=(255, 255, 255, 220),
-            text_color=(0, 0, 0, 255),
-            corner_radius=27,
-            avatar_size=(89, 89),
-            margin=20,
-            title_bubble_name_offset=-1,
-            max_width=640,
-            bubble_position=(120, 60),
-            avatar_position=(23, 10),
-            background_color="#F0F0F2"
+        self,
+        bubble_font_path,
+        nickname_font_path,
+        title_font_path,
+        avatar_image_path,
+        bubble_font_size=34,
+        nickname_font_size=25,
+        title_font_size=19,
+        bubble_padding=20,
+        title_padding_x=25,
+        title_padding_y=15,
+        title_padding_y_offset=8,
+        title_bubble_offset=5,
+        bubble_bg_color=(255, 255, 255, 220),
+        text_color=(0, 0, 0, 255),
+        corner_radius=27,
+        avatar_size=(89, 89),
+        margin=20,
+        title_bubble_name_offset=-1,
+        max_width=640,
+        bubble_position=(120, 60),
+        avatar_position=(23, 10),
+        background_color="#F0F0F2",
     ):
         # 常量配置
         self.SCALE = 4  # supersampling 倍率
 
         # 字体配置
         self._font_configs = {
-            'bubble': (bubble_font_path, bubble_font_size),
-            'nickname': (nickname_font_path, nickname_font_size),
-            'title': (title_font_path, title_font_size)
+            "bubble": (bubble_font_path, bubble_font_size),
+            "nickname": (nickname_font_path, nickname_font_size),
+            "title": (title_font_path, title_font_size),
         }
 
         # 颜色配置
@@ -539,7 +604,7 @@ class ChatBubbleGenerator:
             1: (181, 182, 181, 220),  # #B5B6B5
             2: (214, 154, 255, 220),  # #D69AFF
             3: (255, 198, 41, 220),  # #FFC629
-            4: (82, 215, 197, 220)  # #52D7C5
+            4: (82, 215, 197, 220),  # #52D7C5
         }
 
         # 缓存
@@ -572,7 +637,7 @@ class ChatBubbleGenerator:
         # 背景颜色处理
         if background_color.startswith("#"):
             self.background_color = tuple(
-                int(background_color[i:i + 2], 16) for i in (1, 3, 5)
+                int(background_color[i : i + 2], 16) for i in (1, 3, 5)
             ) + (255,)
         else:
             self.background_color = (240, 240, 242, 255)  # 默认颜色
@@ -584,23 +649,21 @@ class ChatBubbleGenerator:
         """异步加载字体"""
         try:
             # 气泡字体（高DPI）
-            b_path, b_size = self._font_configs['bubble']
+            b_path, b_size = self._font_configs["bubble"]
             self.bubble_font = await self._async_safe_load_font(
                 b_path, b_size * self.SCALE, "气泡"
             )
             # 昵称字体（正常DPI）
-            n_path, n_size = self._font_configs['nickname']
+            n_path, n_size = self._font_configs["nickname"]
             self.nickname_font = await self._async_safe_load_font(
                 n_path, n_size, "昵称"
             )
             # 头衔字体（双DPI版本）
-            t_path, t_size = self._font_configs['title']
+            t_path, t_size = self._font_configs["title"]
             self.title_SCALE_font = await self._async_safe_load_font(
                 t_path, t_size * self.SCALE, "头衔高DPI"
             )
-            self.title_font = await self._async_safe_load_font(
-                t_path, t_size, "头衔"
-            )
+            self.title_font = await self._async_safe_load_font(t_path, t_size, "头衔")
             return True
         except Exception as e:
             logger.error(f"字体加载失败: {e}")
@@ -632,7 +695,7 @@ class ChatBubbleGenerator:
         lines = []
 
         # 首先按显式换行符分割成段落
-        paragraphs = text.split('\n')
+        paragraphs = text.split("\n")
 
         for paragraph in paragraphs:
             if not paragraph:
@@ -650,7 +713,7 @@ class ChatBubbleGenerator:
 
                 try:
                     # 使用 textbbox 替代 textlength（更可靠）
-                    if hasattr(draw, 'textbbox'):
+                    if hasattr(draw, "textbbox"):
                         bbox = draw.textbbox((0, 0), test_line, font=font)
                         line_width = bbox[2] - bbox[0]
                     else:
@@ -667,7 +730,7 @@ class ChatBubbleGenerator:
                             lines.append(current_line)
                         current_line = char
                         # 计算新行的初始宽度
-                        if hasattr(draw, 'textbbox'):
+                        if hasattr(draw, "textbbox"):
                             bbox = draw.textbbox((0, 0), char, font=font)
                             current_line_width = bbox[2] - bbox[0]
                         else:
@@ -678,7 +741,7 @@ class ChatBubbleGenerator:
                     logger.debug(f"测量文本宽度失败: {e}, 字符: {repr(char)}")
 
                     # 估计字符宽度：中文字符≈字体大小，英文字符≈字体大小/2
-                    char_width_estimate = self._font_configs['bubble'][1] * self.SCALE
+                    char_width_estimate = self._font_configs["bubble"][1] * self.SCALE
                     if ord(char) < 128:  # ASCII字符
                         char_width_estimate = char_width_estimate // 2
 
@@ -708,9 +771,7 @@ class ChatBubbleGenerator:
         final_radius = min(dynamic_radius, 50 * self.SCALE)
 
         draw_mask.rounded_rectangle(
-            (0, 0, width, height),
-            radius=final_radius,
-            fill=255
+            (0, 0, width, height), radius=final_radius, fill=255
         )
         return mask
 
@@ -767,7 +828,7 @@ class ChatBubbleGenerator:
             radius=self.corner_radius * SCALE,
             fill=self.bubble_bg_color,
             outline=(230, 230, 230, 255),
-            width=2 * SCALE
+            width=2 * SCALE,
         )
 
         # 绘制文本
@@ -777,7 +838,9 @@ class ChatBubbleGenerator:
             y += line_height + padding
 
         # 缩放到正常尺寸
-        return canvas.resize((width // SCALE, height // SCALE), Image.Resampling.LANCZOS)
+        return canvas.resize(
+            (width // SCALE, height // SCALE), Image.Resampling.LANCZOS
+        )
 
     def create_chat_img_bubble(self, image):
         """创建纯图片聊天气泡"""
@@ -803,8 +866,7 @@ class ChatBubbleGenerator:
         # 缩放到正常尺寸
         if SCALE > 1:
             canvas = canvas.resize(
-                (width // SCALE, height // SCALE),
-                Image.Resampling.LANCZOS
+                (width // SCALE, height // SCALE), Image.Resampling.LANCZOS
             )
 
         return canvas
@@ -820,7 +882,7 @@ class ChatBubbleGenerator:
         if SCALE > 1:
             img_canvas = img_canvas.resize(
                 (img_canvas.width * SCALE, img_canvas.height * SCALE),
-                Image.Resampling.LANCZOS
+                Image.Resampling.LANCZOS,
             )
 
         # 处理文本部分
@@ -838,7 +900,9 @@ class ChatBubbleGenerator:
             text_width = text_height = 0
 
         width = int(max(text_width, img_canvas.width) + padding * 2)
-        height = int(text_height + padding * (2 + len(lines)) + img_canvas.height + padding)
+        height = int(
+            text_height + padding * (2 + len(lines)) + img_canvas.height + padding
+        )
 
         # 创建最终画布
         canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
@@ -850,7 +914,7 @@ class ChatBubbleGenerator:
             radius=self.corner_radius * SCALE,
             fill=self.bubble_bg_color,
             outline=(230, 230, 230, 255),
-            width=2 * SCALE
+            width=2 * SCALE,
         )
 
         # 绘制文本
@@ -866,7 +930,9 @@ class ChatBubbleGenerator:
         canvas.paste(img_canvas, (img_x, img_y), img_canvas)
 
         # 缩放到正常尺寸
-        return canvas.resize((width // SCALE, height // SCALE), Image.Resampling.LANCZOS)
+        return canvas.resize(
+            (width // SCALE, height // SCALE), Image.Resampling.LANCZOS
+        )
 
     def create_title_bubble(self, text, bg_color):
         """创建头衔气泡"""
@@ -891,9 +957,7 @@ class ChatBubbleGenerator:
 
         # 绘制背景
         draw_canvas.rounded_rectangle(
-            (0, 0, width, height),
-            radius=8 * SCALE,
-            fill=bg_color
+            (0, 0, width, height), radius=8 * SCALE, fill=bg_color
         )
 
         # 绘制文本
@@ -901,23 +965,18 @@ class ChatBubbleGenerator:
             (self.title_padding_x, self.title_padding_y_offset),
             text,
             fill=(255, 255, 255, 255),
-            font=font
+            font=font,
         )
 
         # 缩放到正常尺寸
-        return canvas.resize((width // SCALE, height // SCALE), Image.Resampling.LANCZOS)
+        return canvas.resize(
+            (width // SCALE, height // SCALE), Image.Resampling.LANCZOS
+        )
 
     # ------------------------------------------------------------------------------
     # 主要接口（保持签名不变）
     # ------------------------------------------------------------------------------
-    def create_chat_message(
-            self,
-            qq,
-            text,
-            image,
-            qq_title_key=None,
-            user_info=None
-    ):
+    def create_chat_message(self, qq, text, image, qq_title_key=None, user_info=None):
         if user_info is None:
             raise ValueError("需要提供user_info参数，避免同步HTTP调用")
 
@@ -959,17 +1018,12 @@ class ChatBubbleGenerator:
 
         # 返回字节流
         img_bytes = BytesIO()
-        background.save(img_bytes, format='PNG', optimize=True)
+        background.save(img_bytes, format="PNG", optimize=True)
         img_bytes.seek(0)
         return img_bytes
 
     def create_chat_message_by_gif(
-            self,
-            qq,
-            text,
-            image,
-            qq_title_key=None,
-            user_info=None
+        self, qq, text, image, qq_title_key=None, user_info=None
     ):
         if user_info is None:
             raise ValueError("需要提供user_info参数，避免同步HTTP调用")
@@ -990,8 +1044,8 @@ class ChatBubbleGenerator:
         durations = []
 
         for frame in ImageSequence.Iterator(image):
-            durations.append(max(20, int(frame.info.get('duration', 100))))
-            frame_rgba = frame.copy().convert('RGBA')
+            durations.append(max(20, int(frame.info.get("duration", 100))))
+            frame_rgba = frame.copy().convert("RGBA")
             frames.append(frame_rgba)
 
         if not frames:
@@ -1026,9 +1080,12 @@ class ChatBubbleGenerator:
 
             # 在气泡区域创建黑色（透明）区域
             bubble_width, bubble_height = bubble.size
-            bubble_area = (bubble_pos[0], bubble_pos[1],
-                           bubble_pos[0] + bubble_width,
-                           bubble_pos[1] + bubble_height)
+            bubble_area = (
+                bubble_pos[0],
+                bubble_pos[1],
+                bubble_pos[0] + bubble_width,
+                bubble_pos[1] + bubble_height,
+            )
 
             # 在掩码中挖空气泡区域
             draw_mask = ImageDraw.Draw(mask)
@@ -1045,16 +1102,16 @@ class ChatBubbleGenerator:
         if len(processed_frames) > 1:
             processed_frames[0].save(
                 gif_bytes,
-                format='GIF',
+                format="GIF",
                 save_all=True,
                 append_images=processed_frames[1:],
                 duration=durations,
                 loop=0,
                 optimize=True,
-                disposal=2
+                disposal=2,
             )
         else:
-            processed_frames[0].save(gif_bytes, format='PNG', optimize=True)
+            processed_frames[0].save(gif_bytes, format="PNG", optimize=True)
 
         gif_bytes.seek(0)
         return gif_bytes
@@ -1068,29 +1125,34 @@ class ChatBubbleGenerator:
 
         # 测量文本宽度
         draw = self._get_temp_draw()
-        nickname_width = draw.textlength(nickname, font=self.nickname_font) + self.bubble_padding
+        nickname_width = (
+            draw.textlength(nickname, font=self.nickname_font) + self.bubble_padding
+        )
 
         # 计算基础宽度
         width_candidates = [
             self.bubble_position[0] + bubble_w + self.margin,
             self.avatar_position[0] + self.avatar_size[0] + self.margin,
-            self.bubble_position[0] + nickname_width
+            self.bubble_position[0] + nickname_width,
         ]
 
         # 如果有头衔，调整宽度
         if title_info and (not title_info.get("content", None) is None):
-            title_width = draw.textlength(
-                title_info.get("content", ""),
-                font=self.title_font
-            ) + self.bubble_padding
+            title_width = (
+                draw.textlength(title_info.get("content", ""), font=self.title_font)
+                + self.bubble_padding
+            )
             width_candidates.append(
-                self.bubble_position[0] + nickname_width + title_width + self.title_bubble_name_offset
+                self.bubble_position[0]
+                + nickname_width
+                + title_width
+                + self.title_bubble_name_offset
             )
 
         # 计算高度
         height_candidates = [
             self.bubble_position[1] + bubble_h + self.margin,
-            self.avatar_position[1] + self.avatar_size[1] + self.margin
+            self.avatar_position[1] + self.avatar_size[1] + self.margin,
         ]
 
         return int(max(width_candidates)), int(max(height_candidates))
@@ -1125,8 +1187,7 @@ class ChatBubbleGenerator:
             # 处理头衔
             t_c = title_info.get("color", None)
             title_color = self.color_map.get(
-                int(1 if t_c is None else t_c),
-                self.color_map[1]
+                int(1 if t_c is None else t_c), self.color_map[1]
             )
             title_content = title_info.get("content", "")
 
@@ -1134,21 +1195,29 @@ class ChatBubbleGenerator:
             title_bubble = self.create_title_bubble(title_content, title_color)
             background.paste(
                 title_bubble,
-                (self.bubble_position[0], self.avatar_position[1] + self.title_bubble_offset),
-                title_bubble
+                (
+                    self.bubble_position[0],
+                    self.avatar_position[1] + self.title_bubble_offset,
+                ),
+                title_bubble,
             )
 
             # 测量头衔宽度
             draw_temp = self._get_temp_draw()
-            title_width = draw_temp.textlength(title_content, font=self.title_font) + self.bubble_padding
+            title_width = (
+                draw_temp.textlength(title_content, font=self.title_font)
+                + self.bubble_padding
+            )
 
             # 绘制昵称
-            name_x = self.bubble_position[0] + title_width + self.title_bubble_name_offset
+            name_x = (
+                self.bubble_position[0] + title_width + self.title_bubble_name_offset
+            )
             draw.text(
                 (name_x, self.avatar_position[1]),
                 nickname,
                 fill=self.text_color,
-                font=self.nickname_font
+                font=self.nickname_font,
             )
         else:
             # 只绘制昵称
@@ -1156,12 +1225,14 @@ class ChatBubbleGenerator:
                 (self.bubble_position[0], self.avatar_position[1]),
                 nickname,
                 fill=self.text_color,
-                font=self.nickname_font
+                font=self.nickname_font,
             )
 
     def resize_by_scale(self, image, scale_factor):
         w, h = image.size
-        return image.resize((int(w * scale_factor), int(h * scale_factor)), Image.Resampling.LANCZOS)
+        return image.resize(
+            (int(w * scale_factor), int(h * scale_factor)), Image.Resampling.LANCZOS
+        )
 
     def _safe_text_width(self, draw, text, font, fallback_char_width):
         """
@@ -1229,7 +1300,7 @@ class ChatBubbleGenerator:
             if self.SCALE > 1:
                 canvas = canvas.resize(
                     (width // self.SCALE, height // self.SCALE),
-                    Image.Resampling.LANCZOS
+                    Image.Resampling.LANCZOS,
                 )
             return canvas
         else:
