@@ -293,3 +293,5 @@ QQbox 是一个基于 AstrBot 框架的插件，用于生成高度仿真的QQ风
 ---
 
 **免责声明**：本插件仅供学习和娱乐使用。生成的内容不应用于任何商业用途或侵犯他人权益的行为。使用者应对生成内容负全部责任。
+
+[![Moe Counter](https://count.getloli.com/get/@li-shi-ling?theme=minecraft)](https://github.com/Li-shi-ling/astrbot_plugin_QQbox)
