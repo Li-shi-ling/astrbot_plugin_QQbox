@@ -284,6 +284,12 @@ class QQbox(Star):
         except OSError as e:
             logger.error(f"保存QQ数据失败: {e}")
 
+    async def _save_qq_profile(self, qq):
+        try:
+            await self.qq_profile_repo.upsert_profile(qq, self.qq_title_key[qq])
+        except OSError as e:
+            logger.error(f"保存QQ数据失败: {qq}: {e}")
+
     # 获取qq数据
     async def _load_qq_data(self):
         """异步从数据库加载QQ数据"""
@@ -508,7 +514,7 @@ class QQbox(Star):
             else qq_title.get("content", None),
             "notes": notes if not notes is None else qq_title.get("notes", None),
         }
-        await self.qq_profile_repo.upsert_profile(qq, self.qq_title_key[qq])
+        await self._save_qq_profile(qq)
 
     # 通过onebot获取nickname
     async def get_nickname_by_onebot(self, qq, bot=None):
