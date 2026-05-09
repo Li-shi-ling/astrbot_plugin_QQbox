@@ -210,5 +210,3 @@ __marimo__/
 .gitignore
 .pipeline-workspace/
 .idea/
-AGENTS.md
-test/
