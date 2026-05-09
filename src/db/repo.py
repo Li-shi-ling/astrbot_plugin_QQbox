@@ -4,7 +4,12 @@ from pathlib import Path
 from typing import Any
 
 from .database import QQBoxDBManager
-from .tables import PROFILE_FIELDS, QQ_PROFILE_TABLE
+from .tables import (
+    INSERT_MISSING_QQ_PROFILE_SQL,
+    PROFILE_FIELDS,
+    SELECT_ALL_QQ_PROFILES_SQL,
+    UPSERT_QQ_PROFILE_SQL,
+)
 
 
 class QQProfileRepo:
@@ -17,9 +22,7 @@ class QQProfileRepo:
         await self.db.init_db()
 
     async def load_all(self) -> dict[str, dict[str, Any]]:
-        rows = await self.db.fetch_all(
-            f"SELECT qq, nickname, color, content, notes FROM {QQ_PROFILE_TABLE}"
-        )
+        rows = await self.db.fetch_all(SELECT_ALL_QQ_PROFILES_SQL)
         return {
             str(row["qq"]): {
                 "nickname": row["nickname"],
@@ -30,23 +33,10 @@ class QQProfileRepo:
             for row in rows
         }
 
-    async def is_empty(self) -> bool:
-        rows = await self.db.fetch_all(f"SELECT 1 FROM {QQ_PROFILE_TABLE} LIMIT 1")
-        return not rows
-
     async def upsert_profile(self, qq: str, profile: dict[str, Any]) -> None:
         normalized = self._normalize_profile(profile)
         await self.db.execute(
-            f"""
-            INSERT INTO {QQ_PROFILE_TABLE} (qq, nickname, color, content, notes)
-            VALUES (?, ?, ?, ?, ?)
-            ON CONFLICT(qq) DO UPDATE SET
-                nickname = excluded.nickname,
-                color = excluded.color,
-                content = excluded.content,
-                notes = excluded.notes,
-                updated_at = CURRENT_TIMESTAMP
-            """,
+            UPSERT_QQ_PROFILE_SQL,
             (
                 str(qq),
                 normalized["nickname"],
@@ -57,9 +47,16 @@ class QQProfileRepo:
         )
 
     async def save_all(self, profiles: dict[str, dict[str, Any]]) -> None:
-        if not profiles:
-            return
+        rows = self._profile_rows(profiles)
+        if rows:
+            await self.db.execute_many(UPSERT_QQ_PROFILE_SQL, rows)
 
+    async def save_missing(self, profiles: dict[str, dict[str, Any]]) -> None:
+        rows = self._profile_rows(profiles)
+        if rows:
+            await self.db.execute_many(INSERT_MISSING_QQ_PROFILE_SQL, rows)
+
+    def _profile_rows(self, profiles: dict[str, dict[str, Any]]) -> list[tuple[Any, ...]]:
         rows = []
         for qq, profile in profiles.items():
             normalized = self._normalize_profile(profile)
@@ -72,23 +69,7 @@ class QQProfileRepo:
                     normalized["notes"],
                 )
             )
-
-        await self.db.execute_many(
-            f"""
-            INSERT INTO {QQ_PROFILE_TABLE} (qq, nickname, color, content, notes)
-            VALUES (?, ?, ?, ?, ?)
-            ON CONFLICT(qq) DO UPDATE SET
-                nickname = excluded.nickname,
-                color = excluded.color,
-                content = excluded.content,
-                notes = excluded.notes,
-                updated_at = CURRENT_TIMESTAMP
-            """,
-            rows,
-        )
-
-    async def close(self) -> None:
-        await self.db.close()
+        return rows
 
     def _normalize_profile(self, profile: dict[str, Any]) -> dict[str, Any]:
         normalized = {field: profile.get(field) for field in PROFILE_FIELDS}

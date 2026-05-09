@@ -66,6 +66,3 @@ class QQBoxDBManager:
         with self._connect() as conn:
             conn.executemany(sql, rows)
             conn.commit()
-
-    async def close(self) -> None:
-        return None

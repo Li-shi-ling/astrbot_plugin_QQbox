@@ -29,7 +29,8 @@ class QQbox(Star):
         # 使用框架提供的插件持久化数据目录
         self.plugin_dir = Path(__file__).resolve().parent
         self.data_dir = Path(StarTools.get_data_dir())
-        self.avatar_image_path = self.data_dir
+        self.avatar_image_path = self.data_dir / "avatars"
+        self.db_dir = self.data_dir / "db"
 
         # 字体路径使用绝对路径
         self.bubble_font_path = self._get_font_path(
@@ -44,10 +45,12 @@ class QQbox(Star):
 
         # 创建必要的目录
         self.avatar_image_path.mkdir(parents=True, exist_ok=True)
+        self.db_dir.mkdir(parents=True, exist_ok=True)
 
         # Legacy JSON path is kept only for one-time migration.
-        self.qq_data_file = Path(self.avatar_image_path) / "qq_data.json"
-        self.qq_db_file = Path(self.avatar_image_path) / "qqbox.db"
+        self.qq_data_file = self.data_dir / "qq_data.json"
+        self.legacy_qq_data_files = self._get_legacy_qq_data_files()
+        self.qq_db_file = self.db_dir / "qqbox.db"
         self.qq_profile_repo = QQProfileRepo(self.qq_db_file)
 
         logger.debug(f"[qqbox] 使用:{self.qq_db_file}作为持久化数据存储位置")
@@ -271,7 +274,6 @@ class QQbox(Star):
         if self.http_client:
             await self.http_client.aclose()
             logger.info("HTTP客户端已关闭")
-        await self.qq_profile_repo.close()
 
     # 工具方法
     # 保存QQ数据
@@ -297,18 +299,27 @@ class QQbox(Star):
         if not legacy_data:
             return
 
-        await self.qq_profile_repo.save_all(legacy_data)
-        try:
-            self.qq_data_file.unlink()
-        except OSError as e:
-            logger.error(f"删除旧QQ数据失败: {e}")
-        logger.info(f"[qqbox] 已从旧JSON迁移QQ数据: {self.qq_data_file}")
+        await self.qq_profile_repo.save_missing(legacy_data)
+        for legacy_path in self.legacy_qq_data_files:
+            if not legacy_path.exists():
+                continue
+            try:
+                legacy_path.unlink()
+                logger.info(f"[qqbox] 已迁移并删除旧JSON数据: {legacy_path}")
+            except OSError as e:
+                logger.error(f"删除旧QQ数据失败: {legacy_path}: {e}")
 
     def _load_legacy_qq_data(self):
+        legacy_data = {}
+        for legacy_path in self.legacy_qq_data_files:
+            legacy_data.update(self._load_legacy_qq_data_file(legacy_path))
+        return legacy_data
+
+    def _load_legacy_qq_data_file(self, legacy_path):
         try:
-            if not self.qq_data_file.exists():
+            if not legacy_path.exists():
                 return {}
-            content = self.qq_data_file.read_text(encoding="utf-8")
+            content = legacy_path.read_text(encoding="utf-8")
             if not content.strip():
                 return {}
             data = json.loads(content)
@@ -320,8 +331,30 @@ class QQbox(Star):
                 }
             return {}
         except (json.JSONDecodeError, OSError) as e:
-            logger.error(f"加载旧QQ数据失败: {e}")
+            logger.error(f"加载旧QQ数据失败: {legacy_path}: {e}")
             return {}
+
+    def _get_legacy_qq_data_files(self):
+        paths = [
+            self.qq_data_file,
+            self.data_dir / "avatars" / "qq_data.json",
+        ]
+        configured_avatar_path = self.Config.get("avatar_image_path", "")
+        if configured_avatar_path:
+            configured_path = Path(configured_avatar_path)
+            if not configured_path.is_absolute():
+                configured_path = self.data_dir / configured_path
+            paths.append(configured_path / "qq_data.json")
+
+        seen = set()
+        unique_paths = []
+        for path in paths:
+            resolved = path.resolve()
+            if resolved in seen:
+                continue
+            seen.add(resolved)
+            unique_paths.append(path)
+        return unique_paths
 
     def _log_runtime_paths(self, level="info"):
         log = getattr(logger, level)
