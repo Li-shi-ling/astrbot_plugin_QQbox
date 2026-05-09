@@ -205,3 +205,12 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# My
+.gitignore
+.pipeline-workspace/
+.idea/
+docs/
+AGENTS.md
+scripts/
+test/
