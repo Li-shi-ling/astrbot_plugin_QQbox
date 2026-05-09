@@ -26,30 +26,24 @@ class QQbox(Star):
         # 获取圆角
         self.corner_radius = int(self.Config.get("corner_radius", 27))
 
-        # 使用框架提供的标准数据目录
-        self.data_dir = str(StarTools.get_data_dir())
-
-        # 优先使用配置的路径，如果没有则使用标准数据目录
-        avatar_path = self.Config.get("avatar_image_path", "")
-        self.avatar_image_path = (
-            os.path.join(self.data_dir, avatar_path)
-            if avatar_path
-            else os.path.join(self.data_dir, "avatars")
-        )
+        # 使用框架提供的插件持久化数据目录
+        self.plugin_dir = Path(__file__).resolve().parent
+        self.data_dir = Path(StarTools.get_data_dir())
+        self.avatar_image_path = self.data_dir
 
         # 字体路径使用绝对路径
-        self.bubble_font_path = self._get_absolute_path(
-            self.Config.get("bubble_font_path", "")
+        self.bubble_font_path = self._get_font_path(
+            "bubble_font_path", "Microsoft-YaHei-Semilight.ttc"
         )
-        self.nickname_font_path = self._get_absolute_path(
-            self.Config.get("nickname_font_path", "")
+        self.nickname_font_path = self._get_font_path(
+            "nickname_font_path", "SourceHanSansSC-ExtraLight.otf"
         )
-        self.title_font_path = self._get_absolute_path(
-            self.Config.get("title_font_path", "")
+        self.title_font_path = self._get_font_path(
+            "title_font_path", "Microsoft-YaHei-Bold.ttc"
         )
 
         # 创建必要的目录
-        os.makedirs(self.avatar_image_path, exist_ok=True)
+        self.avatar_image_path.mkdir(parents=True, exist_ok=True)
 
         # Legacy JSON path is kept only for one-time migration.
         self.qq_data_file = Path(self.avatar_image_path) / "qq_data.json"
@@ -72,6 +66,7 @@ class QQbox(Star):
 
         # 初始化HTTP客户端（异步）
         self.http_client = None
+        self._font_paths_logged_on_failure = False
 
         # 检查字体文件是否存在
         self._check_fonts()
@@ -85,6 +80,7 @@ class QQbox(Star):
     async def echo(self, event: AstrMessageEvent, qq: str):
         """通过对应qq的设置发送消息 /qb echo [qq] [text]"""
         if not self.qqbox.is_load_fonts:
+            self._log_font_not_ready_paths()
             yield event.plain_result(
                 "字体在加载中或字体没有被正确的加载,请尝试修改配置文件到正确的文字路径"
             )
@@ -113,6 +109,12 @@ class QQbox(Star):
     @qb.command("gif")
     async def get_gif(self, event: AstrMessageEvent, qq: str):
         """获取消息链或回复的gif,生成聊天气泡 /qb [qq] [图片] 或者 [图片] 回复 /qb [qq]"""
+        if not self.qqbox.is_load_fonts:
+            self._log_font_not_ready_paths()
+            yield event.plain_result(
+                "字体在加载中或字体没有被正确的加载,请尝试修改配置文件到正确的文字路径"
+            )
+            return
         img_url = self._get_image_url(event)
         if not img_url:
             yield event.plain_result("未检测到图片")
@@ -140,6 +142,7 @@ class QQbox(Star):
     async def echo_img(self, event: AstrMessageEvent, qq: str):
         """获取消息链或回复的图片,生成聊天气泡 /qb [qq] [图片] 或者 [图片] 回复 /qb [qq]"""
         if not self.qqbox.is_load_fonts:
+            self._log_font_not_ready_paths()
             yield event.plain_result(
                 "字体在加载中或字体没有被正确的加载,请尝试修改配置文件到正确的文字路径"
             )
@@ -249,6 +252,7 @@ class QQbox(Star):
     # 启动插件时
     async def initialize(self):
         """异步初始化，创建HTTP客户端"""
+        self._log_runtime_paths()
         # 创建异步HTTP客户端
         self.http_client = httpx.AsyncClient(timeout=30.0)
         await self.qq_profile_repo.init_db()
@@ -319,6 +323,23 @@ class QQbox(Star):
             logger.error(f"加载旧QQ数据失败: {e}")
             return {}
 
+    def _log_runtime_paths(self, level="info"):
+        log = getattr(logger, level)
+        log(f"[qqbox] 持久化数据目录: {self.data_dir}")
+        log(f"[qqbox] 头像缓存目录: {self.avatar_image_path}")
+        log(f"[qqbox] 数据库路径: {self.qq_db_file}")
+        log(f"[qqbox] 旧JSON迁移检测路径: {self.qq_data_file}")
+        log(f"[qqbox] 气泡字体路径: {self.bubble_font_path}")
+        log(f"[qqbox] 昵称字体路径: {self.nickname_font_path}")
+        log(f"[qqbox] 头衔字体路径: {self.title_font_path}")
+
+    def _log_font_not_ready_paths(self):
+        if getattr(self, "_font_paths_logged_on_failure", False):
+            return
+        self._font_paths_logged_on_failure = True
+        logger.warning("[qqbox] 字体未加载，打印运行路径用于排查")
+        self._log_runtime_paths(level="warning")
+
     # 检测字体是否存在
     def _check_fonts(self):
         """检查字体文件是否存在"""
@@ -340,6 +361,22 @@ class QQbox(Star):
         if not path:
             return ""
         return os.path.abspath(path)
+
+    def _get_font_path(self, config_key, default_filename):
+        configured_path = self._get_absolute_path(self.Config.get(config_key, ""))
+        if configured_path and os.path.exists(configured_path):
+            return configured_path
+
+        bundled_path = self.plugin_dir / "resources" / "fonts" / default_filename
+        if bundled_path.exists():
+            if configured_path:
+                logger.warning(
+                    f"[QQbox] 配置字体路径不存在，将回退到插件字体目录: "
+                    f"{configured_path} -> {bundled_path}"
+                )
+            return str(bundled_path)
+
+        return configured_path or str(bundled_path)
 
     # 检测qq号是否合法
     def _validate_qq(self, qq):
