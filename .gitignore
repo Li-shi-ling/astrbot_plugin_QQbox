@@ -208,6 +208,7 @@ __marimo__/
 
 # My
 .gitignore
+.pipeline-workspace/
+.idea/
 AGENTS.md
 test/
-.pipeline-workspace/

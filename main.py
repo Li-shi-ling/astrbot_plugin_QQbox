@@ -4,7 +4,6 @@ import os
 from io import BytesIO
 from pathlib import Path
 
-import aiofiles
 import aiohttp
 import httpx
 from PIL import Image, ImageDraw, ImageFont, ImageSequence
@@ -14,6 +13,8 @@ from astrbot.api.event import AstrMessageEvent, filter
 from astrbot.api.message_components import Image as BotImage
 from astrbot.api.message_components import Reply
 from astrbot.api.star import Context, Star, StarTools, register
+
+from .src.db.repo import QQProfileRepo
 
 
 @register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.0.0")
@@ -50,10 +51,12 @@ class QQbox(Star):
         # 创建必要的目录
         os.makedirs(self.avatar_image_path, exist_ok=True)
 
-        # QQ数据文件路径
-        self.qq_data_file = os.path.join(self.avatar_image_path, "qq_data.json")
+        # Legacy JSON path is kept only for one-time migration.
+        self.qq_data_file = Path(self.avatar_image_path) / "qq_data.json"
+        self.qq_db_file = Path(self.avatar_image_path) / "qqbox.db"
+        self.qq_profile_repo = QQProfileRepo(self.qq_db_file)
 
-        logger.debug(f"[qqbox] 使用:{self.qq_data_file}作为持久化数据存储位置")
+        logger.debug(f"[qqbox] 使用:{self.qq_db_file}作为持久化数据存储位置")
 
         # 初始化QQ数据
         self.qq_title_key = {}
@@ -248,6 +251,8 @@ class QQbox(Star):
         """异步初始化，创建HTTP客户端"""
         # 创建异步HTTP客户端
         self.http_client = httpx.AsyncClient(timeout=30.0)
+        await self.qq_profile_repo.init_db()
+        await self._migrate_legacy_qq_data()
         self.qq_title_key = await self._load_qq_data()
         self.qqbox.is_load_fonts = await self.qqbox.load_fonts()
         logger.info("QQbox 插件初始化完成")
@@ -262,32 +267,56 @@ class QQbox(Star):
         if self.http_client:
             await self.http_client.aclose()
             logger.info("HTTP客户端已关闭")
+        await self.qq_profile_repo.close()
 
     # 工具方法
     # 保存QQ数据
     async def _save_qq_data(self):
-        """保存QQ数据"""
+        """保存QQ数据到数据库"""
         try:
-            async with aiofiles.open(self.qq_data_file, "w", encoding="utf-8") as f:
-                await f.write(
-                    json.dumps(self.qq_title_key, indent=4, ensure_ascii=False)
-                )
+            await self.qq_profile_repo.save_all(self.qq_title_key)
         except OSError as e:
             logger.error(f"保存QQ数据失败: {e}")
 
     # 获取qq数据
     async def _load_qq_data(self):
-        """异步加载QQ数据"""
+        """异步从数据库加载QQ数据"""
         try:
-            if os.path.exists(self.qq_data_file):
-                async with aiofiles.open(self.qq_data_file, "r", encoding="utf-8") as f:
-                    content = await f.read()
-                    if not content.strip():
-                        return {}
-                    return json.loads(content)
+            return await self.qq_profile_repo.load_all()
+        except OSError as e:
+            logger.error(f"加载QQ数据失败: {e}")
+            return {}
+
+    async def _migrate_legacy_qq_data(self):
+        """Import old JSON persistence into the SQLite database once."""
+        legacy_data = self._load_legacy_qq_data()
+        if not legacy_data:
+            return
+
+        await self.qq_profile_repo.save_all(legacy_data)
+        try:
+            self.qq_data_file.unlink()
+        except OSError as e:
+            logger.error(f"删除旧QQ数据失败: {e}")
+        logger.info(f"[qqbox] 已从旧JSON迁移QQ数据: {self.qq_data_file}")
+
+    def _load_legacy_qq_data(self):
+        try:
+            if not self.qq_data_file.exists():
+                return {}
+            content = self.qq_data_file.read_text(encoding="utf-8")
+            if not content.strip():
+                return {}
+            data = json.loads(content)
+            if isinstance(data, dict):
+                return {
+                    str(qq): profile
+                    for qq, profile in data.items()
+                    if isinstance(profile, dict)
+                }
             return {}
         except (json.JSONDecodeError, OSError) as e:
-            logger.error(f"加载QQ数据失败: {e}")
+            logger.error(f"加载旧QQ数据失败: {e}")
             return {}
 
     # 检测字体是否存在
@@ -402,7 +431,7 @@ class QQbox(Star):
             else qq_title.get("content", None),
             "notes": notes if not notes is None else qq_title.get("notes", None),
         }
-        await self._save_qq_data()
+        await self.qq_profile_repo.upsert_profile(qq, self.qq_title_key[qq])
 
     # 通过onebot获取nickname
     async def get_nickname_by_onebot(self, qq, bot=None):

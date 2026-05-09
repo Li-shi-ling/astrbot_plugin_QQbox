@@ -1,0 +1,20 @@
+QQ_PROFILE_TABLE = "qq_profile"
+
+CREATE_QQ_PROFILE_TABLE_SQL = f"""
+CREATE TABLE IF NOT EXISTS {QQ_PROFILE_TABLE} (
+    qq TEXT PRIMARY KEY,
+    nickname TEXT,
+    color INTEGER,
+    content TEXT,
+    notes TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+)
+"""
+
+CREATE_QQ_PROFILE_UPDATED_INDEX_SQL = f"""
+CREATE INDEX IF NOT EXISTS idx_{QQ_PROFILE_TABLE}_updated_at
+ON {QQ_PROFILE_TABLE}(updated_at)
+"""
+
+PROFILE_FIELDS = ("nickname", "color", "content", "notes")
