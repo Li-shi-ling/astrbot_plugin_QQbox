@@ -409,7 +409,14 @@ class QQbox(Star):
                 )
             return str(bundled_path)
 
-        return configured_path or str(bundled_path)
+        if configured_path:
+            logger.warning(
+                f"[QQbox] 配置字体路径和插件字体目录均不可用: "
+                f"{configured_path}; {bundled_path}"
+            )
+        else:
+            logger.warning(f"[QQbox] 未找到任何可用字体文件: {bundled_path}")
+        return ""
 
     # 检测qq号是否合法
     def _validate_qq(self, qq):
