@@ -20,6 +20,10 @@ SELECT qq, nickname, color, content, notes
 FROM qq_profile
 """
 
+REPLACE_ALL_QQ_PROFILES_SQL = """
+DELETE FROM qq_profile
+"""
+
 UPSERT_QQ_PROFILE_SQL = """
 INSERT INTO qq_profile (qq, nickname, color, content, notes)
 VALUES (?, ?, ?, ?, ?)

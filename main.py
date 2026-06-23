@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import sqlite3
 from io import BytesIO
 from pathlib import Path
 
@@ -281,13 +282,13 @@ class QQbox(Star):
         """保存QQ数据到数据库"""
         try:
             await self.qq_profile_repo.save_all(self.qq_title_key)
-        except OSError as e:
+        except (OSError, sqlite3.DatabaseError) as e:
             logger.error(f"保存QQ数据失败: {e}")
 
     async def _save_qq_profile(self, qq):
         try:
             await self.qq_profile_repo.upsert_profile(qq, self.qq_title_key[qq])
-        except OSError as e:
+        except (OSError, sqlite3.DatabaseError) as e:
             logger.error(f"保存QQ数据失败: {qq}: {e}")
 
     # 获取qq数据
@@ -295,7 +296,7 @@ class QQbox(Star):
         """异步从数据库加载QQ数据"""
         try:
             return await self.qq_profile_repo.load_all()
-        except OSError as e:
+        except (OSError, sqlite3.DatabaseError) as e:
             logger.error(f"加载QQ数据失败: {e}")
             return {}
 
@@ -305,7 +306,12 @@ class QQbox(Star):
         if not legacy_data:
             return
 
-        await self.qq_profile_repo.save_missing(legacy_data)
+        try:
+            await self.qq_profile_repo.save_missing(legacy_data)
+        except (OSError, sqlite3.DatabaseError) as e:
+            logger.error(f"迁移旧QQ数据失败，已保留旧JSON数据: {e}")
+            return
+
         for legacy_path in self.legacy_qq_data_files:
             if not legacy_path.exists():
                 continue

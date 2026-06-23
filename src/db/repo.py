@@ -7,6 +7,7 @@ from .database import QQBoxDBManager
 from .tables import (
     INSERT_MISSING_QQ_PROFILE_SQL,
     PROFILE_FIELDS,
+    REPLACE_ALL_QQ_PROFILES_SQL,
     SELECT_ALL_QQ_PROFILES_SQL,
     UPSERT_QQ_PROFILE_SQL,
 )
@@ -48,8 +49,7 @@ class QQProfileRepo:
 
     async def save_all(self, profiles: dict[str, dict[str, Any]]) -> None:
         rows = self._profile_rows(profiles)
-        if rows:
-            await self.db.execute_many(UPSERT_QQ_PROFILE_SQL, rows)
+        await self.db.replace_all(REPLACE_ALL_QQ_PROFILES_SQL, UPSERT_QQ_PROFILE_SQL, rows)
 
     async def save_missing(self, profiles: dict[str, dict[str, Any]]) -> None:
         rows = self._profile_rows(profiles)
