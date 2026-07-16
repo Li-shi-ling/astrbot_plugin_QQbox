@@ -145,6 +145,11 @@ def qqbox(plugin_module, tmp_path: Path):
     instance._font_paths_logged_on_failure = False
     instance.avatar_image_path.mkdir(parents=True, exist_ok=True)
     instance.http_client = None
+    instance.font_manager = plugin_module.FontManager(
+        tmp_path,
+        Path(plugin_module.__file__).resolve().parent / "resources" / "font_manifest.json",
+        plugin_module.FontConfig(auto_download=False),
+    )
     return instance
 
 
@@ -157,10 +162,14 @@ def generator(plugin_module, tmp_path: Path):
         avatar_image_path=str(tmp_path),
     )
     default_font = ImageFont.load_default()
-    instance.bubble_font = default_font
-    instance.nickname_font = default_font
-    instance.title_font = default_font
-    instance.title_SCALE_font = default_font
+    instance.install_font_bundle(
+        SimpleNamespace(
+            bubble=default_font,
+            nickname=default_font,
+            title=default_font,
+            title_scaled=default_font,
+        )
+    )
     return instance
 
 

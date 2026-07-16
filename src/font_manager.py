@@ -61,6 +61,9 @@ class FontBundle:
     version: str
 
 
+InstallFunction = Callable[[FontBundle], None]
+
+
 @dataclass(frozen=True)
 class FontStatus:
     state: FontState
@@ -142,6 +145,7 @@ class FontManager:
         title_size: int = 19,
         scale: int = 4,
         downloader: DownloadFunction | None = None,
+        on_ready: InstallFunction | None = None,
     ) -> None:
         self.data_dir = Path(data_dir).resolve()
         self.font_root = (self.data_dir / "fonts").resolve()
@@ -152,6 +156,7 @@ class FontManager:
         self.title_size = title_size
         self.scale = scale
         self._downloader = downloader or self._astrbot_download
+        self._on_ready = on_ready
         self._state = FontState.NOT_STARTED
         self._error: str | None = None
         self._downloaded = 0
@@ -182,6 +187,8 @@ class FontManager:
 
     def retry(self) -> asyncio.Task[None]:
         if self._prepare_task is not None and not self._prepare_task.done():
+            return self._prepare_task
+        if self._state is FontState.READY and self._prepare_task is not None:
             return self._prepare_task
         self._error = None
         self._ready_event.clear()
@@ -240,6 +247,8 @@ class FontManager:
             paths = self._compose_paths(configured, cache_dir)
             self._state = FontState.LOADING
             bundle = await asyncio.to_thread(self._load_bundle, paths, cache_dir.name)
+            if self._on_ready is not None:
+                self._on_ready(bundle)
             self._bundle = bundle
             self._state = FontState.READY
             self._ready_event.set()
@@ -387,7 +396,7 @@ class FontManager:
             paths = self._compose_paths(
                 {"bubble": None, "nickname": None, "title": None}, install_dir
             )
-            self._load_bundle(paths, self.manifest.pack_version)
+            self._validate_default_fonts(paths)
             metadata = {
                 "source_repository": self.manifest.source_repository,
                 "pack_version": self.manifest.pack_version,
@@ -437,6 +446,26 @@ class FontManager:
             version=version,
         )
 
+    @staticmethod
+    def _validate_default_fonts(paths: FontPaths) -> None:
+        expected_styles = {
+            paths.bubble: {"normal", "regular"},
+            paths.nickname: {"extralight"},
+            paths.title: {"bold"},
+        }
+        for path, accepted_styles in expected_styles.items():
+            try:
+                font = ImageFont.truetype(str(path), 16)
+                family, style = font.getname()
+            except Exception as exc:
+                raise FontVerifyError(f"默认字体无法加载: {path.name}") from exc
+            normalized_family = "".join(char for char in family.lower() if char.isalnum())
+            normalized_style = "".join(char for char in style.lower() if char.isalnum())
+            if "sourcehansanscn" not in normalized_family:
+                raise FontVerifyError(f"默认字体家族不匹配: {path.name}")
+            if normalized_style not in accepted_styles:
+                raise FontVerifyError(f"默认字体字重不匹配: {path.name}")
+
     def _cache_valid(self, directory: Path, require_current: bool) -> bool:
         try:
             metadata = json.loads(
@@ -451,10 +480,12 @@ class FontManager:
                 (directory / name).is_file() for name in self.manifest.files.values()
             ):
                 return False
+            paths = self._compose_paths(
+                {"bubble": None, "nickname": None, "title": None}, directory
+            )
+            self._validate_default_fonts(paths)
             self._load_bundle(
-                self._compose_paths(
-                    {"bubble": None, "nickname": None, "title": None}, directory
-                ),
+                paths,
                 str(metadata.get("pack_version") or directory.name),
             )
             return True
@@ -545,6 +576,14 @@ class FontManager:
     def _cleanup_owned_staging(self) -> None:
         for path in tuple(self._owned_staging):
             safe_path = self._inside(path)
+            try:
+                relative = safe_path.relative_to(self.staging_dir)
+            except ValueError as exc:
+                raise FontVerifyError(
+                    f"拒绝清理字体暂存目录外的路径: {safe_path}"
+                ) from exc
+            if relative == Path("."):
+                raise FontVerifyError("拒绝清理字体暂存根目录")
             if safe_path.is_dir():
                 shutil.rmtree(safe_path, ignore_errors=True)
             else:

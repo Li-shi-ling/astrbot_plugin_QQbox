@@ -6,21 +6,32 @@
     "hint": "例如：27"
   },
   "bubble_font_path": {
-    "description": "气泡字体路径",
+    "description": "气泡字体路径；留空使用自动下载的默认字体",
     "type": "string",
-    "default": "./data/plugins/astrbot_plugin_QQbox/resources/fonts/Microsoft-YaHei-Semilight.ttc",
-    "hint": "例如：/home/root/fonts/Microsoft-YaHei-Semilight.ttc"
+    "default": "",
+    "hint": "可选：自定义字体的绝对路径"
   },
   "nickname_font_path": {
-    "description": "名称字体路径",
+    "description": "名称字体路径；留空使用自动下载的默认字体",
     "type": "string",
-    "default": "./data/plugins/astrbot_plugin_QQbox/resources/fonts/SourceHanSansSC-ExtraLight.otf",
-    "hint": "例如：/home/root/fonts/SourceHanSansSC-ExtraLight.otf"
+    "default": "",
+    "hint": "可选：自定义字体的绝对路径"
   },
   "title_font_path": {
-    "description": "头衔字体路径",
+    "description": "头衔字体路径；留空使用自动下载的默认字体",
     "type": "string",
-    "default": "./data/plugins/astrbot_plugin_QQbox/resources/fonts/Microsoft-YaHei-Bold.ttc",
-    "hint": "例如：/home/root/fonts/Microsoft-YaHei-Bold.ttc"
+    "default": "",
+    "hint": "可选：自定义字体的绝对路径"
+  },
+  "font_auto_download": {
+    "description": "默认字体缺失时后台自动下载",
+    "type": "bool",
+    "default": true
+  },
+  "font_github_mirror": {
+    "description": "可选 GitHub 镜像前缀；留空直连官方 Release",
+    "type": "string",
+    "default": "",
+    "hint": "使用与 AstrBot 更新器相同的 URL 前缀格式"
   }
 }

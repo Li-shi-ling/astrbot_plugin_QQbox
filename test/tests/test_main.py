@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import sqlite3
 from io import BytesIO
 from pathlib import Path
@@ -105,18 +106,25 @@ def test_init_uses_plugin_data_dir_for_persistence(plugin_module, tmp_path: Path
     assert instance.qq_db_file == tmp_path / "db" / "qqbox.db"
 
 
-def test_init_falls_back_to_plugin_font_dir_when_config_path_is_stale(
+def test_font_config_schema_defaults_to_persistent_downloads(plugin_module) -> None:
+    schema_path = Path(plugin_module.__file__).resolve().parent / "_conf_schema.json"
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+
+    assert schema["bubble_font_path"]["default"] == ""
+    assert schema["nickname_font_path"]["default"] == ""
+    assert schema["title_font_path"]["default"] == ""
+    assert schema["font_auto_download"]["default"] is True
+    assert schema["font_github_mirror"]["default"] == ""
+
+
+def test_init_keeps_fonts_in_persistent_dir_when_plugin_location_changes(
     plugin_module, tmp_path: Path, monkeypatch
 ) -> None:
     monkeypatch.setattr(plugin_module.StarTools, "get_data_dir", staticmethod(lambda: tmp_path))
     plugin_dir = tmp_path / "plugin"
-    font_dir = plugin_dir / "resources" / "fonts"
-    font_dir.mkdir(parents=True)
-    bubble_font = font_dir / "Microsoft-YaHei-Semilight.ttc"
-    nickname_font = font_dir / "SourceHanSansSC-ExtraLight.otf"
-    title_font = font_dir / "Microsoft-YaHei-Bold.ttc"
-    for font_path in (bubble_font, nickname_font, title_font):
-        font_path.write_bytes(b"font")
+    (plugin_dir / "resources").mkdir(parents=True)
+    source_manifest = Path(plugin_module.__file__).resolve().parent / "resources" / "font_manifest.json"
+    (plugin_dir / "resources" / "font_manifest.json").write_bytes(source_manifest.read_bytes())
     monkeypatch.setattr(plugin_module, "__file__", str(plugin_dir / "main.py"))
 
     instance = plugin_module.QQbox(
@@ -128,28 +136,9 @@ def test_init_falls_back_to_plugin_font_dir_when_config_path_is_stale(
         },
     )
 
-    assert instance.bubble_font_path == str(bubble_font)
-    assert instance.nickname_font_path == str(nickname_font)
-    assert instance.title_font_path == str(title_font)
-
-
-def test_get_font_path_returns_empty_when_no_font_exists(
-    plugin_module, tmp_path: Path, monkeypatch
-) -> None:
-    warnings = []
-
-    class LoggerStub:
-        def warning(self, message):
-            warnings.append(message)
-
-    monkeypatch.setattr(plugin_module, "logger", LoggerStub())
-
-    instance = plugin_module.QQbox.__new__(plugin_module.QQbox)
-    instance.Config = {"bubble_font_path": "/missing/font.ttf"}
-    instance.plugin_dir = tmp_path / "plugin"
-
-    assert instance._get_font_path("bubble_font_path", "fallback.ttf") == ""
-    assert any("均不可用" in message for message in warnings)
+    assert instance.font_manager.font_root == (tmp_path / "fonts").resolve()
+    assert not instance.font_manager.font_root.is_relative_to(plugin_dir)
+    assert instance.bubble_font_path.startswith("/missing/")
 
 
 def test_log_font_not_ready_paths_prints_runtime_paths_once(qqbox, plugin_module, monkeypatch) -> None:
@@ -167,8 +156,76 @@ def test_log_font_not_ready_paths_prints_runtime_paths_once(qqbox, plugin_module
     assert warnings[0] == "[qqbox] 字体未加载，打印运行路径用于排查"
     assert sum("字体未加载" in message for message in warnings) == 1
     assert any("持久化数据目录" in message for message in warnings)
-    assert any("气泡字体路径" in message for message in warnings)
-    assert any("头衔字体路径" in message for message in warnings)
+    assert any("字体持久化目录" in message for message in warnings)
+    assert any("气泡自定义字体" in message for message in warnings)
+
+
+def test_initialize_starts_font_preparation_without_awaiting_it(
+    plugin_module, tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setattr(plugin_module.StarTools, "get_data_dir", staticmethod(lambda: tmp_path))
+    instance = plugin_module.QQbox(context=object(), config={})
+
+    class FontManagerStub:
+        def __init__(self):
+            self.started = 0
+            self.closed = 0
+            self.font_root = tmp_path / "fonts"
+
+        def start(self):
+            self.started += 1
+            return object()
+
+        async def close(self):
+            self.closed += 1
+
+    stub = FontManagerStub()
+    instance.font_manager = stub
+
+    async def scenario():
+        await instance.initialize()
+        assert stub.started == 1
+        await instance.terminate()
+        assert stub.closed == 1
+
+    run_async(scenario())
+
+
+def test_font_status_and_retry_commands(qqbox, plugin_module) -> None:
+    class FontManagerStub:
+        def __init__(self):
+            self.retries = 0
+
+        def status(self):
+            return plugin_module.FontStatus(
+                state=plugin_module.FontState.DOWNLOADING,
+                version="2.005R-cn",
+                cache_path=Path("/persistent/fonts/2.005R-cn"),
+                error=None,
+                downloaded=10,
+                total=20,
+            )
+
+        def retry(self):
+            self.retries += 1
+
+    class EventStub:
+        @staticmethod
+        def plain_result(value):
+            return value
+
+    qqbox.font_manager = FontManagerStub()
+
+    async def collect(action):
+        return [item async for item in qqbox.font(EventStub(), action)]
+
+    status = run_async(collect("status"))
+    retried = run_async(collect("retry"))
+
+    assert "downloading" in status[0]
+    assert "10/20" in status[0]
+    assert "已启动" in retried[0]
+    assert qqbox.font_manager.retries == 1
 
 
 def test_load_qq_data_reads_database_profiles(qqbox) -> None:
@@ -607,7 +664,23 @@ def test_safe_text_width_falls_back_for_missing_font_or_invalid_width(generator)
 
 
 def test_text_units_keep_combining_and_zwj_sequences_together(generator) -> None:
-    assert generator._text_units("A\u0301👩‍💻B") == ["A\u0301", "👩‍💻", "B"]
+    assert generator._text_units("A\u0301✈️👩‍💻B") == ["A\u0301", "✈️", "👩‍💻", "B"]
+
+
+@pytest.mark.parametrize("punctuation", tuple("，。！？；：、）】》」』"))
+def test_find_legal_break_keeps_closing_punctuation_off_line_start(
+    generator, punctuation
+) -> None:
+    units = ["甲", punctuation, "乙"]
+    assert generator._find_legal_break(units, 0, 1) == 2
+
+
+@pytest.mark.parametrize("punctuation", tuple("（【《「『“‘"))
+def test_find_legal_break_keeps_opening_punctuation_off_line_end(
+    generator, punctuation
+) -> None:
+    units = ["甲", punctuation, "乙"]
+    assert generator._find_legal_break(units, 0, 2) == 1
 
 
 def test_wrap_text_avoids_prohibited_punctuation_at_line_edges(
@@ -649,6 +722,25 @@ def test_wrap_text_makes_progress_when_one_unit_is_too_wide(generator, monkeypat
     monkeypatch.setattr(generator, "_safe_text_width", lambda *_args: 10)
 
     assert generator._wrap_text("👩‍💻A", object()) == ["👩‍💻", "A"]
+
+
+def test_wrap_text_uses_safe_width_fallback_when_pillow_measurement_fails(
+    generator, monkeypatch
+) -> None:
+    class BrokenDraw:
+        def textbbox(self, *_args, **_kwargs):
+            raise ValueError("missing glyph")
+
+    monkeypatch.setattr(generator, "_get_temp_draw", lambda: BrokenDraw())
+    monkeypatch.setattr(generator, "max_width", 20)
+    monkeypatch.setattr(generator, "bubble_padding", 0)
+    monkeypatch.setattr(generator, "SCALE", 1)
+    generator._font_configs["bubble"] = ("", 2)
+
+    lines = generator._wrap_text("真的吗？！继续", object())
+
+    assert "".join(lines) == "真的吗？！继续"
+    assert all(not line.startswith(("？", "！")) for line in lines)
 
 
 def test_create_chat_message_requires_user_info(generator) -> None:

@@ -4,13 +4,21 @@ import asyncio
 import hashlib
 import io
 import json
+import sys
+import types
 import zipfile
 from pathlib import Path
 
+import pytest
+
+from data.plugins.astrbot_plugin_QQbox.src import font_manager as font_manager_module
 from data.plugins.astrbot_plugin_QQbox.src.font_manager import (
     FontConfig,
     FontManager,
+    FontPaths,
     FontState,
+    FontUnsupportedError,
+    FontVerifyError,
 )
 
 
@@ -68,6 +76,7 @@ def make_manager(tmp_path: Path, archive: bytes, **config_values):
         downloader=downloader,
     )
     manager._load_bundle = lambda paths, version: (paths, version)
+    manager._validate_default_fonts = lambda _paths: None
     return manager, calls
 
 
@@ -85,6 +94,32 @@ def test_download_installs_only_inside_persistent_font_root(tmp_path: Path) -> N
     assert (manager.version_dir / "installed.json").is_file()
     assert not (manager.staging_dir / "19_SourceHanSansCN.zip.part").exists()
     assert all(path.is_relative_to(manager.font_root) for path in manager._owned_staging)
+
+
+def test_complete_bundle_is_published_through_single_ready_callback(tmp_path: Path) -> None:
+    archive = make_archive()
+    manifest = write_manifest(tmp_path / "manifest.json", archive)
+    installed = []
+
+    async def downloader(_url, destination, _progress):
+        destination.write_bytes(archive)
+
+    manager = FontManager(
+        tmp_path / "persistent",
+        manifest,
+        FontConfig(),
+        downloader=downloader,
+        on_ready=installed.append,
+    )
+    expected = object()
+    manager._load_bundle = lambda _paths, _version: expected
+    manager._validate_default_fonts = lambda _paths: None
+
+    run_async(prepare(manager))
+
+    assert installed == [expected]
+    assert manager.get_bundle() is expected
+    assert manager.status().state is FontState.READY
 
 
 def test_cache_hit_and_custom_paths_do_not_download(tmp_path: Path) -> None:
@@ -112,6 +147,33 @@ def test_cache_hit_and_custom_paths_do_not_download(tmp_path: Path) -> None:
     assert third_calls == []
 
 
+def test_previous_version_cache_survives_new_download_failure(tmp_path: Path) -> None:
+    archive = make_archive()
+    manifest = write_manifest(tmp_path / "manifest.json", archive)
+
+    async def downloader(_url, _destination, _progress):
+        raise FontUnsupportedError("offline")
+
+    manager = FontManager(
+        tmp_path / "persistent", manifest, FontConfig(), downloader=downloader
+    )
+    manager._load_bundle = lambda paths, version: (paths, version)
+    manager._validate_default_fonts = lambda _paths: None
+    old_dir = manager.font_root / "2.004R-cn"
+    old_dir.mkdir(parents=True)
+    for filename in manager.manifest.files.values():
+        (old_dir / filename).write_bytes(b"cached")
+    (old_dir / "installed.json").write_text(
+        json.dumps({"pack_version": "2.004R-cn", "archive_sha256": "old"}),
+        encoding="utf-8",
+    )
+
+    run_async(prepare(manager))
+
+    assert manager.status().state is FontState.READY
+    assert manager.get_bundle()[1] == "2.004R-cn"
+
+
 def test_invalid_custom_path_fails_without_default_fallback(tmp_path: Path) -> None:
     manager, calls = make_manager(
         tmp_path, make_archive(), bubble_path=str(tmp_path / "missing.otf")
@@ -135,6 +197,31 @@ def test_mirror_prefix_changes_transport_url_only(tmp_path: Path) -> None:
     )
 
 
+def test_astrbot_download_adapter_disables_insecure_tls_fallback(
+    tmp_path: Path, monkeypatch
+) -> None:
+    manager, _calls = make_manager(tmp_path, make_archive())
+    captured = {}
+    io_module = types.ModuleType("astrbot.core.utils.io")
+
+    async def download_file(url, path, **kwargs):
+        captured.update(url=url, path=path, kwargs=kwargs)
+
+    io_module.download_file = download_file
+    core_module = types.ModuleType("astrbot.core")
+    utils_module = types.ModuleType("astrbot.core.utils")
+    monkeypatch.setitem(sys.modules, "astrbot.core", core_module)
+    monkeypatch.setitem(sys.modules, "astrbot.core.utils", utils_module)
+    monkeypatch.setitem(sys.modules, "astrbot.core.utils.io", io_module)
+    destination = manager.staging_dir / "test.part"
+
+    run_async(manager._astrbot_download("https://example.invalid/font", destination, lambda _p: None))
+
+    assert captured["path"] == str(destination)
+    assert captured["kwargs"]["allow_insecure_ssl_fallback"] is False
+    assert callable(captured["kwargs"]["progress_callback"])
+
+
 def test_hash_mismatch_is_rejected_and_not_installed(tmp_path: Path) -> None:
     archive = make_archive()
     manifest = write_manifest(tmp_path / "manifest.json", archive, digest="0" * 64)
@@ -145,6 +232,7 @@ def test_hash_mismatch_is_rejected_and_not_installed(tmp_path: Path) -> None:
     manager = FontManager(
         tmp_path / "persistent", manifest, FontConfig(), downloader=downloader
     )
+    manager._validate_default_fonts = lambda _paths: None
 
     run_async(prepare(manager))
 
@@ -195,6 +283,7 @@ def test_start_is_non_blocking_and_reuses_single_task(tmp_path: Path) -> None:
             tmp_path / "persistent", manifest, FontConfig(), downloader=downloader
         )
         manager._load_bundle = lambda paths, version: (paths, version)
+        manager._validate_default_fonts = lambda _paths: None
         first = manager.start()
         second = manager.start()
         await asyncio.sleep(0)
@@ -233,6 +322,39 @@ def test_cleanup_rejects_paths_outside_font_root(tmp_path: Path) -> None:
         pass
 
     assert outside.read_text(encoding="utf-8") == "safe"
+
+
+def test_default_font_family_and_weight_are_verified(
+    tmp_path: Path, monkeypatch
+) -> None:
+    paths = FontPaths(
+        bubble=tmp_path / "SourceHanSansCN-Normal.otf",
+        nickname=tmp_path / "SourceHanSansCN-ExtraLight.otf",
+        title=tmp_path / "SourceHanSansCN-Bold.otf",
+    )
+
+    class FakeFont:
+        def __init__(self, name):
+            self.name = name
+
+        def getname(self):
+            style = self.name.removeprefix("SourceHanSansCN-").removesuffix(".otf")
+            return "Source Han Sans CN", style
+
+    monkeypatch.setattr(
+        font_manager_module.ImageFont,
+        "truetype",
+        lambda path, _size: FakeFont(Path(path).name),
+    )
+    FontManager._validate_default_fonts(paths)
+
+    monkeypatch.setattr(
+        font_manager_module.ImageFont,
+        "truetype",
+        lambda _path, _size: type("WrongFont", (), {"getname": lambda self: ("Other", "Bold")})(),
+    )
+    with pytest.raises(FontVerifyError, match="字体家族不匹配"):
+        FontManager._validate_default_fonts(paths)
 
 
 def test_close_cancels_download_and_cleans_owned_staging(tmp_path: Path) -> None:

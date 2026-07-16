@@ -19,6 +19,13 @@ from astrbot.api.message_components import Reply
 from astrbot.api.star import Context, Star, StarTools, register
 
 from .src.db.repo import QQProfileRepo
+from .src.font_manager import (
+    FontBundle,
+    FontConfig,
+    FontManager,
+    FontState,
+    FontStatus,
+)
 
 
 MSG_ID_PATTERN = re.compile(r"\[MSG_ID:[^\]]*\]")
@@ -26,7 +33,7 @@ PROHIBITED_LINE_START = frozenset("，。！？；：、,.!?;:）)]】》〉」�
 PROHIBITED_LINE_END = frozenset("（([【《〈「『〔“‘")
 
 
-@register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.0.0")
+@register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.3.9")
 class QQbox(Star):
     def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)
@@ -37,20 +44,13 @@ class QQbox(Star):
 
         # 使用框架提供的插件持久化数据目录
         self.plugin_dir = Path(__file__).resolve().parent
-        self.data_dir = Path(StarTools.get_data_dir())
+        self.data_dir = Path(StarTools.get_data_dir()).resolve()
         self.avatar_image_path = self.data_dir / "avatars"
         self.db_dir = self.data_dir / "db"
 
-        # 字体路径使用绝对路径
-        self.bubble_font_path = self._get_font_path(
-            "bubble_font_path", "Microsoft-YaHei-Semilight.ttc"
-        )
-        self.nickname_font_path = self._get_font_path(
-            "nickname_font_path", "SourceHanSansSC-ExtraLight.otf"
-        )
-        self.title_font_path = self._get_font_path(
-            "title_font_path", "Microsoft-YaHei-Bold.ttc"
-        )
+        self.bubble_font_path = str(self.Config.get("bubble_font_path", "") or "")
+        self.nickname_font_path = str(self.Config.get("nickname_font_path", "") or "")
+        self.title_font_path = str(self.Config.get("title_font_path", "") or "")
 
         # 创建必要的目录
         self.avatar_image_path.mkdir(parents=True, exist_ok=True)
@@ -75,13 +75,22 @@ class QQbox(Star):
             avatar_image_path=self.avatar_image_path,
             corner_radius=self.corner_radius,
         )
+        self.font_manager = FontManager(
+            self.data_dir,
+            self.plugin_dir / "resources" / "font_manifest.json",
+            FontConfig(
+                bubble_path=self.bubble_font_path,
+                nickname_path=self.nickname_font_path,
+                title_path=self.title_font_path,
+                auto_download=bool(self.Config.get("font_auto_download", True)),
+                github_mirror=str(self.Config.get("font_github_mirror", "") or ""),
+            ),
+            on_ready=self.qqbox.install_font_bundle,
+        )
 
         # 初始化HTTP客户端（异步）
         self.http_client = None
         self._font_paths_logged_on_failure = False
-
-        # 检查字体文件是否存在
-        self._check_fonts()
 
     # 插件函数
     @filter.command_group("qb")
@@ -93,9 +102,7 @@ class QQbox(Star):
         """通过对应qq的设置发送消息 /qb echo [qq] [text]"""
         if not self.qqbox.is_load_fonts:
             self._log_font_not_ready_paths()
-            yield event.plain_result(
-                "字体在加载中或字体没有被正确的加载,请尝试修改配置文件到正确的文字路径"
-            )
+            yield event.plain_result(self._font_unavailable_message())
             return
         if not self._validate_qq(qq):
             yield event.plain_result("QQ号格式错误，请使用纯数字")
@@ -127,9 +134,7 @@ class QQbox(Star):
         """获取消息链或回复的gif,生成聊天气泡 /qb [qq] [图片] 或者 [图片] 回复 /qb [qq]"""
         if not self.qqbox.is_load_fonts:
             self._log_font_not_ready_paths()
-            yield event.plain_result(
-                "字体在加载中或字体没有被正确的加载,请尝试修改配置文件到正确的文字路径"
-            )
+            yield event.plain_result(self._font_unavailable_message())
             return
         img_url = self._get_image_url(event)
         if not img_url:
@@ -159,9 +164,7 @@ class QQbox(Star):
         """获取消息链或回复的图片,生成聊天气泡 /qb [qq] [图片] 或者 [图片] 回复 /qb [qq]"""
         if not self.qqbox.is_load_fonts:
             self._log_font_not_ready_paths()
-            yield event.plain_result(
-                "字体在加载中或字体没有被正确的加载,请尝试修改配置文件到正确的文字路径"
-            )
+            yield event.plain_result(self._font_unavailable_message())
             return
         if not self._validate_qq(qq):
             yield event.plain_result("QQ号格式错误，请使用纯数字")
@@ -239,6 +242,22 @@ class QQbox(Star):
         display_name = info.get("name") or qq
         yield event.plain_result(f"更新qq头像 qq:{qq}, nickname:{display_name}")
 
+    @qb.command("font")
+    async def font(self, event: AstrMessageEvent, action: str = "status"):
+        """查看字体状态或重试下载：/qb font status|retry"""
+        action = action.strip().lower()
+        if action == "retry":
+            if self.font_manager.status().state is FontState.READY:
+                yield event.plain_result("字体已就绪，无需重试")
+                return
+            self.font_manager.retry()
+            yield event.plain_result("已启动字体检查/下载任务，可用 /qb font status 查看进度")
+            return
+        if action != "status":
+            yield event.plain_result("用法：/qb font status 或 /qb font retry")
+            return
+        yield event.plain_result(self._format_font_status())
+
     @qb.command("help")
     async def get_help(self, event: AstrMessageEvent):
         """获取帮助 /qb help [qq]"""
@@ -263,6 +282,8 @@ class QQbox(Star):
 5. 更新qq头像
    命令：/qb ua [QQ号]
    说明：更新qq头像
+6. 查看或重试字体下载
+   命令：/qb font status 或 /qb font retry
 注意：所有QQ号都必须是纯数字格式"""
         yield event.plain_result(help_text)
 
@@ -276,12 +297,13 @@ class QQbox(Star):
         await self.qq_profile_repo.init_db()
         await self._migrate_legacy_qq_data()
         self.qq_title_key = await self._load_qq_data()
-        self.qqbox.is_load_fonts = await self.qqbox.load_fonts()
+        self.font_manager.start()
         logger.info("QQbox 插件初始化完成")
 
     # 关闭插件时
     async def terminate(self):
         """清理资源"""
+        await self.font_manager.close()
         # 保存QQ数据
         await self._save_qq_data()
 
@@ -388,9 +410,10 @@ class QQbox(Star):
         log(f"[qqbox] 头像缓存目录: {self.avatar_image_path}")
         log(f"[qqbox] 数据库路径: {self.qq_db_file}")
         log(f"[qqbox] 旧JSON迁移检测路径: {self.qq_data_file}")
-        log(f"[qqbox] 气泡字体路径: {self.bubble_font_path}")
-        log(f"[qqbox] 昵称字体路径: {self.nickname_font_path}")
-        log(f"[qqbox] 头衔字体路径: {self.title_font_path}")
+        log(f"[qqbox] 字体持久化目录: {self.font_manager.font_root}")
+        log(f"[qqbox] 气泡自定义字体: {self.bubble_font_path or '(默认)'}")
+        log(f"[qqbox] 昵称自定义字体: {self.nickname_font_path or '(默认)'}")
+        log(f"[qqbox] 头衔自定义字体: {self.title_font_path or '(默认)'}")
 
     def _log_font_not_ready_paths(self):
         if getattr(self, "_font_paths_logged_on_failure", False):
@@ -399,50 +422,29 @@ class QQbox(Star):
         logger.warning("[qqbox] 字体未加载，打印运行路径用于排查")
         self._log_runtime_paths(level="warning")
 
-    # 检测字体是否存在
-    def _check_fonts(self):
-        """检查字体文件是否存在"""
-        missing_fonts = []
-        if self.bubble_font_path and not os.path.exists(self.bubble_font_path):
-            missing_fonts.append(("气泡字体", self.bubble_font_path))
-        if self.nickname_font_path and not os.path.exists(self.nickname_font_path):
-            missing_fonts.append(("昵称字体", self.nickname_font_path))
-        if self.title_font_path and not os.path.exists(self.title_font_path):
-            missing_fonts.append(("头衔字体", self.title_font_path))
+    def _format_font_status(self):
+        status = self.font_manager.status()
+        progress = ""
+        if status.total > 0:
+            progress = f"\n进度：{status.downloaded}/{status.total} bytes"
+        error = f"\n错误：{status.error}" if status.error else ""
+        return (
+            f"字体状态：{status.state.value}\n"
+            f"版本：{status.version}\n"
+            f"缓存：{status.cache_path}{progress}{error}"
+        )
 
-        if missing_fonts:
-            for font_name, font_path in missing_fonts:
-                logger.warning(f"[QQbox] 找不到{font_name}文件: {font_path}")
-
-    # 获取绝路径
-    def _get_absolute_path(self, path):
-        """将路径转换为绝对路径"""
-        if not path:
-            return ""
-        return os.path.abspath(path)
-
-    def _get_font_path(self, config_key, default_filename):
-        configured_path = self._get_absolute_path(self.Config.get(config_key, ""))
-        if configured_path and os.path.exists(configured_path):
-            return configured_path
-
-        bundled_path = self.plugin_dir / "resources" / "fonts" / default_filename
-        if bundled_path.exists():
-            if configured_path:
-                logger.warning(
-                    f"[QQbox] 配置字体路径不存在，将回退到插件字体目录: "
-                    f"{configured_path} -> {bundled_path}"
-                )
-            return str(bundled_path)
-
-        if configured_path:
-            logger.warning(
-                f"[QQbox] 配置字体路径和插件字体目录均不可用: "
-                f"{configured_path}; {bundled_path}"
-            )
-        else:
-            logger.warning(f"[QQbox] 未找到任何可用字体文件: {bundled_path}")
-        return ""
+    def _font_unavailable_message(self):
+        status = self.font_manager.status()
+        if status.state in {
+            FontState.CHECKING,
+            FontState.DOWNLOADING,
+            FontState.VERIFYING,
+            FontState.LOADING,
+            FontState.NOT_STARTED,
+        }:
+            return "字体正在后台准备，请稍后重试；可用 /qb font status 查看进度"
+        return "字体准备失败，请用 /qb font status 查看原因，或用 /qb font retry 重试"
 
     # 检测qq号是否合法
     def _validate_qq(self, qq):
@@ -778,9 +780,7 @@ class ChatBubbleGenerator:
         self._temp_canvas = None
         self._temp_draw = None
 
-        # 初始化字体
-        # self.is_load_fonts = self._load_fonts()
-        self.is_load_fonts = False
+        self._font_bundle = None
 
         # 布局参数
         self.bubble_padding = bubble_padding
@@ -812,36 +812,30 @@ class ChatBubbleGenerator:
     # ------------------------------------------------------------------------------
     # 字体管理
     # ------------------------------------------------------------------------------
-    async def load_fonts(self):
-        """异步加载字体"""
-        try:
-            # 气泡字体（高DPI）
-            b_path, b_size = self._font_configs["bubble"]
-            self.bubble_font = await self._async_safe_load_font(
-                b_path, b_size * self.SCALE, "气泡"
-            )
-            # 昵称字体（正常DPI）
-            n_path, n_size = self._font_configs["nickname"]
-            self.nickname_font = await self._async_safe_load_font(
-                n_path, n_size, "昵称"
-            )
-            # 头衔字体（双DPI版本）
-            t_path, t_size = self._font_configs["title"]
-            self.title_SCALE_font = await self._async_safe_load_font(
-                t_path, t_size * self.SCALE, "头衔高DPI"
-            )
-            self.title_font = await self._async_safe_load_font(t_path, t_size, "头衔")
-            return True
-        except Exception as e:
-            logger.error(f"字体加载失败: {e}")
-            return False
+    @property
+    def is_load_fonts(self):
+        return self._font_bundle is not None
 
-    async def _async_safe_load_font(self, path, size, name):
-        if path and os.path.exists(path):
-            return await asyncio.to_thread(ImageFont.truetype, path, size)
-        else:
-            logger.warning(f"字体文件不存在: {path}")
-            raise FileNotFoundError(f"字体文件不存在: {name} ({path})")
+    @property
+    def bubble_font(self):
+        return self._font_bundle.bubble if self._font_bundle else None
+
+    @property
+    def nickname_font(self):
+        return self._font_bundle.nickname if self._font_bundle else None
+
+    @property
+    def title_font(self):
+        return self._font_bundle.title if self._font_bundle else None
+
+    @property
+    def title_SCALE_font(self):
+        return self._font_bundle.title_scaled if self._font_bundle else None
+
+    def install_font_bundle(self, bundle: FontBundle):
+        """一次性安装完整字体快照，避免部分字体对渲染可见。"""
+        if self._font_bundle is None:
+            self._font_bundle = bundle
 
     # ------------------------------------------------------------------------------
     # 工具方法
