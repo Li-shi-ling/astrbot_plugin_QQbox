@@ -3,6 +3,7 @@ import json
 import os
 import re
 import sqlite3
+import unicodedata
 from io import BytesIO
 from pathlib import Path
 from urllib.parse import unquote, urlparse
@@ -21,6 +22,8 @@ from .src.db.repo import QQProfileRepo
 
 
 MSG_ID_PATTERN = re.compile(r"\[MSG_ID:[^\]]*\]")
+PROHIBITED_LINE_START = frozenset("，。！？；：、,.!?;:）)]】》〉」』〕…—～~％%")
+PROHIBITED_LINE_END = frozenset("（([【《〈「『〔“‘")
 
 
 @register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.0.0")
@@ -851,78 +854,89 @@ class ChatBubbleGenerator:
         return self._temp_draw
 
     def _wrap_text(self, text, font):
-        """文本自动换行"""
+        """按 Unicode 文本单元和中文标点禁则自动换行。"""
         draw = self._get_temp_draw()
         padding = self.bubble_padding * self.SCALE
         max_width = self.max_width * self.SCALE - padding * 2
-
+        fallback_width = self._font_configs["bubble"][1] * self.SCALE
         lines = []
 
-        # 首先按显式换行符分割成段落
-        paragraphs = text.split("\n")
-
-        for paragraph in paragraphs:
+        for paragraph in text.split("\n"):
             if not paragraph:
-                # 空段落（连续换行符）
                 lines.append("")
                 continue
 
-            current_line = ""
-            current_line_width = 0
+            units = self._text_units(paragraph)
+            start = 0
+            while start < len(units):
+                fit_end = start
+                for end in range(start + 1, len(units) + 1):
+                    candidate = "".join(units[start:end])
+                    width = self._safe_text_width(
+                        draw, candidate, font, fallback_width
+                    )
+                    if width <= max_width:
+                        fit_end = end
+                        continue
+                    break
 
-            # 按字符处理段落
-            for char in paragraph:
-                # 测试添加字符后的宽度
-                test_line = current_line + char
-
-                try:
-                    # 使用 textbbox 替代 textlength（更可靠）
-                    if hasattr(draw, "textbbox"):
-                        bbox = draw.textbbox((0, 0), test_line, font=font)
-                        line_width = bbox[2] - bbox[0]
-                    else:
-                        # 旧版本 Pillow 兼容
-                        line_width = draw.textlength(test_line, font=font)
-
-                    # 检查是否需要换行
-                    if line_width <= max_width:
-                        current_line = test_line
-                        current_line_width = line_width
-                    else:
-                        # 当前行已满，开始新行
-                        if current_line:
-                            lines.append(current_line)
-                        current_line = char
-                        # 计算新行的初始宽度
-                        if hasattr(draw, "textbbox"):
-                            bbox = draw.textbbox((0, 0), char, font=font)
-                            current_line_width = bbox[2] - bbox[0]
-                        else:
-                            current_line_width = draw.textlength(char, font=font)
-
-                except Exception as e:
-                    # 如果测量失败，使用保守的字符宽度估计
-                    logger.debug(f"测量文本宽度失败: {e}, 字符: {repr(char)}")
-
-                    # 估计字符宽度：中文字符≈字体大小，英文字符≈字体大小/2
-                    char_width_estimate = self._font_configs["bubble"][1] * self.SCALE
-                    if ord(char) < 128:  # ASCII字符
-                        char_width_estimate = char_width_estimate // 2
-
-                    if current_line_width + char_width_estimate > max_width:
-                        if current_line:
-                            lines.append(current_line)
-                        current_line = char
-                        current_line_width = char_width_estimate
-                    else:
-                        current_line = test_line
-                        current_line_width += char_width_estimate
-
-            # 添加段落的最后一行
-            if current_line:
-                lines.append(current_line)
+                if fit_end == start:
+                    fit_end = start + 1
+                break_at = self._find_legal_break(units, start, fit_end)
+                lines.append("".join(units[start:break_at]))
+                start = break_at
 
         return lines
+
+    @staticmethod
+    def _text_units(text):
+        """保守地把组合符、变体选择符和 ZWJ Emoji 合并为文本单元。"""
+        units = []
+        index = 0
+        while index < len(text):
+            unit = text[index]
+            index += 1
+            while index < len(text):
+                char = text[index]
+                codepoint = ord(char)
+                if (
+                    unicodedata.combining(char)
+                    or 0xFE00 <= codepoint <= 0xFE0F
+                    or 0xE0100 <= codepoint <= 0xE01EF
+                    or 0x1F3FB <= codepoint <= 0x1F3FF
+                ):
+                    unit += char
+                    index += 1
+                    continue
+                if char == "\u200d" and index + 1 < len(text):
+                    unit += char + text[index + 1]
+                    index += 2
+                    continue
+                break
+            units.append(unit)
+        return units
+
+    @staticmethod
+    def _find_legal_break(units, start, fit_end):
+        """返回离宽度边界最近的合法断点，必要时最小幅度超宽。"""
+        if fit_end >= len(units):
+            return len(units)
+
+        def is_legal(index):
+            return (
+                units[index - 1][-1] not in PROHIBITED_LINE_END
+                and units[index][0] not in PROHIBITED_LINE_START
+            )
+
+        for index in range(fit_end, start, -1):
+            if is_legal(index):
+                return index
+
+        for index in range(fit_end + 1, len(units)):
+            if is_legal(index):
+                return index
+
+        return max(start + 1, fit_end)
 
     def _create_rounded_mask(self, width, height):
         """创建圆角遮罩"""
