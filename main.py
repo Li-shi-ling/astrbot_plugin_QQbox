@@ -1,12 +1,14 @@
 import asyncio
 import json
 import os
+import re
 from io import BytesIO
 from pathlib import Path
+from urllib.parse import unquote, urlparse
 
 import aiohttp
 import httpx
-from PIL import Image, ImageDraw, ImageFont, ImageSequence
+from PIL import Image, ImageChops, ImageDraw, ImageFont, ImageSequence
 
 from astrbot.api import AstrBotConfig, logger
 from astrbot.api.event import AstrMessageEvent, filter
@@ -15,6 +17,9 @@ from astrbot.api.message_components import Reply
 from astrbot.api.star import Context, Star, StarTools, register
 
 from .src.db.repo import QQProfileRepo
+
+
+MSG_ID_PATTERN = re.compile(r"\[MSG_ID:[^\]]*\]")
 
 
 @register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.0.0")
@@ -97,6 +102,10 @@ class QQbox(Star):
             .replace("echo", "", 1)
             .strip()
         )
+        text = self._remove_message_id_markers(text)
+        if len(text) > 50:
+            yield event.plain_result("消息内容不能超过50字")
+            return
         bot = getattr(event, "bot", None)
         info = await self.get_qq_info(qq, bot)
         img_bytes = await asyncio.to_thread(
@@ -191,6 +200,7 @@ class QQbox(Star):
             .replace("st", "", 1)
             .strip()
         )
+        title = self._remove_message_id_markers(title)
         await self.update_qq_title_key(qq, content=title)
         yield event.plain_result(f"设置成功 qq:{qq}, title:{title}")
 
@@ -206,6 +216,7 @@ class QQbox(Star):
             .replace("sn", "", 1)
             .strip()
         )
+        note = self._remove_message_id_markers(note)
         await self.update_qq_title_key(qq, notes=note)
         yield event.plain_result(f"设置成功 qq:{qq}, note:{note}")
 
@@ -230,7 +241,7 @@ class QQbox(Star):
         help_text = """QQbox 插件使用说明
 1. 生成聊天气泡
    命令：/qb echo [QQ号] [消息内容]
-   说明：生成指定QQ用户发送消息的气泡图片
+   说明：生成指定QQ用户发送消息的气泡图片，消息内容最多50字
 2. 设置头衔颜色
    命令：/qb sc [QQ号] [颜色编号]
    说明：设置用户的头衔气泡背景颜色
@@ -435,6 +446,11 @@ class QQbox(Star):
             return False
         return True
 
+    @staticmethod
+    def _remove_message_id_markers(text):
+        """移除消息正文中形如 [MSG_ID:...] 的内部标记。"""
+        return MSG_ID_PATTERN.sub("", text).strip()
+
     # 获取qq信息
     async def get_qq_info(self, qq, bot=None, force_refresh: bool = False):
         # 确保头像保存目录存在
@@ -628,19 +644,49 @@ class QQbox(Star):
                 if component.url:
                     return await self._download_image(component.url)
                 elif component.file:
-                    return open(component.file, "rb").read()
+                    return await self._download_image(component.file)
             elif isinstance(component, Reply) and component.chain:
                 for reply_component in component.chain:
                     if isinstance(reply_component, BotImage):
                         if reply_component.url:
                             return await self._download_image(reply_component.url)
                         elif reply_component.file:
-                            return open(reply_component.file, "rb").read()
+                            return await self._download_image(reply_component.file)
         return None
 
     # 通过url下载img
     async def _download_image(self, url: str) -> bytes | None:
-        """下载图片"""
+        """读取 HTTP(S) 图片或 AstrBot 临时目录中的本地图片。"""
+        parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https"):
+            if parsed.scheme == "file":
+                file_path = unquote(parsed.path)
+                if len(file_path) >= 3 and file_path[0] == "/" and file_path[2] == ":":
+                    file_path = file_path[1:]
+                local_path = Path(file_path)
+                if parsed.netloc:
+                    local_path = Path(f"//{parsed.netloc}{local_path}")
+            elif (
+                len(parsed.scheme) == 1
+                and len(url) > 2
+                and url[1] == ":"
+                and url[2] in ("/", "\\")
+            ):
+                local_path = Path(url)
+            elif parsed.scheme:
+                logger.error(f"不支持的图片地址协议: {url}")
+                return None
+            else:
+                local_path = Path(url)
+
+            try:
+                if not local_path.is_file():
+                    raise FileNotFoundError(local_path)
+                return await asyncio.to_thread(local_path.read_bytes)
+            except OSError as e:
+                logger.error(f"读取本地图片失败: {local_path}, 错误: {e}")
+                return None
+
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url) as resp:
@@ -905,6 +951,26 @@ class ChatBubbleGenerator:
 
         return image.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
+    def _text_layout_metrics(self, text, font):
+        """返回文本换行后的宽高，尺寸均为高 DPI 坐标。"""
+        lines = self._wrap_text(text, font) if text else []
+        if not lines:
+            lines = [""]
+
+        draw = self._get_temp_draw()
+        bbox = font.getbbox("字")
+        line_height = bbox[3] - bbox[1] + 4 * self.SCALE
+        text_width = max(
+            self._safe_text_width(
+                draw,
+                line,
+                font,
+                self._font_configs["bubble"][1] * self.SCALE,
+            )
+            for line in lines
+        )
+        return lines, line_height, text_width, line_height * len(lines)
+
     # ------------------------------------------------------------------------------
     # 气泡创建方法
     # ------------------------------------------------------------------------------
@@ -914,21 +980,13 @@ class ChatBubbleGenerator:
         font = self.bubble_font
         padding = self.bubble_padding * SCALE
 
-        # 文本换行
-        lines = self._wrap_text(text, font)
-        if not lines:
-            lines = [""]
-
-        # 计算尺寸
-        draw = self._get_temp_draw()
-        bbox = font.getbbox("字")
-        line_height = bbox[3] - bbox[1] + 4 * SCALE
-
-        text_width = max(draw.textlength(line, font=font) for line in lines)
-        text_height = line_height * len(lines)
+        lines, line_height, text_width, text_height = self._text_layout_metrics(
+            text, font
+        )
+        line_count = len(lines)
 
         width = int(text_width + padding * 2)
-        height = int(text_height + padding * (2 + len(lines)))
+        height = int(text_height + padding * (2 + line_count))
 
         # 创建画布
         canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
@@ -939,8 +997,6 @@ class ChatBubbleGenerator:
             (0, 0, width, height),
             radius=self.corner_radius * SCALE,
             fill=self.bubble_bg_color,
-            outline=(230, 230, 230, 255),
-            width=2 * SCALE,
         )
 
         # 绘制文本
@@ -998,22 +1054,18 @@ class ChatBubbleGenerator:
             )
 
         # 处理文本部分
-        lines = self._wrap_text(text, font) if text else []
-
-        # 计算尺寸
-        draw = self._get_temp_draw()
-        bbox = font.getbbox("字")
-        line_height = bbox[3] - bbox[1] + 4 * SCALE
-
-        if lines:
-            text_width = max(draw.textlength(line, font=font) for line in lines)
-            text_height = line_height * len(lines)
+        if text:
+            lines, line_height, text_width, text_height = self._text_layout_metrics(
+                text, font
+            )
+            line_count = len(lines)
         else:
-            text_width = text_height = 0
+            lines = []
+            line_height = text_width = text_height = line_count = 0
 
         width = int(max(text_width, img_canvas.width) + padding * 2)
         height = int(
-            text_height + padding * (2 + len(lines)) + img_canvas.height + padding
+            text_height + padding * (2 + line_count) + img_canvas.height + padding
         )
 
         # 创建最终画布
@@ -1025,8 +1077,6 @@ class ChatBubbleGenerator:
             (0, 0, width, height),
             radius=self.corner_radius * SCALE,
             fill=self.bubble_bg_color,
-            outline=(230, 230, 230, 255),
-            width=2 * SCALE,
         )
 
         # 绘制文本
@@ -1038,7 +1088,7 @@ class ChatBubbleGenerator:
 
         # 粘贴图片
         img_x = (width - img_canvas.width) // 2
-        img_y = text_height + padding * (2 + len(lines) if lines else 1)
+        img_y = text_height + padding * (2 + line_count if lines else 1)
         canvas.paste(img_canvas, (img_x, img_y), img_canvas)
 
         # 缩放到正常尺寸
@@ -1120,7 +1170,7 @@ class ChatBubbleGenerator:
         background = self._create_background_canvas(*bg_size)
 
         # 添加气泡
-        background.paste(bubble, self.bubble_position, bubble)
+        background.alpha_composite(bubble, dest=self.bubble_position)
 
         # 添加头像
         self._add_avatar(background, avatar_path)
@@ -1184,7 +1234,7 @@ class ChatBubbleGenerator:
             background = self._create_background_canvas(*bg_size)
 
             # 先粘贴气泡
-            background.paste(bubble, bubble_pos, bubble)
+            background.alpha_composite(bubble, dest=bubble_pos)
 
             # 再粘贴静态元素，但避开气泡区域
             # 创建一个与背景相同大小的掩码
@@ -1279,7 +1329,22 @@ class ChatBubbleGenerator:
             if avatar_path and os.path.exists(avatar_path):
                 avatar = Image.open(avatar_path).convert("RGBA")
                 avatar = avatar.resize(self.avatar_size, Image.Resampling.LANCZOS)
-                background.paste(avatar, self.avatar_position, avatar)
+                mask_scale = self.SCALE
+                mask_size = (
+                    self.avatar_size[0] * mask_scale,
+                    self.avatar_size[1] * mask_scale,
+                )
+                circular_mask = Image.new("L", mask_size, 0)
+                ImageDraw.Draw(circular_mask).ellipse(
+                    (0, 0, mask_size[0] - 1, mask_size[1] - 1), fill=255
+                )
+                circular_mask = circular_mask.resize(
+                    self.avatar_size, Image.Resampling.LANCZOS
+                )
+                avatar.putalpha(
+                    ImageChops.multiply(avatar.getchannel("A"), circular_mask)
+                )
+                background.alpha_composite(avatar, dest=self.avatar_position)
             else:
                 self._create_default_avatar(background)
         except Exception as e:
