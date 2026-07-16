@@ -29,8 +29,15 @@ from .src.font_manager import (
 )
 
 MSG_ID_PATTERN = re.compile(r"\[MSG_ID:[^\]]*\]")
-PROHIBITED_LINE_START = frozenset("，。！？；：、,.!?;:）)]】》〉」』〕…—～~％%")
-PROHIBITED_LINE_END = frozenset("（([【《〈「『〔“‘")
+# CLReq 6.1.1 "strict" line-start/line-end prohibition subset.  This is a
+# deliberately documented Chinese tailoring of UAX #14 rather than a claim of
+# implementing every Unicode line-breaking class.
+# https://www.w3.org/TR/clreq/#h-prohibition-rules-for-line-start-and-line-end
+PROHIBITED_LINE_START = frozenset(
+    "、，。．：；！？‼⁇⁈⁉’”）〕】〗〙〛］｝〉》」』々·・—⸺‥…～／,.!?;:/)]}>'\"%"
+)
+PROHIBITED_LINE_END = frozenset("‘“（〔【〖〘〚［｛〈《「『／([<{/\"'")
+UNBREAKABLE_PUNCTUATION_PAIRS = frozenset({"——", "……"})
 
 
 def _with_font_snapshot(method):
@@ -52,7 +59,7 @@ def _with_font_snapshot(method):
     return wrapped
 
 
-@register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.3.10")
+@register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.3.11")
 class QQbox(Star):
     def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)
@@ -134,9 +141,6 @@ class QQbox(Star):
             .strip()
         )
         text = self._remove_message_id_markers(text)
-        if len(text) > 50:
-            yield event.plain_result("消息内容不能超过50字")
-            return
         bot = getattr(event, "bot", None)
         info = await self.get_qq_info(qq, bot)
         img_bytes = await asyncio.to_thread(
@@ -274,7 +278,9 @@ class QQbox(Star):
                 yield event.plain_result("字体已就绪，无需重试")
                 return
             self.font_manager.retry()
-            yield event.plain_result("已启动字体检查/下载任务，可用 /qb font status 查看进度")
+            yield event.plain_result(
+                "已启动字体检查/下载任务，可用 /qb font status 查看进度"
+            )
             return
         if action != "status":
             yield event.plain_result("用法：/qb font status 或 /qb font retry")
@@ -287,7 +293,7 @@ class QQbox(Star):
         help_text = """QQbox 插件使用说明
 1. 生成聊天气泡
    命令：/qb echo [QQ号] [消息内容]
-   说明：生成指定QQ用户发送消息的气泡图片，消息内容最多50字
+   说明：生成指定QQ用户发送消息的气泡图片，长文本会自动换行
 2. 设置头衔颜色
    命令：/qb sc [QQ号] [颜色编号]
    说明：设置用户的头衔气泡背景颜色
@@ -916,9 +922,7 @@ class ChatBubbleGenerator:
                 fit_end = start
                 for end in range(start + 1, len(units) + 1):
                     candidate = "".join(units[start:end])
-                    width = self._safe_text_width(
-                        draw, candidate, font, fallback_width
-                    )
+                    width = self._safe_text_width(draw, candidate, font, fallback_width)
                     if width <= max_width:
                         fit_end = end
                         continue
@@ -934,7 +938,7 @@ class ChatBubbleGenerator:
 
     @staticmethod
     def _text_units(text):
-        """保守地把组合符、变体选择符和 ZWJ Emoji 合并为文本单元。"""
+        """按 UAX #14 LB8a/LB9 保留组合序列，并按 CLReq 保留成对标点。"""
         units = []
         index = 0
         while index < len(text):
@@ -957,12 +961,15 @@ class ChatBubbleGenerator:
                     index += 2
                     continue
                 break
-            units.append(unit)
+            if units and units[-1] + unit in UNBREAKABLE_PUNCTUATION_PAIRS:
+                units[-1] += unit
+            else:
+                units.append(unit)
         return units
 
     @staticmethod
     def _find_legal_break(units, start, fit_end):
-        """返回离宽度边界最近的合法断点，必要时最小幅度超宽。"""
+        """选择宽度边界附近的 CLReq 合法断点，无解时按文本单元应急断行。"""
         if fit_end >= len(units):
             return len(units)
 

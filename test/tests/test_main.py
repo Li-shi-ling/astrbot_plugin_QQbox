@@ -262,6 +262,46 @@ def test_font_status_and_retry_commands(qqbox, plugin_module) -> None:
     assert qqbox.font_manager.retries == 1
 
 
+def test_echo_accepts_messages_longer_than_fifty_characters(
+    qqbox, monkeypatch
+) -> None:
+    text = "这是一段用来验证长消息不再被五十字限制拦截的文本内容。" * 3
+
+    class GeneratorStub:
+        is_load_fonts = True
+
+        @staticmethod
+        def create_chat_message(**kwargs):
+            assert kwargs["text"] == text
+            return BytesIO(b"rendered-image")
+
+    class EventStub:
+        message_str = f"qb echo 10001 {text}"
+        bot = None
+
+        @staticmethod
+        def plain_result(value):
+            return ("plain", value)
+
+        @staticmethod
+        def chain_result(value):
+            return ("chain", value)
+
+    async def get_qq_info(_qq, _bot):
+        return {"nickname": "tester"}
+
+    qqbox.qqbox = GeneratorStub()
+    monkeypatch.setattr(qqbox, "get_qq_info", get_qq_info)
+
+    async def collect():
+        return [item async for item in qqbox.echo(EventStub(), "10001")]
+
+    result = run_async(collect())
+
+    assert result[0][0] == "chain"
+    assert result[0][1][0].payload == b"rendered-image"
+
+
 def test_load_qq_data_reads_database_profiles(qqbox) -> None:
     assert run_async(qqbox._load_qq_data()) == {}
 
@@ -697,11 +737,20 @@ def test_safe_text_width_falls_back_for_missing_font_or_invalid_width(generator)
     assert generator._safe_text_width(BrokenDraw(), "", object(), 6) == 0
 
 
-def test_text_units_keep_combining_and_zwj_sequences_together(generator) -> None:
-    assert generator._text_units("A\u0301✈️👩‍💻B") == ["A\u0301", "✈️", "👩‍💻", "B"]
+def test_text_units_keep_combining_zwj_and_punctuation_pairs_together(generator) -> None:
+    assert generator._text_units("A\u0301✈️👩‍💻……——B") == [
+        "A\u0301",
+        "✈️",
+        "👩‍💻",
+        "……",
+        "——",
+        "B",
+    ]
 
 
-@pytest.mark.parametrize("punctuation", tuple("，。！？；：、）】》」』"))
+@pytest.mark.parametrize(
+    "punctuation", tuple("，。！？；：、）】》」』”’·‼⁇⁈⁉")
+)
 def test_find_legal_break_keeps_closing_punctuation_off_line_start(
     generator, punctuation
 ) -> None:
@@ -709,12 +758,22 @@ def test_find_legal_break_keeps_closing_punctuation_off_line_start(
     assert generator._find_legal_break(units, 0, 1) == 2
 
 
-@pytest.mark.parametrize("punctuation", tuple("（【《「『“‘"))
+@pytest.mark.parametrize("punctuation", tuple("（【《「『“‘〖〘〚"))
 def test_find_legal_break_keeps_opening_punctuation_off_line_end(
     generator, punctuation
 ) -> None:
     units = ["甲", punctuation, "乙"]
     assert generator._find_legal_break(units, 0, 2) == 1
+
+
+@pytest.mark.parametrize("solidus", ("/", "／"))
+def test_find_legal_break_keeps_solidus_off_both_line_edges(
+    generator, solidus
+) -> None:
+    units = ["甲", solidus, "乙"]
+
+    assert generator._find_legal_break(units, 0, 1) == 3
+    assert generator._find_legal_break(units, 0, 2) == 3
 
 
 def test_wrap_text_avoids_prohibited_punctuation_at_line_edges(

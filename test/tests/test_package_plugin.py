@@ -22,7 +22,7 @@ def test_read_metadata_name_and_version() -> None:
 
     assert package_plugin.read_metadata_name_and_version() == (
         "astrbot_plugin_QQbox",
-        "v1.3.10",
+        "v1.3.11",
     )
 
 
