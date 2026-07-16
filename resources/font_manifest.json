@@ -1,0 +1,13 @@
+{
+  "source_repository": "adobe-fonts/source-han-sans",
+  "pack_version": "2.005R-cn",
+  "url": "https://github.com/adobe-fonts/source-han-sans/releases/download/2.005R/19_SourceHanSansCN.zip",
+  "archive_sha256": "3a769d1b082ebd813cdb4c06ea57d29b340bce548edcc8e61976b78ca28e6236",
+  "max_bytes": 67108864,
+  "files": {
+    "extra_light": "SourceHanSansCN-ExtraLight.otf",
+    "normal": "SourceHanSansCN-Normal.otf",
+    "bold": "SourceHanSansCN-Bold.otf",
+    "license": "LICENSE.txt"
+  }
+}
