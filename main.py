@@ -3,14 +3,16 @@ import json
 import os
 import re
 import sqlite3
+import threading
 import unicodedata
+from functools import wraps
 from io import BytesIO
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 import aiohttp
 import httpx
-from PIL import Image, ImageChops, ImageDraw, ImageFont, ImageSequence
+from PIL import Image, ImageChops, ImageDraw, ImageSequence
 
 from astrbot.api import AstrBotConfig, logger
 from astrbot.api.event import AstrMessageEvent, filter
@@ -24,20 +26,38 @@ from .src.font_manager import (
     FontConfig,
     FontManager,
     FontState,
-    FontStatus,
 )
-
 
 MSG_ID_PATTERN = re.compile(r"\[MSG_ID:[^\]]*\]")
 PROHIBITED_LINE_START = frozenset("，。！？；：、,.!?;:）)]】》〉」』〕…—～~％%")
 PROHIBITED_LINE_END = frozenset("（([【《〈「『〔“‘")
 
 
-@register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.3.9")
+def _with_font_snapshot(method):
+    @wraps(method)
+    def wrapped(self, *args, **kwargs):
+        bundle = self._font_bundle
+        if bundle is None:
+            raise RuntimeError("字体尚未准备完成")
+        previous = getattr(self._render_font_state, "bundle", None)
+        self._render_font_state.bundle = bundle
+        try:
+            return method(self, *args, **kwargs)
+        finally:
+            if previous is None:
+                del self._render_font_state.bundle
+            else:
+                self._render_font_state.bundle = previous
+
+    return wrapped
+
+
+@register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.3.10")
 class QQbox(Star):
     def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)
         self.Config = config
+        self._migrate_legacy_font_config()
 
         # 获取圆角
         self.corner_radius = int(self.Config.get("corner_radius", 27))
@@ -247,7 +267,10 @@ class QQbox(Star):
         """查看字体状态或重试下载：/qb font status|retry"""
         action = action.strip().lower()
         if action == "retry":
-            if self.font_manager.status().state is FontState.READY:
+            if (
+                self.font_manager.status().state is FontState.READY
+                and not self.font_manager.needs_update
+            ):
                 yield event.plain_result("字体已就绪，无需重试")
                 return
             self.font_manager.retry()
@@ -415,6 +438,26 @@ class QQbox(Star):
         log(f"[qqbox] 昵称自定义字体: {self.nickname_font_path or '(默认)'}")
         log(f"[qqbox] 头衔自定义字体: {self.title_font_path or '(默认)'}")
 
+    def _migrate_legacy_font_config(self):
+        legacy_files = {
+            "bubble_font_path": "microsoft-yahei-semilight.ttc",
+            "nickname_font_path": "sourcehansanssc-extralight.otf",
+            "title_font_path": "microsoft-yahei-bold.ttc",
+        }
+        changed = False
+        for key, filename in legacy_files.items():
+            value = str(self.Config.get(key, "") or "")
+            normalized = value.replace("\\", "/").lower()
+            legacy_suffix = f"/astrbot_plugin_qqbox/resources/fonts/{filename}"
+            if normalized.endswith(legacy_suffix):
+                self.Config[key] = ""
+                changed = True
+        if changed and callable(getattr(self.Config, "save_config", None)):
+            try:
+                self.Config.save_config()
+            except OSError as exc:
+                logger.warning(f"[qqbox] 旧字体配置已在内存中清空，但写回失败: {exc}")
+
     def _log_font_not_ready_paths(self):
         if getattr(self, "_font_paths_logged_on_failure", False):
             return
@@ -533,13 +576,13 @@ class QQbox(Star):
         qq_title = self.qq_title_key.get(qq, {})
         self.qq_title_key[qq] = {
             "nickname": nickname
-            if not nickname is None
+            if nickname is not None
             else qq_title.get("nickname", None),
-            "color": color if not color is None else qq_title.get("color", None),
+            "color": color if color is not None else qq_title.get("color", None),
             "content": content
-            if not content is None
+            if content is not None
             else qq_title.get("content", None),
-            "notes": notes if not notes is None else qq_title.get("notes", None),
+            "notes": notes if notes is not None else qq_title.get("notes", None),
         }
         await self._save_qq_profile(qq)
 
@@ -552,7 +595,7 @@ class QQbox(Star):
                 payloads = {"user_id": int(qq), "no_cache": True}
                 qq_info = await bot.api.call_action("get_stranger_info", **payloads)
                 return qq_info.get("nick", None)
-            except:
+            except Exception:
                 logger.error("通过onebot获取nick失败")
 
     # 通过api获取nickname
@@ -781,6 +824,7 @@ class ChatBubbleGenerator:
         self._temp_draw = None
 
         self._font_bundle = None
+        self._render_font_state = threading.local()
 
         # 布局参数
         self.bubble_padding = bubble_padding
@@ -818,24 +862,30 @@ class ChatBubbleGenerator:
 
     @property
     def bubble_font(self):
-        return self._font_bundle.bubble if self._font_bundle else None
+        bundle = self._current_font_bundle()
+        return bundle.bubble if bundle else None
 
     @property
     def nickname_font(self):
-        return self._font_bundle.nickname if self._font_bundle else None
+        bundle = self._current_font_bundle()
+        return bundle.nickname if bundle else None
 
     @property
     def title_font(self):
-        return self._font_bundle.title if self._font_bundle else None
+        bundle = self._current_font_bundle()
+        return bundle.title if bundle else None
 
     @property
     def title_SCALE_font(self):
-        return self._font_bundle.title_scaled if self._font_bundle else None
+        bundle = self._current_font_bundle()
+        return bundle.title_scaled if bundle else None
 
     def install_font_bundle(self, bundle: FontBundle):
         """一次性安装完整字体快照，避免部分字体对渲染可见。"""
-        if self._font_bundle is None:
-            self._font_bundle = bundle
+        self._font_bundle = bundle
+
+    def _current_font_bundle(self):
+        return getattr(self._render_font_state, "bundle", None) or self._font_bundle
 
     # ------------------------------------------------------------------------------
     # 工具方法
@@ -926,7 +976,9 @@ class ChatBubbleGenerator:
             if is_legal(index):
                 return index
 
-        for index in range(fit_end + 1, len(units)):
+        for index in range(fit_end + 1, len(units) + 1):
+            if index == len(units):
+                return index
             if is_legal(index):
                 return index
 
@@ -1152,6 +1204,7 @@ class ChatBubbleGenerator:
     # ------------------------------------------------------------------------------
     # 主要接口（保持签名不变）
     # ------------------------------------------------------------------------------
+    @_with_font_snapshot
     def create_chat_message(self, qq, text, image, qq_title_key=None, user_info=None):
         if user_info is None:
             raise ValueError("需要提供user_info参数，避免同步HTTP调用")
@@ -1198,6 +1251,7 @@ class ChatBubbleGenerator:
         img_bytes.seek(0)
         return img_bytes
 
+    @_with_font_snapshot
     def create_chat_message_by_gif(
         self, qq, text, image, qq_title_key=None, user_info=None
     ):
@@ -1313,7 +1367,7 @@ class ChatBubbleGenerator:
         ]
 
         # 如果有头衔，调整宽度
-        if title_info and (not title_info.get("content", None) is None):
+        if title_info and title_info.get("content", None) is not None:
             title_width = (
                 draw.textlength(title_info.get("content", ""), font=self.title_font)
                 + self.bubble_padding
@@ -1461,8 +1515,6 @@ class ChatBubbleGenerator:
 
     def _create_single_gif_bubble_frame(self, frame, apply_scaling=True):
         """优化版本：快速创建单帧气泡，避免重复初始化"""
-        SCALE = self.SCALE if apply_scaling else 1  # 布局计算时不需要缩放
-
         # 调整图片大小
         if apply_scaling:
             # 在qq会被tx压缩图片,所以要先放大图片

@@ -5,12 +5,14 @@ import json
 import sqlite3
 from io import BytesIO
 from pathlib import Path
+from types import SimpleNamespace
 
 import httpx
 import pytest
 from PIL import Image, ImageSequence
 
 from data.plugins.astrbot_plugin_QQbox.test.conftest import FakeEvent
+from data.plugins.astrbot_plugin_QQbox.src.font_manager import FontStatus
 
 
 def run_async(coro):
@@ -117,7 +119,7 @@ def test_font_config_schema_defaults_to_persistent_downloads(plugin_module) -> N
     assert schema["font_github_mirror"]["default"] == ""
 
 
-def test_init_keeps_fonts_in_persistent_dir_when_plugin_location_changes(
+def test_init_migrates_old_bundled_paths_and_keeps_persistent_font_root(
     plugin_module, tmp_path: Path, monkeypatch
 ) -> None:
     monkeypatch.setattr(plugin_module.StarTools, "get_data_dir", staticmethod(lambda: tmp_path))
@@ -138,7 +140,38 @@ def test_init_keeps_fonts_in_persistent_dir_when_plugin_location_changes(
 
     assert instance.font_manager.font_root == (tmp_path / "fonts").resolve()
     assert not instance.font_manager.font_root.is_relative_to(plugin_dir)
-    assert instance.bubble_font_path.startswith("/missing/")
+    assert instance.bubble_font_path == ""
+    assert instance.nickname_font_path == ""
+    assert instance.title_font_path == ""
+
+
+def test_legacy_font_config_is_saved_but_external_paths_are_preserved(
+    plugin_module, tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setattr(plugin_module.StarTools, "get_data_dir", staticmethod(lambda: tmp_path))
+
+    class ConfigStub(dict):
+        def __init__(self):
+            super().__init__(
+                bubble_font_path=(
+                    "C:/astrbot/data/plugins/astrbot_plugin_QQbox/resources/fonts/"
+                    "Microsoft-YaHei-Semilight.ttc"
+                ),
+                nickname_font_path="D:/user-fonts/custom.otf",
+                title_font_path="",
+            )
+            self.saved = 0
+
+        def save_config(self):
+            self.saved += 1
+
+    config = ConfigStub()
+    instance = plugin_module.QQbox(context=object(), config=config)
+
+    assert config["bubble_font_path"] == ""
+    assert config["nickname_font_path"] == "D:/user-fonts/custom.otf"
+    assert config.saved == 1
+    assert instance.nickname_font_path == "D:/user-fonts/custom.otf"
 
 
 def test_log_font_not_ready_paths_prints_runtime_paths_once(qqbox, plugin_module, monkeypatch) -> None:
@@ -195,9 +228,10 @@ def test_font_status_and_retry_commands(qqbox, plugin_module) -> None:
     class FontManagerStub:
         def __init__(self):
             self.retries = 0
+            self.needs_update = False
 
         def status(self):
-            return plugin_module.FontStatus(
+            return FontStatus(
                 state=plugin_module.FontState.DOWNLOADING,
                 version="2.005R-cn",
                 cache_path=Path("/persistent/fonts/2.005R-cn"),
@@ -722,6 +756,42 @@ def test_wrap_text_makes_progress_when_one_unit_is_too_wide(generator, monkeypat
     monkeypatch.setattr(generator, "_safe_text_width", lambda *_args: 10)
 
     assert generator._wrap_text("👩‍💻A", object()) == ["👩‍💻", "A"]
+
+
+def test_wrap_text_minimally_overflows_instead_of_ending_with_opening_mark(
+    generator, monkeypatch
+) -> None:
+    monkeypatch.setattr(generator, "max_width", 1)
+    monkeypatch.setattr(generator, "bubble_padding", 0)
+    monkeypatch.setattr(generator, "SCALE", 1)
+    monkeypatch.setattr(
+        generator,
+        "_safe_text_width",
+        lambda _draw, text, _font, _fallback: len(text),
+    )
+
+    assert generator._wrap_text("（甲", object()) == ["（甲"]
+
+
+def test_render_uses_one_bundle_snapshot_during_hot_swap(generator, plugin_module) -> None:
+    first = SimpleNamespace(
+        bubble="first", nickname="first", title="first", title_scaled="first"
+    )
+    second = SimpleNamespace(
+        bubble="second", nickname="second", title="second", title_scaled="second"
+    )
+    generator.install_font_bundle(first)
+    observed = []
+
+    def render(self):
+        observed.append(self.bubble_font)
+        self.install_font_bundle(second)
+        observed.append(self.bubble_font)
+
+    plugin_module._with_font_snapshot(render)(generator)
+
+    assert observed == ["first", "first"]
+    assert generator.bubble_font == "second"
 
 
 def test_wrap_text_uses_safe_width_fallback_when_pillow_measurement_fails(

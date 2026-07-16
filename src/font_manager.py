@@ -8,13 +8,12 @@ import shutil
 import time
 import uuid
 import zipfile
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path, PurePosixPath
-from typing import Awaitable, Callable
 
 from PIL import ImageFont
-
 
 DownloadFunction = Callable[[str, Path, Callable[[dict], None]], Awaitable[None]]
 _ROOT_LOCKS: dict[Path, asyncio.Lock] = {}
@@ -162,6 +161,7 @@ class FontManager:
         self._downloaded = 0
         self._total = 0
         self._bundle: FontBundle | None = None
+        self._active_cache_dir: Path | None = None
         self._prepare_task: asyncio.Task[None] | None = None
         self._ready_event = asyncio.Event()
         self._owned_staging: set[Path] = set()
@@ -188,7 +188,11 @@ class FontManager:
     def retry(self) -> asyncio.Task[None]:
         if self._prepare_task is not None and not self._prepare_task.done():
             return self._prepare_task
-        if self._state is FontState.READY and self._prepare_task is not None:
+        if (
+            self._state is FontState.READY
+            and not self.needs_update
+            and self._prepare_task is not None
+        ):
             return self._prepare_task
         self._error = None
         self._ready_event.clear()
@@ -197,8 +201,8 @@ class FontManager:
     def status(self) -> FontStatus:
         return FontStatus(
             state=self._state,
-            version=self.manifest.pack_version,
-            cache_path=self.version_dir,
+            version=(self._bundle.version if self._bundle else self.manifest.pack_version),
+            cache_path=self._active_cache_dir or self.version_dir,
             error=self._error,
             downloaded=self._downloaded,
             total=self._total,
@@ -206,6 +210,13 @@ class FontManager:
 
     def get_bundle(self) -> FontBundle | None:
         return self._bundle
+
+    @property
+    def needs_update(self) -> bool:
+        return (
+            self._bundle is not None
+            and self._bundle.version != self.manifest.pack_version
+        )
 
     async def wait_ready(self) -> None:
         await self._ready_event.wait()
@@ -250,6 +261,7 @@ class FontManager:
             if self._on_ready is not None:
                 self._on_ready(bundle)
             self._bundle = bundle
+            self._active_cache_dir = cache_dir
             self._state = FontState.READY
             self._ready_event.set()
         except asyncio.CancelledError:
@@ -275,7 +287,10 @@ class FontManager:
             if not value or not value.strip():
                 result[role] = None
                 continue
-            path = Path(value).expanduser().resolve()
+            path = Path(value).expanduser()
+            if not path.is_absolute():
+                raise FontConfigError(f"{role} 字体配置必须使用绝对路径: {value}")
+            path = path.resolve()
             if not path.is_file():
                 raise FontConfigError(f"{role} 字体配置路径不存在: {path}")
             result[role] = path
@@ -489,7 +504,7 @@ class FontManager:
                 str(metadata.get("pack_version") or directory.name),
             )
             return True
-        except (OSError, json.JSONDecodeError, TypeError):
+        except (OSError, json.JSONDecodeError, TypeError, FontVerifyError):
             return False
 
     def _find_previous_cache(self) -> Path | None:
@@ -559,10 +574,10 @@ class FontManager:
             return False
         try:
             os.kill(pid, 0)
-        except ProcessLookupError:
-            return False
         except PermissionError:
             return True
+        except (ProcessLookupError, OSError):
+            return False
         return True
 
     def _inside(self, path: Path) -> Path:
