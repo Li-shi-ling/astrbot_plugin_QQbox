@@ -12,7 +12,7 @@ from urllib.parse import unquote, urlparse
 
 import aiohttp
 import httpx
-from PIL import Image, ImageChops, ImageDraw, ImageSequence
+from PIL import Image, ImageChops, ImageDraw, ImageFont, ImageSequence
 
 from astrbot.api import AstrBotConfig, logger
 from astrbot.api.event import AstrMessageEvent, filter
@@ -20,13 +20,17 @@ from astrbot.api.message_components import Image as BotImage
 from astrbot.api.message_components import Reply
 from astrbot.api.star import Context, Star, StarTools, register
 
-from .src.db.repo import QQProfileRepo
+from .src.db.database import QQBoxDBManager
+from .src.db.repo import LayoutPresetRepo, QQProfileRepo
 from .src.font_manager import (
     FontBundle,
     FontConfig,
     FontManager,
+    FontPaths,
     FontState,
 )
+from .src.layout import LayoutValidationError, color_tuple, normalize_layout
+from .src.web_pages import QQBoxWebController
 
 MSG_ID_PATTERN = re.compile(r"\[MSG_ID:[^\]]*\]")
 # CLReq 6.1.1 "strict" line-start/line-end prohibition subset.  This is a
@@ -59,7 +63,7 @@ def _with_font_snapshot(method):
     return wrapped
 
 
-@register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.3.18")
+@register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.4.0")
 class QQbox(Star):
     def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)
@@ -104,7 +108,9 @@ class QQbox(Star):
         self.qq_data_file = self.data_dir / "qq_data.json"
         self.legacy_qq_data_files = self._get_legacy_qq_data_files()
         self.qq_db_file = self.db_dir / "qqbox.db"
-        self.qq_profile_repo = QQProfileRepo(self.qq_db_file)
+        self.db_manager = QQBoxDBManager(self.qq_db_file)
+        self.qq_profile_repo = QQProfileRepo(self.qq_db_file, self.db_manager)
+        self.layout_preset_repo = LayoutPresetRepo(self.qq_db_file, self.db_manager)
 
         logger.debug(f"[qqbox] 使用:{self.qq_db_file}作为持久化数据存储位置")
 
@@ -144,6 +150,9 @@ class QQbox(Star):
         # 初始化HTTP客户端（异步）
         self.http_client = None
         self._font_paths_logged_on_failure = False
+        self.active_layout_preset = None
+        self.web_controller = QQBoxWebController(self)
+        self.web_controller.register(context)
 
     # 插件函数
     @filter.command_group("qb")
@@ -170,7 +179,7 @@ class QQbox(Star):
         bot = getattr(event, "bot", None)
         info = await self.get_qq_info(qq, bot)
         img_bytes = await asyncio.to_thread(
-            self.qqbox.create_chat_message,
+            self.create_chat_message,
             qq=qq,
             text=text,
             image=None,
@@ -200,7 +209,7 @@ class QQbox(Star):
         bot = getattr(event, "bot", None)
         info = await self.get_qq_info(qq, bot)
         img_bytes = await asyncio.to_thread(
-            self.qqbox.create_chat_message_by_gif,
+            self.create_chat_message_by_gif,
             qq=qq,
             text=None,
             image=pil_gif,
@@ -227,7 +236,7 @@ class QQbox(Star):
             return
         pil_image = Image.open(BytesIO(image_bytes))
         img_bytes = await asyncio.to_thread(
-            self.qqbox.create_chat_message,
+            self.create_chat_message,
             qq=qq,
             text=None,
             image=pil_image,
@@ -352,6 +361,7 @@ class QQbox(Star):
         await self.qq_profile_repo.init_db()
         await self._migrate_legacy_qq_data()
         self.qq_title_key = await self._load_qq_data()
+        await self._load_active_layout_preset()
         self.font_manager.start()
         logger.info("QQbox 插件初始化完成")
 
@@ -688,6 +698,173 @@ class QQbox(Star):
         }
         await self._save_qq_profile(qq)
 
+    async def _load_active_layout_preset(self):
+        preset = await self.layout_preset_repo.get_active()
+        if preset is None:
+            self.active_layout_preset = None
+            return
+        try:
+            preset["config"] = normalize_layout(preset["config"])
+            self._validate_layout_fonts(preset["config"])
+        except (LayoutValidationError, RuntimeError) as exc:
+            logger.error(f"[qqbox] 加载当前布局预设失败: {exc}")
+            self.active_layout_preset = None
+            return
+        self.active_layout_preset = preset
+
+    def set_active_layout_preset(self, preset):
+        self.active_layout_preset = preset
+
+    def available_font_files(self) -> dict[str, Path]:
+        """Return safe font IDs mapped to files available to Page presets."""
+        available: dict[str, Path] = {}
+        bundle = self.qqbox._current_font_bundle()
+        bundle_paths = getattr(bundle, "paths", None)
+        if bundle_paths is not None:
+            for role in ("bubble", "nickname", "title"):
+                path = Path(getattr(bundle_paths, role)).resolve()
+                if path.is_file():
+                    available[f"current-{role}"] = path
+
+        root = self.font_manager.font_root.resolve()
+        if root.is_dir():
+            for path in root.rglob("*"):
+                if not path.is_file() or path.suffix.lower() not in {
+                    ".ttf",
+                    ".ttc",
+                    ".otf",
+                }:
+                    continue
+                resolved = path.resolve()
+                try:
+                    relative = resolved.relative_to(root)
+                except ValueError:
+                    continue
+                if ".staging" in relative.parts:
+                    continue
+                available[relative.as_posix()] = resolved
+        return available
+
+    def _validate_layout_fonts(self, layout):
+        available = self.available_font_files()
+        for role in ("bubble", "nickname", "title"):
+            font_id = layout[role]["font"]
+            if font_id and font_id not in available:
+                raise LayoutValidationError(f"{role}.font 指定的字体不存在")
+
+    @staticmethod
+    def _layout_font_path(layout, role, available):
+        font_id = layout[role]["font"]
+        if font_id:
+            return available[font_id]
+        current = available.get(f"current-{role}")
+        if current is None:
+            raise RuntimeError(f"{role} 字体尚未准备")
+        return current
+
+    def _build_layout_generator(self, raw_layout):
+        layout = normalize_layout(raw_layout)
+        self._validate_layout_fonts(layout)
+        available = self.available_font_files()
+        paths = FontPaths(
+            bubble=self._layout_font_path(layout, "bubble", available),
+            nickname=self._layout_font_path(layout, "nickname", available),
+            title=self._layout_font_path(layout, "title", available),
+        )
+        scale = self.qqbox.SCALE
+        bundle = FontBundle(
+            bubble=ImageFont.truetype(
+                str(paths.bubble), layout["bubble"]["font_size"] * scale
+            ),
+            nickname=ImageFont.truetype(
+                str(paths.nickname), layout["nickname"]["font_size"]
+            ),
+            nickname_scaled=ImageFont.truetype(
+                str(paths.nickname), layout["nickname"]["font_size"] * scale
+            ),
+            title=ImageFont.truetype(str(paths.title), layout["title"]["font_size"]),
+            title_scaled=ImageFont.truetype(
+                str(paths.title), layout["title"]["font_size"] * scale
+            ),
+            paths=paths,
+            version="layout-preset",
+        )
+        generator = ChatBubbleGenerator(
+            bubble_font_path=str(paths.bubble),
+            nickname_font_path=str(paths.nickname),
+            title_font_path=str(paths.title),
+            avatar_image_path=self.avatar_image_path,
+            bubble_font_size=layout["bubble"]["font_size"],
+            nickname_font_size=layout["nickname"]["font_size"],
+            title_font_size=layout["title"]["font_size"],
+            bubble_padding=layout["bubble"]["padding"],
+            title_padding_x=layout["title"]["padding_x"],
+            title_padding_y=layout["title"]["padding_y"],
+            bubble_bg_color=color_tuple(layout["bubble"]["background_color"]),
+            text_color=color_tuple(layout["bubble"]["text_color"]),
+            nickname_color=color_tuple(layout["nickname"]["color"]),
+            title_color=color_tuple(layout["title"]["color"]),
+            corner_radius=layout["bubble"]["corner_radius"],
+            avatar_size=(layout["avatar"]["width"], layout["avatar"]["height"]),
+            margin=layout["canvas"]["margin"],
+            max_width=layout["bubble"]["max_width"],
+            bubble_position=(layout["bubble"]["x"], layout["bubble"]["y"]),
+            avatar_position=(layout["avatar"]["x"], layout["avatar"]["y"]),
+            title_position=(layout["title"]["x"], layout["title"]["y"]),
+            nickname_position=(
+                layout["nickname"]["x"],
+                layout["nickname"]["y"],
+            ),
+            canvas_size=(layout["canvas"]["width"], layout["canvas"]["height"]),
+            background_color=layout["canvas"]["background_color"],
+        )
+        generator.install_font_bundle(bundle)
+        return generator
+
+    def _active_generator(self):
+        active_layout_preset = getattr(self, "active_layout_preset", None)
+        if not active_layout_preset:
+            return self.qqbox
+        return self._build_layout_generator(active_layout_preset["config"])
+
+    def create_chat_message(self, **kwargs):
+        return self._active_generator().create_chat_message(**kwargs)
+
+    def create_chat_message_by_gif(self, **kwargs):
+        return self._active_generator().create_chat_message_by_gif(**kwargs)
+
+    def render_layout_preview(self, layout, payload):
+        generator = self._build_layout_generator(layout)
+        qq = str(payload.get("qq") or "10001")
+        profile = self.qq_title_key.get(qq, {})
+        display_name = str(
+            payload.get("display_name")
+            or profile.get("notes")
+            or profile.get("nickname")
+            or "预览用户"
+        )[:64]
+        title = str(payload.get("title") or profile.get("content") or "示例头衔")[:64]
+        try:
+            color = int(payload.get("color", profile.get("color") or 4))
+        except (TypeError, ValueError):
+            color = 4
+        if color not in generator.color_map:
+            color = 4
+        text = str(payload.get("text") or "这是一条可实时调整布局的示例气泡。")[:500]
+        avatar_path = next(self.avatar_image_path.glob(f"{qq}-*.png"), None)
+        return generator.create_chat_message(
+            qq=qq,
+            text=text,
+            image=None,
+            qq_title_key={
+                qq: {"notes": display_name, "content": title, "color": color}
+            },
+            user_info={
+                "name": display_name,
+                "avatar_path": str(avatar_path) if avatar_path else None,
+            },
+        )
+
     # 通过onebot获取nickname
     async def get_nickname_by_onebot(self, qq, bot=None):
         if bot is None:
@@ -902,6 +1079,9 @@ class ChatBubbleGenerator:
         max_width=640,
         bubble_position=(120, 60),
         avatar_position=(23, 10),
+        title_position=None,
+        nickname_position=None,
+        canvas_size=None,
         background_color="#F0F0F2",
     ):
         # 常量配置
@@ -941,6 +1121,9 @@ class ChatBubbleGenerator:
         self.avatar_size = avatar_size
         self.bubble_position = bubble_position
         self.avatar_position = avatar_position
+        self.title_position = title_position
+        self.nickname_position = nickname_position
+        self.canvas_size = canvas_size
 
         # 样式参数
         self.bubble_bg_color = bubble_bg_color
@@ -950,7 +1133,8 @@ class ChatBubbleGenerator:
         self.avatar_image_path = avatar_image_path
 
         # 背景颜色处理
-        if background_color.startswith("#"):
+        if isinstance(background_color, str) and background_color.startswith("#"):
+            background_color = background_color[:7]
             self.background_color = tuple(
                 int(background_color[i : i + 2], 16) for i in (1, 3, 5)
             ) + (255,)
@@ -1603,17 +1787,46 @@ class ChatBubbleGenerator:
             )
             title_width = title_width_scaled // self.SCALE
             title_height = title_height_scaled // self.SCALE
-            name_x = self.bubble_position[0] + title_width + self.title_bubble_name_gap
+            title_x, title_y = self.title_position or (
+                self.bubble_position[0],
+                self.avatar_position[1] + self.title_bubble_offset,
+            )
+            name_x = (
+                self.nickname_position[0]
+                if self.nickname_position
+                else title_x + title_width + self.title_bubble_name_gap
+            )
             width_candidates.append(name_x + nickname_width)
-            title_top = self.avatar_position[1] + self.title_bubble_offset
-            nickname_y = self._centered_nickname_y(title_height, nickname)
+            title_top = title_y
+            nickname_y = (
+                self.nickname_position[1]
+                if self.nickname_position
+                else self._centered_nickname_y(title_height, nickname)
+            )
             nickname_bbox = self.nickname_font.getbbox(nickname)
+            width_candidates.append(title_x + title_width + self.margin)
             height_candidates.extend(
                 (
                     title_top + title_height + self.margin,
                     nickname_y + nickname_bbox[3] + self.margin,
                 )
             )
+
+        if self.nickname_position and not (title_info and title_info.get("content")):
+            nickname_bbox = self.nickname_font.getbbox(nickname)
+            width_candidates.append(
+                self.nickname_position[0]
+                + nickname_bbox[2]
+                - nickname_bbox[0]
+                + self.margin
+            )
+            height_candidates.append(
+                self.nickname_position[1] + nickname_bbox[3] + self.margin
+            )
+
+        if self.canvas_size:
+            width_candidates.append(self.canvas_size[0])
+            height_candidates.append(self.canvas_size[1])
 
         return int(max(width_candidates)), int(max(height_candidates))
 
@@ -1666,33 +1879,28 @@ class ChatBubbleGenerator:
 
             # 创建头衔气泡
             title_bubble = self.create_title_bubble(title_content, title_color)
-            background.paste(
-                title_bubble,
-                (
-                    self.bubble_position[0],
-                    self.avatar_position[1] + self.title_bubble_offset,
-                ),
-                title_bubble,
+            title_position = self.title_position or (
+                self.bubble_position[0],
+                self.avatar_position[1] + self.title_bubble_offset,
             )
+            background.paste(title_bubble, title_position, title_bubble)
 
-            name_x = (
-                self.bubble_position[0]
-                + title_bubble.width
-                + self.title_bubble_name_gap
+            name_x = title_position[0] + title_bubble.width + self.title_bubble_name_gap
+            nickname_position = self.nickname_position or (
+                name_x,
+                self._centered_nickname_y(title_bubble.height, nickname),
             )
             self._draw_supersampled_nickname(
                 background,
-                (
-                    name_x,
-                    self._centered_nickname_y(title_bubble.height, nickname),
-                ),
+                nickname_position,
                 nickname,
             )
         else:
             # 只绘制昵称
             self._draw_supersampled_nickname(
                 background,
-                (self.bubble_position[0], self.avatar_position[1]),
+                self.nickname_position
+                or (self.bubble_position[0], self.avatar_position[1]),
                 nickname,
             )
 

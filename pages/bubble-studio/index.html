@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>QQbox 气泡工作室</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="studio">
+      <header>
+        <div>
+          <p class="eyebrow">QQBOX BUBBLE STUDIO</p>
+          <h1>预生成示范与布局预设</h1>
+          <p class="subtitle">填写数值或直接拖动头像、头衔、昵称和气泡，随后调用真实生成接口查看结果。</p>
+        </div>
+        <div id="status" class="status" role="status">正在连接…</div>
+      </header>
+
+      <section class="preset-bar panel">
+        <label>预设<select id="preset-select"></select></label>
+        <label class="preset-name">名称<input id="preset-name" maxlength="64" placeholder="例如：紧凑布局" /></label>
+        <button id="new-preset" type="button">新建</button>
+        <button id="save-preset" class="primary" type="button">保存</button>
+        <button id="activate-preset" type="button">设为当前</button>
+        <button id="deactivate-preset" type="button">停用预设</button>
+        <button id="reset-preset" type="button">一键重置</button>
+        <button id="delete-preset" class="danger" type="button">删除</button>
+      </section>
+
+      <section class="main-grid">
+        <div class="preview-column">
+          <section class="panel canvas-panel">
+            <div class="section-heading">
+              <div><p class="eyebrow">DRAG CANVAS</p><h2>拖拽布局</h2></div>
+              <span class="hint">拖动元素会实时回填 X / Y</span>
+            </div>
+            <div id="stage-wrap">
+              <div id="stage">
+                <div class="part avatar-part" data-section="avatar">头像</div>
+                <div class="part title-part" data-section="title">LV100 示例头衔</div>
+                <div class="part nickname-part" data-section="nickname">预览用户</div>
+                <div class="part bubble-part" data-section="bubble">这是一条示例气泡文字，可拖动调整位置。</div>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel real-preview">
+            <div class="section-heading">
+              <div><p class="eyebrow">REAL RENDER</p><h2>真实生成预览</h2></div>
+              <button id="generate-preview" class="primary" type="button">生成示例气泡</button>
+            </div>
+            <div class="sample-fields">
+              <label>QQ<input id="sample-qq" value="10001" inputmode="numeric" /></label>
+              <label>名称<input id="sample-name" value="预览用户" maxlength="64" /></label>
+              <label>头衔<input id="sample-title" value="示例头衔" maxlength="64" /></label>
+              <label>颜色<select id="sample-color"><option value="1">灰</option><option value="2">紫</option><option value="3">黄</option><option value="4" selected>绿</option></select></label>
+              <label class="sample-text">气泡正文<textarea id="sample-text" maxlength="500">这是一条可实时调整布局的示例气泡。</textarea></label>
+            </div>
+            <div id="render-output" class="render-output">
+              <span>点击“生成示例气泡”调用后端 Pillow 接口。</span>
+              <img id="preview-image" alt="气泡生成预览" hidden />
+            </div>
+          </section>
+        </div>
+
+        <aside class="panel controls-panel">
+          <div class="section-heading"><div><p class="eyebrow">PARAMETERS</p><h2>全部参数</h2></div><span class="hint">向下滚动查看更多</span></div>
+          <div id="controls"></div>
+        </aside>
+      </section>
+    </main>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

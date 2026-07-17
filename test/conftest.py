@@ -92,6 +92,7 @@ def _install_astrbot_stubs() -> None:
     event_module = types.ModuleType("astrbot.api.event")
     message_module = types.ModuleType("astrbot.api.message_components")
     star_module = types.ModuleType("astrbot.api.star")
+    web_module = types.ModuleType("astrbot.api.web")
 
     api_module.AstrBotConfig = dict
     api_module.logger = _LoggerStub()
@@ -103,12 +104,22 @@ def _install_astrbot_stubs() -> None:
     star_module.Star = _Star
     star_module.StarTools = _StarTools
     star_module.register = _register
+    web_module.request = SimpleNamespace(query={})
+    web_module.json_response = lambda data=None, **kwargs: {
+        "data": data,
+        "status_code": kwargs.get("status_code", 200),
+    }
+    web_module.error_response = lambda message, **kwargs: {
+        "error": message,
+        "status_code": kwargs.get("status_code", 400),
+    }
 
     sys.modules["astrbot"] = astrbot_module
     sys.modules["astrbot.api"] = api_module
     sys.modules["astrbot.api.event"] = event_module
     sys.modules["astrbot.api.message_components"] = message_module
     sys.modules["astrbot.api.star"] = star_module
+    sys.modules["astrbot.api.web"] = web_module
 
 
 _install_astrbot_stubs()
@@ -135,8 +146,15 @@ def qqbox(plugin_module, tmp_path: Path):
     instance.qq_data_file = tmp_path / "qq_data.json"
     instance.legacy_qq_data_files = [instance.qq_data_file]
     instance.qq_db_file = tmp_path / "db" / "qqbox.db"
-    instance.qq_profile_repo = plugin_module.QQProfileRepo(instance.qq_db_file)
+    instance.db_manager = plugin_module.QQBoxDBManager(instance.qq_db_file)
+    instance.qq_profile_repo = plugin_module.QQProfileRepo(
+        instance.qq_db_file, instance.db_manager
+    )
+    instance.layout_preset_repo = plugin_module.LayoutPresetRepo(
+        instance.qq_db_file, instance.db_manager
+    )
     instance.qq_title_key = {}
+    instance.active_layout_preset = None
     instance.data_dir = tmp_path
     instance.avatar_image_path = tmp_path / "avatars"
     instance.bubble_font_path = str(tmp_path / "bubble.ttf")
@@ -147,7 +165,9 @@ def qqbox(plugin_module, tmp_path: Path):
     instance.http_client = None
     instance.font_manager = plugin_module.FontManager(
         tmp_path,
-        Path(plugin_module.__file__).resolve().parent / "resources" / "font_manifest.json",
+        Path(plugin_module.__file__).resolve().parent
+        / "resources"
+        / "font_manifest.json",
         plugin_module.FontConfig(auto_download=False),
     )
     return instance

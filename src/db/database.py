@@ -5,7 +5,12 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
-from .tables import CREATE_QQ_PROFILE_TABLE_SQL, CREATE_QQ_PROFILE_UPDATED_INDEX_SQL
+from .tables import (
+    CREATE_LAYOUT_PRESET_ACTIVE_INDEX_SQL,
+    CREATE_LAYOUT_PRESET_TABLE_SQL,
+    CREATE_QQ_PROFILE_TABLE_SQL,
+    CREATE_QQ_PROFILE_UPDATED_INDEX_SQL,
+)
 
 
 class QQBoxDBManager:
@@ -36,6 +41,8 @@ class QQBoxDBManager:
             conn.execute("PRAGMA busy_timeout=5000")
             conn.execute(CREATE_QQ_PROFILE_TABLE_SQL)
             conn.execute(CREATE_QQ_PROFILE_UPDATED_INDEX_SQL)
+            conn.execute(CREATE_LAYOUT_PRESET_TABLE_SQL)
+            conn.execute(CREATE_LAYOUT_PRESET_ACTIVE_INDEX_SQL)
             conn.execute("PRAGMA optimize")
 
     def _connect(self) -> sqlite3.Connection:
@@ -44,7 +51,9 @@ class QQBoxDBManager:
         conn.execute("PRAGMA busy_timeout=5000")
         return conn
 
-    async def fetch_all(self, sql: str, params: tuple[Any, ...] = ()) -> list[sqlite3.Row]:
+    async def fetch_all(
+        self, sql: str, params: tuple[Any, ...] = ()
+    ) -> list[sqlite3.Row]:
         await self.init_db()
         return await asyncio.to_thread(self._fetch_all_sync, sql, params)
 
@@ -56,6 +65,33 @@ class QQBoxDBManager:
         await self.init_db()
         async with self._write_lock:
             await asyncio.to_thread(self._execute_sync, sql, params)
+
+    async def execute_returning_id(self, sql: str, params: tuple[Any, ...] = ()) -> int:
+        await self.init_db()
+        async with self._write_lock:
+            return await asyncio.to_thread(self._execute_returning_id_sync, sql, params)
+
+    def _execute_returning_id_sync(self, sql: str, params: tuple[Any, ...]) -> int:
+        with self._connect() as conn:
+            cursor = conn.execute(sql, params)
+            conn.commit()
+            return int(cursor.lastrowid)
+
+    async def execute_transaction(
+        self, statements: list[tuple[str, tuple[Any, ...]]]
+    ) -> None:
+        await self.init_db()
+        async with self._write_lock:
+            await asyncio.to_thread(self._execute_transaction_sync, statements)
+
+    def _execute_transaction_sync(
+        self, statements: list[tuple[str, tuple[Any, ...]]]
+    ) -> None:
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            for sql, params in statements:
+                conn.execute(sql, params)
+            conn.commit()
 
     def _execute_sync(self, sql: str, params: tuple[Any, ...]) -> None:
         with self._connect() as conn:
@@ -80,7 +116,9 @@ class QQBoxDBManager:
     ) -> None:
         await self.init_db()
         async with self._write_lock:
-            await asyncio.to_thread(self._replace_all_sync, delete_sql, insert_sql, rows)
+            await asyncio.to_thread(
+                self._replace_all_sync, delete_sql, insert_sql, rows
+            )
 
     def _replace_all_sync(
         self,
