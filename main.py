@@ -59,7 +59,7 @@ def _with_font_snapshot(method):
     return wrapped
 
 
-@register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.3.16")
+@register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.3.18")
 class QQbox(Star):
     def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)
@@ -75,9 +75,26 @@ class QQbox(Star):
         self.avatar_image_path = self.data_dir / "avatars"
         self.db_dir = self.data_dir / "db"
 
-        self.bubble_font_path = str(self.Config.get("bubble_font_path", "") or "")
-        self.nickname_font_path = str(self.Config.get("nickname_font_path", "") or "")
-        self.title_font_path = str(self.Config.get("title_font_path", "") or "")
+        bubble_font = self._config_group("bubble_font")
+        nickname_font = self._config_group("nickname_font")
+        title_font = self._config_group("title_font")
+        font_download = self._config_group("font_download")
+
+        self.bubble_font_path = str(bubble_font.get("path", "") or "")
+        self.nickname_font_path = str(nickname_font.get("path", "") or "")
+        self.title_font_path = str(title_font.get("path", "") or "")
+        self.bubble_font_size = self._positive_font_size(bubble_font, 34)
+        self.nickname_font_size = self._positive_font_size(nickname_font, 25)
+        self.title_font_size = self._positive_font_size(title_font, 19)
+        self.bubble_text_color = self._parse_font_color(
+            bubble_font.get("color"), (0, 0, 0, 255)
+        )
+        self.nickname_text_color = self._parse_font_color(
+            nickname_font.get("color"), (128, 128, 128, 255)
+        )
+        self.title_text_color = self._parse_font_color(
+            title_font.get("color"), (255, 255, 255, 255)
+        )
 
         # 创建必要的目录
         self.avatar_image_path.mkdir(parents=True, exist_ok=True)
@@ -100,6 +117,12 @@ class QQbox(Star):
             nickname_font_path=self.nickname_font_path,
             title_font_path=self.title_font_path,
             avatar_image_path=self.avatar_image_path,
+            bubble_font_size=self.bubble_font_size,
+            nickname_font_size=self.nickname_font_size,
+            title_font_size=self.title_font_size,
+            text_color=self.bubble_text_color,
+            nickname_color=self.nickname_text_color,
+            title_color=self.title_text_color,
             corner_radius=self.corner_radius,
         )
         self.font_manager = FontManager(
@@ -109,9 +132,12 @@ class QQbox(Star):
                 bubble_path=self.bubble_font_path,
                 nickname_path=self.nickname_font_path,
                 title_path=self.title_font_path,
-                auto_download=bool(self.Config.get("font_auto_download", True)),
-                github_mirror=str(self.Config.get("font_github_mirror", "") or ""),
+                auto_download=bool(font_download.get("auto_download", True)),
+                github_mirror=str(font_download.get("github_mirror", "") or ""),
             ),
+            bubble_size=self.bubble_font_size,
+            nickname_size=self.nickname_font_size,
+            title_size=self.title_font_size,
             on_ready=self.qqbox.install_font_bundle,
         )
 
@@ -445,24 +471,94 @@ class QQbox(Star):
         log(f"[qqbox] 头衔自定义字体: {self.title_font_path or '(默认)'}")
 
     def _migrate_legacy_font_config(self):
-        legacy_files = {
-            "bubble_font_path": "microsoft-yahei-semilight.ttc",
-            "nickname_font_path": "sourcehansanssc-extralight.otf",
-            "title_font_path": "microsoft-yahei-bold.ttc",
+        try:
+            config_version = int(self.Config.get("font_config_version", 0))
+        except (TypeError, ValueError):
+            config_version = 0
+        if config_version >= 1:
+            return
+
+        legacy_fonts = {
+            "bubble_font": (
+                "bubble_font_path",
+                "microsoft-yahei-semilight.ttc",
+            ),
+            "nickname_font": (
+                "nickname_font_path",
+                "sourcehansanssc-extralight.otf",
+            ),
+            "title_font": ("title_font_path", "microsoft-yahei-bold.ttc"),
         }
         changed = False
-        for key, filename in legacy_files.items():
-            value = str(self.Config.get(key, "") or "")
+        for group_key, (legacy_key, filename) in legacy_fonts.items():
+            group = dict(self._config_group(group_key))
+            value = str(self.Config.get(legacy_key, "") or "")
             normalized = value.replace("\\", "/").lower()
             legacy_suffix = f"/astrbot_plugin_qqbox/resources/fonts/{filename}"
-            if normalized.endswith(legacy_suffix):
-                self.Config[key] = ""
+            if (
+                value
+                and not normalized.endswith(legacy_suffix)
+                and not group.get("path")
+            ):
+                group["path"] = value
+                self.Config[group_key] = group
                 changed = True
+            if value:
+                self.Config[legacy_key] = ""
+                changed = True
+
+        download = dict(self._config_group("font_download"))
+        if "font_auto_download" in self.Config:
+            legacy_auto_download = bool(self.Config.get("font_auto_download", True))
+            if download.get("auto_download", True) != legacy_auto_download:
+                download["auto_download"] = legacy_auto_download
+                changed = True
+            if self.Config.get("font_auto_download") is not True:
+                self.Config["font_auto_download"] = True
+                changed = True
+        legacy_mirror = str(self.Config.get("font_github_mirror", "") or "")
+        if legacy_mirror:
+            if not download.get("github_mirror"):
+                download["github_mirror"] = legacy_mirror
+                changed = True
+            self.Config["font_github_mirror"] = ""
+            changed = True
+        if download:
+            self.Config["font_download"] = download
+        self.Config["font_config_version"] = 1
+        changed = True
         if changed and callable(getattr(self.Config, "save_config", None)):
             try:
                 self.Config.save_config()
             except OSError as exc:
                 logger.warning(f"[qqbox] 旧字体配置已在内存中清空，但写回失败: {exc}")
+
+    def _config_group(self, key):
+        value = self.Config.get(key, {})
+        return value if isinstance(value, dict) else {}
+
+    @staticmethod
+    def _positive_font_size(group, default):
+        try:
+            size = int(group.get("size", default))
+        except (TypeError, ValueError):
+            return default
+        return size if size > 0 else default
+
+    @staticmethod
+    def _parse_font_color(value, default):
+        if not isinstance(value, str):
+            return default
+        color = value.strip().removeprefix("#")
+        if len(color) not in {6, 8}:
+            return default
+        try:
+            channels = tuple(
+                int(color[index : index + 2], 16) for index in range(0, len(color), 2)
+            )
+        except ValueError:
+            return default
+        return channels + (255,) if len(channels) == 3 else channels
 
     def _log_font_not_ready_paths(self):
         if getattr(self, "_font_paths_logged_on_failure", False):
@@ -794,15 +890,15 @@ class ChatBubbleGenerator:
         bubble_padding=20,
         title_padding_x=25,
         title_padding_y=15,
-        title_padding_y_offset=8,
         title_bubble_offset=5,
         bubble_bg_color=(255, 255, 255, 220),
         text_color=(0, 0, 0, 255),
         nickname_color=(128, 128, 128, 255),
+        title_color=(255, 255, 255, 255),
         corner_radius=27,
         avatar_size=(89, 89),
         margin=20,
-        title_bubble_name_offset=1,
+        title_bubble_name_gap=8,
         max_width=640,
         bubble_position=(120, 60),
         avatar_position=(23, 10),
@@ -837,9 +933,8 @@ class ChatBubbleGenerator:
         self.bubble_padding = bubble_padding
         self.title_padding_x = title_padding_x
         self.title_padding_y = title_padding_y
-        self.title_padding_y_offset = title_padding_y_offset
         self.title_bubble_offset = title_bubble_offset
-        self.title_bubble_name_offset = title_bubble_name_offset
+        self.title_bubble_name_gap = title_bubble_name_gap
         self.margin = margin
         self.max_width = max_width
         self.corner_radius = corner_radius
@@ -851,6 +946,7 @@ class ChatBubbleGenerator:
         self.bubble_bg_color = bubble_bg_color
         self.text_color = text_color
         self.nickname_color = nickname_color
+        self.title_color = title_color
         self.avatar_image_path = avatar_image_path
 
         # 背景颜色处理
@@ -1286,22 +1382,23 @@ class ChatBubbleGenerator:
             (width // SCALE, height // SCALE), Image.Resampling.LANCZOS
         )
 
-    def create_title_bubble(self, text, bg_color):
-        """创建头衔气泡"""
-        SCALE = self.SCALE
+    def _measure_title_bubble(self, text):
+        """Return the scaled canvas size and glyph box for the current title font."""
+        scale = self.SCALE
         font = self.title_SCALE_font
-
-        # 测量文本
         draw = self._get_temp_draw()
         text_width = int(draw.textlength(text, font=font))
-
-        # 计算字体高度
         bbox = font.getbbox(text)
-        text_height = bbox[3] - bbox[1] + 4 * SCALE
-
-        # 计算尺寸
+        text_height = bbox[3] - bbox[1] + 4 * scale
         width = int(text_width + self.title_padding_x * 2)
         height = int(text_height + self.title_padding_y * 3)
+        return max(scale, width), max(scale, height), bbox
+
+    def create_title_bubble(self, text, bg_color):
+        """创建头衔气泡，并按当前字形尺寸实时居中。"""
+        scale = self.SCALE
+        font = self.title_SCALE_font
+        width, height, bbox = self._measure_title_bubble(text)
 
         # 创建气泡
         canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
@@ -1309,20 +1406,23 @@ class ChatBubbleGenerator:
 
         # 绘制背景
         draw_canvas.rounded_rectangle(
-            (0, 0, width, height), radius=8 * SCALE, fill=bg_color
+            (0, 0, width, height), radius=8 * scale, fill=bg_color
         )
 
-        # 绘制文本
+        glyph_width = bbox[2] - bbox[0]
+        glyph_height = bbox[3] - bbox[1]
+        text_x = round((width - glyph_width) / 2 - bbox[0])
+        text_y = round((height - glyph_height) / 2 - bbox[1])
         draw_canvas.text(
-            (self.title_padding_x, self.title_padding_y_offset),
+            (text_x, text_y),
             text,
-            fill=(255, 255, 255, 255),
+            fill=self.title_color,
             font=font,
         )
 
         # 缩放到正常尺寸
         return canvas.resize(
-            (width // SCALE, height // SCALE), Image.Resampling.LANCZOS
+            (width // scale, height // scale), Image.Resampling.LANCZOS
         )
 
     # ------------------------------------------------------------------------------
@@ -1490,24 +1590,30 @@ class ChatBubbleGenerator:
             self.bubble_position[0] + nickname_width,
         ]
 
-        # 如果有头衔，调整宽度
-        if title_info and title_info.get("content", None) is not None:
-            title_width = (
-                draw.textlength(title_info.get("content", ""), font=self.title_font)
-                + self.bubble_padding
-            )
-            width_candidates.append(
-                self.bubble_position[0]
-                + nickname_width
-                + title_width
-                + self.title_bubble_name_offset
-            )
-
         # 计算高度
         height_candidates = [
             self.bubble_position[1] + bubble_h + self.margin,
             self.avatar_position[1] + self.avatar_size[1] + self.margin,
         ]
+
+        # 头衔和昵称必须与实际绘制共用同一套实时测量结果。
+        if title_info and title_info.get("content"):
+            title_width_scaled, title_height_scaled, _ = self._measure_title_bubble(
+                title_info["content"]
+            )
+            title_width = title_width_scaled // self.SCALE
+            title_height = title_height_scaled // self.SCALE
+            name_x = self.bubble_position[0] + title_width + self.title_bubble_name_gap
+            width_candidates.append(name_x + nickname_width)
+            title_top = self.avatar_position[1] + self.title_bubble_offset
+            nickname_y = self._centered_nickname_y(title_height, nickname)
+            nickname_bbox = self.nickname_font.getbbox(nickname)
+            height_candidates.extend(
+                (
+                    title_top + title_height + self.margin,
+                    nickname_y + nickname_bbox[3] + self.margin,
+                )
+            )
 
         return int(max(width_candidates)), int(max(height_candidates))
 
@@ -1569,22 +1675,16 @@ class ChatBubbleGenerator:
                 title_bubble,
             )
 
-            # 测量头衔宽度
-            draw_temp = self._get_temp_draw()
-            title_width = (
-                draw_temp.textlength(title_content, font=self.title_font)
-                + self.bubble_padding
-            )
-
-            # 绘制昵称
             name_x = (
-                self.bubble_position[0] + title_width + self.title_bubble_name_offset
+                self.bubble_position[0]
+                + title_bubble.width
+                + self.title_bubble_name_gap
             )
             self._draw_supersampled_nickname(
                 background,
                 (
                     name_x,
-                    self._centered_nickname_y(title_bubble, nickname),
+                    self._centered_nickname_y(title_bubble.height, nickname),
                 ),
                 nickname,
             )
@@ -1596,12 +1696,12 @@ class ChatBubbleGenerator:
                 nickname,
             )
 
-    def _centered_nickname_y(self, title_bubble, nickname):
+    def _centered_nickname_y(self, title_bubble_height, nickname):
         """Center the nickname's logical glyph box against the title badge."""
         bbox = self.nickname_font.getbbox(nickname)
         glyph_height = bbox[3] - bbox[1]
         bubble_top = self.avatar_position[1] + self.title_bubble_offset
-        glyph_top = bubble_top + (title_bubble.height - glyph_height) / 2
+        glyph_top = bubble_top + (title_bubble_height - glyph_height) / 2
         return round(glyph_top - bbox[1])
 
     def _draw_supersampled_nickname(self, background, position, nickname):

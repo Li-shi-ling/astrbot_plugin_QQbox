@@ -112,11 +112,66 @@ def test_font_config_schema_defaults_to_persistent_downloads(plugin_module) -> N
     schema_path = Path(plugin_module.__file__).resolve().parent / "_conf_schema.json"
     schema = json.loads(schema_path.read_text(encoding="utf-8"))
 
-    assert schema["bubble_font_path"]["default"] == ""
-    assert schema["nickname_font_path"]["default"] == ""
-    assert schema["title_font_path"]["default"] == ""
-    assert schema["font_auto_download"]["default"] is True
-    assert schema["font_github_mirror"]["default"] == ""
+    assert schema["font_download"]["type"] == "object"
+    assert schema["font_download"]["items"]["auto_download"]["default"] is True
+    assert schema["font_download"]["items"]["github_mirror"]["default"] == ""
+    expected = {
+        "bubble_font": (34, "#000000"),
+        "nickname_font": (25, "#808080"),
+        "title_font": (19, "#FFFFFF"),
+    }
+    for group, (size, color) in expected.items():
+        assert schema[group]["type"] == "object"
+        assert schema[group]["items"]["path"]["default"] == ""
+        assert schema[group]["items"]["size"]["default"] == size
+        assert schema[group]["items"]["color"]["default"] == color
+    assert schema["bubble_font_path"]["invisible"] is True
+    assert schema["font_config_version"]["invisible"] is True
+
+
+def test_nested_font_config_applies_each_category_independently(
+    plugin_module, tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setattr(plugin_module.StarTools, "get_data_dir", staticmethod(lambda: tmp_path))
+    instance = plugin_module.QQbox(
+        context=object(),
+        config={
+            "font_config_version": 1,
+            "font_download": {
+                "auto_download": False,
+                "github_mirror": "https://mirror.example/",
+            },
+            "bubble_font": {
+                "path": "D:/fonts/bubble.otf",
+                "size": 31,
+                "color": "#112233",
+            },
+            "nickname_font": {
+                "path": "D:/fonts/nickname.otf",
+                "size": 24,
+                "color": "#445566CC",
+            },
+            "title_font": {
+                "path": "D:/fonts/title.otf",
+                "size": 18,
+                "color": "#778899",
+            },
+        },
+    )
+
+    assert instance.qqbox._font_configs == {
+        "bubble": ("D:/fonts/bubble.otf", 31),
+        "nickname": ("D:/fonts/nickname.otf", 24),
+        "title": ("D:/fonts/title.otf", 18),
+    }
+    assert instance.qqbox.text_color == (17, 34, 51, 255)
+    assert instance.qqbox.nickname_color == (68, 85, 102, 204)
+    assert instance.qqbox.title_color == (119, 136, 153, 255)
+    assert instance.font_manager.bubble_size == 31
+    assert instance.font_manager.nickname_size == 24
+    assert instance.font_manager.title_size == 18
+    assert instance.font_manager.config.auto_download is False
+    assert instance.font_manager.config.github_mirror == "https://mirror.example/"
 
 
 def test_init_migrates_old_bundled_paths_and_keeps_persistent_font_root(
@@ -169,9 +224,41 @@ def test_legacy_font_config_is_saved_but_external_paths_are_preserved(
     instance = plugin_module.QQbox(context=object(), config=config)
 
     assert config["bubble_font_path"] == ""
-    assert config["nickname_font_path"] == "D:/user-fonts/custom.otf"
+    assert config["nickname_font_path"] == ""
+    assert config["nickname_font"]["path"] == "D:/user-fonts/custom.otf"
+    assert config["font_config_version"] == 1
     assert config.saved == 1
     assert instance.nickname_font_path == "D:/user-fonts/custom.otf"
+
+
+def test_legacy_download_config_moves_into_download_group(
+    plugin_module, tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setattr(plugin_module.StarTools, "get_data_dir", staticmethod(lambda: tmp_path))
+
+    class ConfigStub(dict):
+        def __init__(self):
+            super().__init__(
+                font_auto_download=False,
+                font_github_mirror="https://mirror.example/",
+            )
+            self.saved = 0
+
+        def save_config(self):
+            self.saved += 1
+
+    config = ConfigStub()
+    instance = plugin_module.QQbox(context=object(), config=config)
+
+    assert config["font_download"] == {
+        "auto_download": False,
+        "github_mirror": "https://mirror.example/",
+    }
+    assert config["font_auto_download"] is True
+    assert config["font_github_mirror"] == ""
+    assert config["font_config_version"] == 1
+    assert config.saved == 1
+    assert instance.font_manager.config.auto_download is False
 
 
 def test_log_font_not_ready_paths_prints_runtime_paths_once(qqbox, plugin_module, monkeypatch) -> None:
@@ -1007,9 +1094,80 @@ def test_nickname_is_centered_against_title_without_changing_font_box(
         {"content": "LV100 传奇扫雷王", "color": 4},
     )
 
-    assert generator.title_bubble_name_offset == 1
+    assert generator.title_bubble_name_gap == 8
     assert positions == [(296, 12)]
     assert generator.nickname_font.getbbox("映夜") == (0, 7, 50, 32)
+
+
+@pytest.mark.parametrize(
+    ("title_size", "nickname_size"),
+    ((12, 40), (19, 25), (32, 16)),
+)
+def test_font_size_changes_keep_nickname_centered_and_gap_stable(
+    generator, monkeypatch, title_size, nickname_size
+) -> None:
+    base_title_font = generator.title_font
+    base_nickname_font = generator.nickname_font
+    generator._font_bundle.title = base_title_font.font_variant(size=title_size)
+    generator._font_bundle.title_scaled = base_title_font.font_variant(
+        size=title_size * generator.SCALE
+    )
+    generator._font_bundle.nickname = base_nickname_font.font_variant(
+        size=nickname_size
+    )
+    generator._font_bundle.nickname_scaled = base_nickname_font.font_variant(
+        size=nickname_size * generator.SCALE
+    )
+    title_bubble = generator.create_title_bubble("LV100", generator.color_map[4])
+    positions = []
+    monkeypatch.setattr(
+        generator,
+        "_draw_supersampled_nickname",
+        lambda _background, position, _nickname: positions.append(position),
+    )
+
+    background = Image.new("RGBA", (500, 160), (240, 240, 242, 255))
+    generator._add_name_and_title(
+        background,
+        "Amiya",
+        {"content": "LV100", "color": 4},
+    )
+
+    name_x, name_y = positions[0]
+    title_right = generator.bubble_position[0] + title_bubble.width
+    nickname_bbox = generator.nickname_font.getbbox("Amiya")
+    badge_center = (
+        generator.avatar_position[1]
+        + generator.title_bubble_offset
+        + title_bubble.height / 2
+    )
+    nickname_center = name_y + (nickname_bbox[1] + nickname_bbox[3]) / 2
+    assert name_x - title_right == generator.title_bubble_name_gap
+    assert abs(nickname_center - badge_center) <= 0.5
+
+
+def test_background_size_uses_measured_title_width(generator, monkeypatch) -> None:
+    monkeypatch.setattr(
+        generator,
+        "_measure_title_bubble",
+        lambda _text: (400, 120, (0, 0, 380, 100)),
+    )
+    monkeypatch.setattr(
+        generator,
+        "_get_temp_draw",
+        lambda: SimpleNamespace(textlength=lambda *_args, **_kwargs: 50),
+    )
+    generator._font_bundle.nickname = SimpleNamespace(
+        getbbox=lambda _text: (0, 5, 50, 25)
+    )
+
+    size = generator._calculate_background_size(
+        Image.new("RGBA", (40, 24)),
+        "Amiya",
+        {"content": "LV100", "color": 4},
+    )
+
+    assert size == (298, 119)
 
 
 def test_wrap_text_uses_safe_width_fallback_when_pillow_measurement_fails(
