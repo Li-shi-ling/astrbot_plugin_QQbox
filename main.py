@@ -59,7 +59,7 @@ def _with_font_snapshot(method):
     return wrapped
 
 
-@register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.3.15")
+@register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.3.16")
 class QQbox(Star):
     def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)
@@ -802,7 +802,7 @@ class ChatBubbleGenerator:
         corner_radius=27,
         avatar_size=(89, 89),
         margin=20,
-        title_bubble_name_offset=-1,
+        title_bubble_name_offset=1,
         max_width=640,
         bubble_position=(120, 60),
         avatar_position=(23, 10),
@@ -1582,7 +1582,10 @@ class ChatBubbleGenerator:
             )
             self._draw_supersampled_nickname(
                 background,
-                (name_x, self.avatar_position[1]),
+                (
+                    name_x,
+                    self._centered_nickname_y(title_bubble, nickname),
+                ),
                 nickname,
             )
         else:
@@ -1592,6 +1595,14 @@ class ChatBubbleGenerator:
                 (self.bubble_position[0], self.avatar_position[1]),
                 nickname,
             )
+
+    def _centered_nickname_y(self, title_bubble, nickname):
+        """Center the nickname's logical glyph box against the title badge."""
+        bbox = self.nickname_font.getbbox(nickname)
+        glyph_height = bbox[3] - bbox[1]
+        bubble_top = self.avatar_position[1] + self.title_bubble_offset
+        glyph_top = bubble_top + (title_bubble.height - glyph_height) / 2
+        return round(glyph_top - bbox[1])
 
     def _draw_supersampled_nickname(self, background, position, nickname):
         """在旧字体 box 内进行高分辨率绘制，不改变昵称尺寸和位置。"""

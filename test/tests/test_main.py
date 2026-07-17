@@ -11,8 +11,8 @@ import httpx
 import pytest
 from PIL import Image, ImageSequence
 
-from data.plugins.astrbot_plugin_QQbox.test.conftest import FakeEvent
 from data.plugins.astrbot_plugin_QQbox.src.font_manager import FontStatus
+from data.plugins.astrbot_plugin_QQbox.test.conftest import FakeEvent
 
 
 def run_async(coro):
@@ -975,6 +975,41 @@ def test_supersampled_nickname_never_leaves_original_font_box(generator) -> None
     assert max(x for x, _ in changed) < position[0] + bbox[2]
     assert min(y for _, y in changed) >= position[1] + bbox[1]
     assert max(y for _, y in changed) < position[1] + bbox[3]
+
+
+def test_nickname_is_centered_against_title_without_changing_font_box(
+    generator, monkeypatch
+) -> None:
+    class NicknameFont:
+        @staticmethod
+        def getbbox(_text):
+            return (0, 7, 50, 32)
+
+    generator._font_bundle.nickname = NicknameFont()
+    title_bubble = Image.new("RGBA", (168, 33), (82, 215, 197, 220))
+    monkeypatch.setattr(generator, "create_title_bubble", lambda *_args: title_bubble)
+    monkeypatch.setattr(
+        generator,
+        "_get_temp_draw",
+        lambda: SimpleNamespace(textlength=lambda *_args, **_kwargs: 155),
+    )
+    positions = []
+    monkeypatch.setattr(
+        generator,
+        "_draw_supersampled_nickname",
+        lambda _background, position, _nickname: positions.append(position),
+    )
+
+    background = Image.new("RGBA", (400, 100), (240, 240, 242, 255))
+    generator._add_name_and_title(
+        background,
+        "映夜",
+        {"content": "LV100 传奇扫雷王", "color": 4},
+    )
+
+    assert generator.title_bubble_name_offset == 1
+    assert positions == [(296, 12)]
+    assert generator.nickname_font.getbbox("映夜") == (0, 7, 50, 32)
 
 
 def test_wrap_text_uses_safe_width_fallback_when_pillow_measurement_fails(
