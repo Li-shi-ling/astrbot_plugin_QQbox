@@ -776,6 +776,12 @@ def test_find_legal_break_keeps_solidus_off_both_line_edges(
     assert generator._find_legal_break(units, 0, 2) == 3
 
 
+def test_find_legal_break_keeps_western_words_and_numbers_together(generator) -> None:
+    assert generator._find_legal_break(list("甲AstrBot乙"), 0, 5) == 1
+    assert generator._find_legal_break(list("AstrBot乙"), 0, 4) == 7
+    assert generator._find_legal_break(list("甲2026乙"), 0, 3) == 1
+
+
 def test_wrap_text_avoids_prohibited_punctuation_at_line_edges(
     generator, plugin_module, monkeypatch
 ) -> None:
@@ -806,6 +812,85 @@ def test_wrap_text_preserves_explicit_and_empty_lines(generator, monkeypatch) ->
     )
 
     assert generator._wrap_text("你好\n\n，世界", object()) == ["你好", "", "，世界"]
+
+
+def test_wrap_text_layout_marks_each_paragraph_last_line(generator, monkeypatch) -> None:
+    monkeypatch.setattr(generator, "max_width", 2)
+    monkeypatch.setattr(generator, "bubble_padding", 0)
+    monkeypatch.setattr(generator, "SCALE", 1)
+    monkeypatch.setattr(
+        generator,
+        "_safe_text_width",
+        lambda _draw, text, _font, _fallback: len(text),
+    )
+
+    assert generator._wrap_text_layout("甲乙丙\n丁戊", object()) == [
+        ("甲乙", False),
+        ("丙", True),
+        ("丁戊", True),
+    ]
+
+
+def test_draw_text_line_distributes_only_adjustable_gaps(generator) -> None:
+    class DrawStub:
+        def __init__(self):
+            self.calls = []
+
+        def text(self, position, text, **_kwargs):
+            self.calls.append((position, text))
+
+    draw = DrawStub()
+    generator._safe_text_width = lambda _draw, text, _font, _fallback: len(text) * 10
+
+    generator._draw_text_line(
+        draw,
+        (5, 7),
+        "Hello世界",
+        object(),
+        "black",
+        target_width=100,
+    )
+
+    assert [text for _, text in draw.calls] == ["Hello", "世", "界"]
+    assert [position[0] for position, _ in draw.calls] == [5, 70, 95]
+
+
+def test_draw_text_line_keeps_paragraph_last_line_natural(generator) -> None:
+    class DrawStub:
+        def __init__(self):
+            self.calls = []
+
+        def text(self, position, text, **_kwargs):
+            self.calls.append((position, text))
+
+    draw = DrawStub()
+
+    generator._draw_text_line(draw, (5, 7), "最后一行", object(), "black")
+
+    assert draw.calls == [((5, 7), "最后一行")]
+
+
+def test_draw_text_line_avoids_excessive_justification_gaps(generator) -> None:
+    class DrawStub:
+        def __init__(self):
+            self.calls = []
+
+        def text(self, position, text, **_kwargs):
+            self.calls.append((position, text))
+
+    draw = DrawStub()
+    generator._safe_text_width = lambda _draw, text, _font, _fallback: len(text) * 10
+
+    generator._draw_text_line(
+        draw,
+        (5, 7),
+        "甲乙",
+        object(),
+        "black",
+        target_width=200,
+    )
+
+    assert draw.calls == [((5, 7), "甲乙")]
 
 
 def test_wrap_text_makes_progress_when_one_unit_is_too_wide(generator, monkeypatch) -> None:

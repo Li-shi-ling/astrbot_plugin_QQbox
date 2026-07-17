@@ -59,7 +59,7 @@ def _with_font_snapshot(method):
     return wrapped
 
 
-@register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.3.12")
+@register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.3.13")
 class QQbox(Star):
     def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)
@@ -905,19 +905,24 @@ class ChatBubbleGenerator:
 
     def _wrap_text(self, text, font):
         """按 Unicode 文本单元和中文标点禁则自动换行。"""
+        return [line for line, _ in self._wrap_text_layout(text, font)]
+
+    def _wrap_text_layout(self, text, font):
+        """返回换行文本及其是否为段落末行，供两端对齐使用。"""
         draw = self._get_temp_draw()
         padding = self.bubble_padding * self.SCALE
         max_width = self.max_width * self.SCALE - padding * 2
         fallback_width = self._font_configs["bubble"][1] * self.SCALE
-        lines = []
+        layout = []
 
         for paragraph in text.split("\n"):
             if not paragraph:
-                lines.append("")
+                layout.append(("", True))
                 continue
 
             units = self._text_units(paragraph)
             start = 0
+            paragraph_lines = []
             while start < len(units):
                 fit_end = start
                 for end in range(start + 1, len(units) + 1):
@@ -931,10 +936,15 @@ class ChatBubbleGenerator:
                 if fit_end == start:
                     fit_end = start + 1
                 break_at = self._find_legal_break(units, start, fit_end)
-                lines.append("".join(units[start:break_at]))
+                paragraph_lines.append("".join(units[start:break_at]))
                 start = break_at
 
-        return lines
+            layout.extend(
+                (line, index == len(paragraph_lines) - 1)
+                for index, line in enumerate(paragraph_lines)
+            )
+
+        return layout
 
     @staticmethod
     def _text_units(text):
@@ -974,9 +984,8 @@ class ChatBubbleGenerator:
             return len(units)
 
         def is_legal(index):
-            return (
-                units[index - 1][-1] not in PROHIBITED_LINE_END
-                and units[index][0] not in PROHIBITED_LINE_START
+            return ChatBubbleGenerator._is_legal_line_break(
+                units[index - 1], units[index]
             )
 
         for index in range(fit_end, start, -1):
@@ -990,6 +999,84 @@ class ChatBubbleGenerator:
                 return index
 
         return max(start + 1, fit_end)
+
+    @staticmethod
+    def _is_western_word_unit(unit):
+        """识别应按单词连续排版的字母和数字，不把汉字归入其中。"""
+        char = unit[0]
+        return unicodedata.category(char)[0] in {
+            "L",
+            "N",
+        } and unicodedata.east_asian_width(char) not in {"W", "F"}
+
+    @staticmethod
+    def _is_legal_line_break(left, right):
+        """实现当前 CLReq 中文裁剪规则及西文单词的合法断点判断。"""
+        if left[-1] in PROHIBITED_LINE_END or right[0] in PROHIBITED_LINE_START:
+            return False
+        return not (
+            ChatBubbleGenerator._is_western_word_unit(left)
+            and ChatBubbleGenerator._is_western_word_unit(right)
+        )
+
+    @staticmethod
+    def _is_justification_gap(left, right):
+        """判断边界能否吸收两端对齐字距，避免拆散西文单词与禁则标点。"""
+        if not ChatBubbleGenerator._is_legal_line_break(left, right):
+            return False
+        if left[-1].isspace():
+            return True
+        return unicodedata.east_asian_width(left[-1]) in {
+            "W",
+            "F",
+        } or unicodedata.east_asian_width(right[0]) in {"W", "F"}
+
+    def _justification_segments(self, line):
+        """按可扩展边界切分文本，同时保留西文、数字和 Unicode 文本单元。"""
+        units = self._text_units(line)
+        if not units:
+            return []
+
+        segments = [units[0]]
+        for left, right in zip(units, units[1:]):
+            if self._is_justification_gap(left, right):
+                segments.append(right)
+            else:
+                segments[-1] += right
+        return segments
+
+    def _draw_text_line(self, draw, position, line, font, fill, target_width=None):
+        """绘制单行；指定目标宽度时仅均分可调整间隙，不拉伸字形。"""
+        if not line or target_width is None:
+            draw.text(position, line, fill=fill, font=font)
+            return
+
+        segments = self._justification_segments(line)
+        if len(segments) < 2:
+            draw.text(position, line, fill=fill, font=font)
+            return
+
+        fallback_width = self._font_configs["bubble"][1] * self.SCALE
+        widths = [
+            self._safe_text_width(draw, segment, font, fallback_width)
+            for segment in segments
+        ]
+        extra_width = target_width - sum(widths)
+        if extra_width <= 0:
+            draw.text(position, line, fill=fill, font=font)
+            return
+
+        gap = extra_width / (len(segments) - 1)
+        if gap > fallback_width * 0.5:
+            draw.text(position, line, fill=fill, font=font)
+            return
+
+        x, y = position
+        for index, (segment, width) in enumerate(zip(segments, widths)):
+            draw.text((round(x), y), segment, fill=fill, font=font)
+            x += width
+            if index < len(segments) - 1:
+                x += gap
 
     def _create_rounded_mask(self, width, height):
         """创建圆角遮罩"""
@@ -1026,9 +1113,11 @@ class ChatBubbleGenerator:
 
     def _text_layout_metrics(self, text, font):
         """返回文本换行后的宽高，尺寸均为高 DPI 坐标。"""
-        lines = self._wrap_text(text, font) if text else []
-        if not lines:
-            lines = [""]
+        layout = self._wrap_text_layout(text, font) if text else []
+        if not layout:
+            layout = [("", True)]
+        lines = [line for line, _ in layout]
+        justify_lines = [not is_paragraph_end for _, is_paragraph_end in layout]
 
         draw = self._get_temp_draw()
         bbox = font.getbbox("字")
@@ -1042,7 +1131,13 @@ class ChatBubbleGenerator:
             )
             for line in lines
         )
-        return lines, line_height, text_width, line_height * len(lines)
+        return (
+            lines,
+            justify_lines,
+            line_height,
+            text_width,
+            line_height * len(lines),
+        )
 
     # ------------------------------------------------------------------------------
     # 气泡创建方法
@@ -1053,8 +1148,8 @@ class ChatBubbleGenerator:
         font = self.bubble_font
         padding = self.bubble_padding * SCALE
 
-        lines, line_height, text_width, text_height = self._text_layout_metrics(
-            text, font
+        lines, justify_lines, line_height, text_width, text_height = (
+            self._text_layout_metrics(text, font)
         )
         line_count = len(lines)
 
@@ -1074,8 +1169,15 @@ class ChatBubbleGenerator:
 
         # 绘制文本
         y = padding
-        for line in lines:
-            draw_canvas.text((padding, y), line, fill=self.text_color, font=font)
+        for line, justify in zip(lines, justify_lines):
+            self._draw_text_line(
+                draw_canvas,
+                (padding, y),
+                line,
+                font,
+                self.text_color,
+                text_width if justify else None,
+            )
             y += line_height + padding
 
         # 缩放到正常尺寸
@@ -1128,12 +1230,13 @@ class ChatBubbleGenerator:
 
         # 处理文本部分
         if text:
-            lines, line_height, text_width, text_height = self._text_layout_metrics(
-                text, font
+            lines, justify_lines, line_height, text_width, text_height = (
+                self._text_layout_metrics(text, font)
             )
             line_count = len(lines)
         else:
             lines = []
+            justify_lines = []
             line_height = text_width = text_height = line_count = 0
 
         width = int(max(text_width, img_canvas.width) + padding * 2)
@@ -1155,8 +1258,15 @@ class ChatBubbleGenerator:
         # 绘制文本
         if lines:
             y = padding
-            for line in lines:
-                draw_canvas.text((padding, y), line, fill=self.text_color, font=font)
+            for line, justify in zip(lines, justify_lines):
+                self._draw_text_line(
+                    draw_canvas,
+                    (padding, y),
+                    line,
+                    font,
+                    self.text_color,
+                    text_width if justify else None,
+                )
                 y += line_height + padding
 
         # 粘贴图片
