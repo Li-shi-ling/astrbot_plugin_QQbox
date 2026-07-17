@@ -59,7 +59,7 @@ def _with_font_snapshot(method):
     return wrapped
 
 
-@register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.3.14")
+@register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.3.15")
 class QQbox(Star):
     def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)
@@ -789,7 +789,7 @@ class ChatBubbleGenerator:
         title_font_path,
         avatar_image_path,
         bubble_font_size=34,
-        nickname_font_size=38,
+        nickname_font_size=25,
         title_font_size=19,
         bubble_padding=20,
         title_padding_x=25,
@@ -1594,32 +1594,29 @@ class ChatBubbleGenerator:
             )
 
     def _draw_supersampled_nickname(self, background, position, nickname):
-        """在透明高分辨率图层绘制昵称，再缩小合成以模拟 QQ 的柔和字缘。"""
+        """在旧字体 box 内进行高分辨率绘制，不改变昵称尺寸和位置。"""
         scale = self.SCALE
-        font = self.nickname_SCALE_font
-        bbox = font.getbbox(nickname)
-        padding = 2 * scale
-        width = max(1, bbox[2] - bbox[0] + padding * 2)
-        height = max(1, bbox[3] - bbox[1] + padding * 2)
-        overlay = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        logical_bbox = self.nickname_font.getbbox(nickname)
+        width = max(1, logical_bbox[2] - logical_bbox[0])
+        height = max(1, logical_bbox[3] - logical_bbox[1])
+        scaled_font = self.nickname_SCALE_font
+        scaled_bbox = scaled_font.getbbox(nickname)
+        overlay = Image.new("RGBA", (width * scale, height * scale), (0, 0, 0, 0))
         ImageDraw.Draw(overlay).text(
-            (padding - bbox[0], padding - bbox[1]),
+            (-scaled_bbox[0], -scaled_bbox[1]),
             nickname,
             fill=self.nickname_color,
-            font=font,
+            font=scaled_font,
             stroke_width=max(1, scale // 4),
             stroke_fill=self.nickname_color,
         )
         overlay = overlay.resize(
-            (
-                max(1, round(width / scale)),
-                max(1, round(height / scale)),
-            ),
+            (width, height),
             Image.Resampling.LANCZOS,
         )
         destination = (
-            round(position[0] + bbox[0] / scale - padding / scale),
-            round(position[1] + bbox[1] / scale - padding / scale),
+            round(position[0] + logical_bbox[0]),
+            round(position[1] + logical_bbox[1]),
         )
         background.alpha_composite(overlay, dest=destination)
 

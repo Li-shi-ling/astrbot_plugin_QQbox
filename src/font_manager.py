@@ -139,7 +139,7 @@ class FontManager:
         config: FontConfig,
         *,
         bubble_size: int = 34,
-        nickname_size: int = 38,
+        nickname_size: int = 25,
         title_size: int = 19,
         scale: int = 4,
         downloader: DownloadFunction | None = None,

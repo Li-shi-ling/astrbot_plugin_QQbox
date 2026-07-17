@@ -944,7 +944,7 @@ def test_nickname_uses_larger_gray_supersampled_rendering(generator) -> None:
 
     generator._draw_supersampled_nickname(background, (20, 10), "Amiya")
 
-    assert generator._font_configs["nickname"][1] == 38
+    assert generator._font_configs["nickname"][1] == 25
     assert generator.nickname_color == (128, 128, 128, 255)
     changed_pixels = [
         pixel
@@ -953,6 +953,28 @@ def test_nickname_uses_larger_gray_supersampled_rendering(generator) -> None:
     ]
     assert changed_pixels
     assert any(pixel[:3] == (128, 128, 128) for pixel in changed_pixels)
+
+
+def test_supersampled_nickname_never_leaves_original_font_box(generator) -> None:
+    generator._font_bundle.nickname_scaled = generator.nickname_font.font_variant(size=100)
+    background = Image.new("RGBA", (260, 100), (240, 240, 242, 255))
+    position = (20, 10)
+    nickname = "Amiya"
+    bbox = generator.nickname_font.getbbox(nickname)
+
+    generator._draw_supersampled_nickname(background, position, nickname)
+
+    changed = [
+        (x, y)
+        for y in range(background.height)
+        for x in range(background.width)
+        if background.getpixel((x, y)) != (240, 240, 242, 255)
+    ]
+    assert changed
+    assert min(x for x, _ in changed) >= position[0] + bbox[0]
+    assert max(x for x, _ in changed) < position[0] + bbox[2]
+    assert min(y for _, y in changed) >= position[1] + bbox[1]
+    assert max(y for _, y in changed) < position[1] + bbox[3]
 
 
 def test_wrap_text_uses_safe_width_fallback_when_pillow_measurement_fails(
