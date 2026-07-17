@@ -8,7 +8,7 @@ from typing import Any
 from astrbot.api import logger
 from astrbot.api.web import error_response, json_response, request
 
-from .layout import DEFAULT_LAYOUT, LayoutValidationError, normalize_layout
+from .layout import LayoutValidationError, normalize_layout
 
 PLUGIN_NAME = "astrbot_plugin_QQbox"
 
@@ -113,7 +113,7 @@ class QQBoxWebController:
     async def layout_defaults(self):
         return json_response(
             {
-                "layout": normalize_layout(DEFAULT_LAYOUT),
+                "layout": self.owner.default_layout_config(),
                 "active": self.owner.active_layout_preset,
             }
         )
@@ -201,7 +201,7 @@ class QQBoxWebController:
         if existing is None:
             return error_response("预设不存在", status_code=404)
         preset = await self.owner.layout_preset_repo.update(
-            preset_id, existing["name"], normalize_layout(DEFAULT_LAYOUT)
+            preset_id, existing["name"], self.owner.default_layout_config()
         )
         assert preset is not None
         if preset["is_active"]:
@@ -215,13 +215,15 @@ class QQBoxWebController:
         try:
             layout = normalize_layout(payload.get("config"))
             self.owner._validate_layout_fonts(layout)
-            result = await asyncio.to_thread(
-                self.owner.render_layout_preview, layout, payload
+            result, resolved = await asyncio.to_thread(
+                self.owner.render_layout_preview_details, layout, payload
             )
         except (LayoutValidationError, RuntimeError, OSError, ValueError) as exc:
             return error_response(str(exc))
         encoded = base64.b64encode(result.getvalue()).decode("ascii")
-        return json_response({"image": f"data:image/png;base64,{encoded}"})
+        return json_response(
+            {"image": f"data:image/png;base64,{encoded}", "resolved": resolved}
+        )
 
     @staticmethod
     def _serialize_profile(qq: str, profile: dict[str, Any]) -> dict[str, Any]:

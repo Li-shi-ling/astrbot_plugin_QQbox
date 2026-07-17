@@ -10,13 +10,14 @@ COLOR_RE = re.compile(r"^#[0-9A-Fa-f]{6}(?:[0-9A-Fa-f]{2})?$")
 DEFAULT_LAYOUT: dict[str, Any] = {
     "canvas": {
         "width": 760,
-        "height": 280,
+        "height": 180,
+        "auto_size": True,
         "background_color": "#F0F0F2FF",
         "margin": 20,
     },
     "bubble": {
         "x": 120,
-        "y": 82,
+        "y": 60,
         "padding": 20,
         "corner_radius": 27,
         "max_width": 640,
@@ -29,6 +30,7 @@ DEFAULT_LAYOUT: dict[str, Any] = {
     "title": {
         "x": 120,
         "y": 15,
+        "auto_position": True,
         "padding_x": 25,
         "padding_y": 15,
         "font": "",
@@ -38,6 +40,7 @@ DEFAULT_LAYOUT: dict[str, Any] = {
     "nickname": {
         "x": 330,
         "y": 25,
+        "auto_position": True,
         "font": "",
         "font_size": 25,
         "color": "#808080FF",
@@ -80,6 +83,12 @@ FONT_FIELDS = {
     ("bubble", "font"),
     ("title", "font"),
     ("nickname", "font"),
+}
+
+BOOLEAN_FIELDS = {
+    ("canvas", "auto_size"),
+    ("title", "auto_position"),
+    ("nickname", "auto_position"),
 }
 
 
@@ -134,7 +143,31 @@ def normalize_layout(payload: Any) -> dict[str, Any]:
                 value = normalize_color(value)
             elif key in FONT_FIELDS:
                 value = _normalize_font_id(value)
+            elif key in BOOLEAN_FIELDS:
+                if not isinstance(value, bool):
+                    raise LayoutValidationError(f"{section}.{field} 必须是布尔值")
             normalized[section][field] = value
+
+        # v1.4.0 presets did not contain auto-mode fields. Preserve their
+        # explicitly stored coordinates/sizes instead of silently changing them.
+        if (
+            section == "canvas"
+            and "auto_size" not in incoming
+            and {
+                "width",
+                "height",
+            }.intersection(incoming)
+        ):
+            normalized[section]["auto_size"] = False
+        if (
+            section in {"title", "nickname"}
+            and "auto_position" not in incoming
+            and {
+                "x",
+                "y",
+            }.intersection(incoming)
+        ):
+            normalized[section]["auto_position"] = False
     return normalized
 
 

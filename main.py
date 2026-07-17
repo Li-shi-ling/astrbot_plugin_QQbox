@@ -29,7 +29,12 @@ from .src.font_manager import (
     FontPaths,
     FontState,
 )
-from .src.layout import LayoutValidationError, color_tuple, normalize_layout
+from .src.layout import (
+    DEFAULT_LAYOUT,
+    LayoutValidationError,
+    color_tuple,
+    normalize_layout,
+)
 from .src.web_pages import QQBoxWebController
 
 MSG_ID_PATTERN = re.compile(r"\[MSG_ID:[^\]]*\]")
@@ -63,7 +68,7 @@ def _with_font_snapshot(method):
     return wrapped
 
 
-@register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.4.0")
+@register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.4.2")
 class QQbox(Star):
     def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)
@@ -715,6 +720,66 @@ class QQbox(Star):
     def set_active_layout_preset(self, preset):
         self.active_layout_preset = preset
 
+    @staticmethod
+    def _color_hex(value) -> str:
+        channels = tuple(value)
+        if len(channels) == 3:
+            channels += (255,)
+        return "#" + "".join(f"{channel:02X}" for channel in channels[:4])
+
+    def default_layout_config(self):
+        """Return the base generator layout without freezing its dynamic rules."""
+        layout = normalize_layout(DEFAULT_LAYOUT)
+        generator = self.qqbox
+        bubble_x, bubble_y = generator.bubble_position
+        avatar_x, avatar_y = generator.avatar_position
+        layout["canvas"].update(
+            {
+                "auto_size": True,
+                "background_color": self._color_hex(generator.background_color),
+                "margin": generator.margin,
+            }
+        )
+        layout["bubble"].update(
+            {
+                "x": bubble_x,
+                "y": bubble_y,
+                "padding": generator.bubble_padding,
+                "corner_radius": generator.corner_radius,
+                "max_width": generator.max_width,
+                "background_color": self._color_hex(generator.bubble_bg_color),
+                "text_color": self._color_hex(generator.text_color),
+                "font_size": generator._font_configs["bubble"][1],
+            }
+        )
+        layout["avatar"].update(
+            {
+                "x": avatar_x,
+                "y": avatar_y,
+                "width": generator.avatar_size[0],
+                "height": generator.avatar_size[1],
+            }
+        )
+        layout["title"].update(
+            {
+                "x": bubble_x,
+                "y": avatar_y + generator.title_bubble_offset,
+                "auto_position": True,
+                "padding_x": generator.title_padding_x,
+                "padding_y": generator.title_padding_y,
+                "font_size": generator._font_configs["title"][1],
+                "color": self._color_hex(generator.title_color),
+            }
+        )
+        layout["nickname"].update(
+            {
+                "auto_position": True,
+                "font_size": generator._font_configs["nickname"][1],
+                "color": self._color_hex(generator.nickname_color),
+            }
+        )
+        return layout
+
     def available_font_files(self) -> dict[str, Path]:
         """Return safe font IDs mapped to files available to Page presets."""
         available: dict[str, Path] = {}
@@ -810,12 +875,21 @@ class QQbox(Star):
             max_width=layout["bubble"]["max_width"],
             bubble_position=(layout["bubble"]["x"], layout["bubble"]["y"]),
             avatar_position=(layout["avatar"]["x"], layout["avatar"]["y"]),
-            title_position=(layout["title"]["x"], layout["title"]["y"]),
-            nickname_position=(
-                layout["nickname"]["x"],
-                layout["nickname"]["y"],
+            title_position=(
+                None
+                if layout["title"]["auto_position"]
+                else (layout["title"]["x"], layout["title"]["y"])
             ),
-            canvas_size=(layout["canvas"]["width"], layout["canvas"]["height"]),
+            nickname_position=(
+                None
+                if layout["nickname"]["auto_position"]
+                else (layout["nickname"]["x"], layout["nickname"]["y"])
+            ),
+            canvas_size=(
+                None
+                if layout["canvas"]["auto_size"]
+                else (layout["canvas"]["width"], layout["canvas"]["height"])
+            ),
             background_color=layout["canvas"]["background_color"],
         )
         generator.install_font_bundle(bundle)
@@ -833,8 +907,7 @@ class QQbox(Star):
     def create_chat_message_by_gif(self, **kwargs):
         return self._active_generator().create_chat_message_by_gif(**kwargs)
 
-    def render_layout_preview(self, layout, payload):
-        generator = self._build_layout_generator(layout)
+    def _preview_render_context(self, generator, payload):
         qq = str(payload.get("qq") or "10001")
         profile = self.qq_title_key.get(qq, {})
         display_name = str(
@@ -852,6 +925,13 @@ class QQbox(Star):
             color = 4
         text = str(payload.get("text") or "这是一条可实时调整布局的示例气泡。")[:500]
         avatar_path = next(self.avatar_image_path.glob(f"{qq}-*.png"), None)
+        return qq, display_name, title, color, text, avatar_path
+
+    def render_layout_preview(self, layout, payload):
+        generator = self._build_layout_generator(layout)
+        qq, display_name, title, color, text, avatar_path = (
+            self._preview_render_context(generator, payload)
+        )
         return generator.create_chat_message(
             qq=qq,
             text=text,
@@ -864,6 +944,67 @@ class QQbox(Star):
                 "avatar_path": str(avatar_path) if avatar_path else None,
             },
         )
+
+    def render_layout_preview_details(self, layout, payload):
+        generator = self._build_layout_generator(layout)
+        qq, display_name, title, color, text, avatar_path = (
+            self._preview_render_context(generator, payload)
+        )
+        result = generator.create_chat_message(
+            qq=qq,
+            text=text,
+            image=None,
+            qq_title_key={
+                qq: {"notes": display_name, "content": title, "color": color}
+            },
+            user_info={
+                "name": display_name,
+                "avatar_path": str(avatar_path) if avatar_path else None,
+            },
+        )
+        title_color = generator.color_map[color]
+        title_bubble = generator.create_title_bubble(title, title_color)
+        title_position = generator.title_position or (
+            generator.bubble_position[0],
+            generator.avatar_position[1] + generator.title_bubble_offset,
+        )
+        nickname_position = generator.nickname_position or (
+            title_position[0] + title_bubble.width + generator.title_bubble_name_gap,
+            generator._centered_nickname_y(
+                title_bubble.height, display_name, title_position[1]
+            ),
+        )
+        nickname_bbox = generator.nickname_font.getbbox(display_name)
+        bubble = generator.create_chat_bubble(text)
+        with Image.open(result) as image:
+            canvas_size = image.size
+        return result, {
+            "canvas": {"width": canvas_size[0], "height": canvas_size[1]},
+            "avatar": {
+                "x": generator.avatar_position[0],
+                "y": generator.avatar_position[1],
+                "width": generator.avatar_size[0],
+                "height": generator.avatar_size[1],
+            },
+            "title": {
+                "x": title_position[0],
+                "y": title_position[1],
+                "width": title_bubble.width,
+                "height": title_bubble.height,
+            },
+            "nickname": {
+                "x": nickname_position[0],
+                "y": nickname_position[1],
+                "width": nickname_bbox[2] - nickname_bbox[0],
+                "height": nickname_bbox[3] - nickname_bbox[1],
+            },
+            "bubble": {
+                "x": generator.bubble_position[0],
+                "y": generator.bubble_position[1],
+                "width": bubble.width,
+                "height": bubble.height,
+            },
+        }
 
     # 通过onebot获取nickname
     async def get_nickname_by_onebot(self, qq, bot=None):
@@ -1801,7 +1942,7 @@ class ChatBubbleGenerator:
             nickname_y = (
                 self.nickname_position[1]
                 if self.nickname_position
-                else self._centered_nickname_y(title_height, nickname)
+                else self._centered_nickname_y(title_height, nickname, title_y)
             )
             nickname_bbox = self.nickname_font.getbbox(nickname)
             width_candidates.append(title_x + title_width + self.margin)
@@ -1888,7 +2029,9 @@ class ChatBubbleGenerator:
             name_x = title_position[0] + title_bubble.width + self.title_bubble_name_gap
             nickname_position = self.nickname_position or (
                 name_x,
-                self._centered_nickname_y(title_bubble.height, nickname),
+                self._centered_nickname_y(
+                    title_bubble.height, nickname, title_position[1]
+                ),
             )
             self._draw_supersampled_nickname(
                 background,
@@ -1904,11 +2047,15 @@ class ChatBubbleGenerator:
                 nickname,
             )
 
-    def _centered_nickname_y(self, title_bubble_height, nickname):
+    def _centered_nickname_y(self, title_bubble_height, nickname, title_y=None):
         """Center the nickname's logical glyph box against the title badge."""
         bbox = self.nickname_font.getbbox(nickname)
         glyph_height = bbox[3] - bbox[1]
-        bubble_top = self.avatar_position[1] + self.title_bubble_offset
+        bubble_top = (
+            self.avatar_position[1] + self.title_bubble_offset
+            if title_y is None
+            else title_y
+        )
         glyph_top = bubble_top + (title_bubble_height - glyph_height) / 2
         return round(glyph_top - bbox[1])
 

@@ -20,7 +20,22 @@ def test_layout_normalization_fills_defaults_and_rejects_unsafe_values() -> None
     assert layout["avatar"]["x"] == 41
     assert layout["avatar"]["width"] == DEFAULT_LAYOUT["avatar"]["width"]
     assert layout["bubble"]["font_size"] == 48
+    assert layout["bubble"]["y"] == 60
+    assert layout["canvas"]["auto_size"] is True
+    assert layout["title"]["auto_position"] is True
+    assert layout["nickname"]["auto_position"] is True
     assert layout["bubble"]["background_color"] == "#FFFFFFDC"
+
+    legacy = normalize_layout(
+        {
+            "canvas": {"width": 760, "height": 280},
+            "title": {"x": 120, "y": 15},
+            "nickname": {"x": 330, "y": 25},
+        }
+    )
+    assert legacy["canvas"]["auto_size"] is False
+    assert legacy["title"]["auto_position"] is False
+    assert legacy["nickname"]["auto_position"] is False
 
     with pytest.raises(LayoutValidationError):
         normalize_layout({"bubble": {"font": "../outside.ttf"}})
@@ -144,35 +159,60 @@ def test_plugin_renders_preview_with_real_freetype_font(qqbox, plugin_module) ->
     )
     qqbox.qqbox.install_font_bundle(
         plugin_module.FontBundle(
-            bubble=plugin_module.ImageFont.truetype(str(font_path), 102),
+            bubble=plugin_module.ImageFont.truetype(str(font_path), 136),
             nickname=plugin_module.ImageFont.truetype(str(font_path), 25),
-            nickname_scaled=plugin_module.ImageFont.truetype(str(font_path), 75),
+            nickname_scaled=plugin_module.ImageFont.truetype(str(font_path), 100),
             title=plugin_module.ImageFont.truetype(str(font_path), 19),
-            title_scaled=plugin_module.ImageFont.truetype(str(font_path), 57),
+            title_scaled=plugin_module.ImageFont.truetype(str(font_path), 76),
             paths=paths,
             version="test",
         )
     )
 
-    result = qqbox.render_layout_preview(
-        DEFAULT_LAYOUT,
-        {
-            "display_name": "Preview User",
-            "title": "Example Title",
-            "text": "Real font preview",
-            "color": 4,
+    payload = {
+        "display_name": "Preview User",
+        "title": "Example Title",
+        "text": "Real font preview",
+        "color": 4,
+    }
+    defaults = qqbox.default_layout_config()
+    configured = qqbox._build_layout_generator(defaults)
+    assert configured.bubble_position == (120, 60)
+    assert configured.title_position is None
+    assert configured.nickname_position is None
+    assert configured.canvas_size is None
+
+    base_result = qqbox.qqbox.create_chat_message(
+        qq="10001",
+        text=payload["text"],
+        image=None,
+        qq_title_key={
+            "10001": {
+                "notes": payload["display_name"],
+                "content": payload["title"],
+                "color": payload["color"],
+            }
         },
+        user_info={"name": payload["display_name"], "avatar_path": None},
     )
+    result, resolved = qqbox.render_layout_preview_details(defaults, payload)
 
     assert result.getvalue().startswith(b"\x89PNG\r\n\x1a\n")
+    assert result.getvalue() == base_result.getvalue()
+    from PIL import Image
+
+    with Image.open(result) as image:
+        assert resolved["canvas"] == {"width": image.width, "height": image.height}
+    assert resolved["title"]["x"] == 120
+    assert resolved["title"]["y"] == 15
 
 
 def test_plugin_pages_include_profile_crud_dragging_and_real_preview() -> None:
     plugin_root = Path(__file__).resolve().parents[2]
-    database_html = (plugin_root / "pages/database-admin/index.html").read_text(
-        encoding="utf-8"
-    )
-    database_js = (plugin_root / "pages/database-admin/app.js").read_text(
+    page_entries = list((plugin_root / "pages").glob("*/index.html"))
+    assert page_entries == [plugin_root / "pages/bubble-studio/index.html"]
+
+    database_js = (plugin_root / "pages/bubble-studio/database.js").read_text(
         encoding="utf-8"
     )
     studio_html = (plugin_root / "pages/bubble-studio/index.html").read_text(
@@ -181,12 +221,22 @@ def test_plugin_pages_include_profile_crud_dragging_and_real_preview() -> None:
     studio_js = (plugin_root / "pages/bubble-studio/app.js").read_text(
         encoding="utf-8"
     )
+    shell_js = (plugin_root / "pages/bubble-studio/shell.js").read_text(
+        encoding="utf-8"
+    )
 
-    assert "用户资料管理" in database_html
+    assert "用户资料管理" in studio_html
+    assert 'data-view="bubble"' in studio_html
+    assert 'data-view="database"' in studio_html
+    assert 'data-view-panel="bubble"' in studio_html
+    assert 'data-view-panel="database"' in studio_html
+    assert "selectView" in shell_js
     assert "admin/profiles/save" in database_js
     assert "admin/profiles/delete" in database_js
     assert "预生成示范与布局预设" in studio_html
     assert "pointerdown" in studio_js
+    assert "stage-image" in studio_html
+    assert "requestPreview" in studio_js
     assert "admin/layout/presets/save" in studio_js
     assert "admin/layout/presets/reset" in studio_js
     assert "admin/layout/preview" in studio_js
