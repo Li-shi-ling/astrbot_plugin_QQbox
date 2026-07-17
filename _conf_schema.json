@@ -5,33 +5,133 @@
     "default": 27,
     "hint": "例如：27"
   },
+  "font_download": {
+    "description": "字体资源下载",
+    "type": "object",
+    "hint": "控制默认字体包的异步下载和 GitHub 镜像",
+    "items": {
+      "auto_download": {
+        "description": "默认字体缺失时后台自动下载",
+        "type": "bool",
+        "default": true
+      },
+      "github_mirror": {
+        "description": "GitHub 镜像前缀",
+        "type": "string",
+        "default": "",
+        "hint": "留空直连官方 Release；格式与 AstrBot 更新器使用的镜像前缀一致"
+      }
+    }
+  },
+  "bubble_font": {
+    "description": "聊天气泡正文字体",
+    "type": "object",
+    "hint": "只影响聊天气泡内的消息正文",
+    "items": {
+      "path": {
+        "description": "字体文件路径",
+        "type": "string",
+        "default": "",
+        "hint": "留空使用持久化目录中自动下载的默认字体"
+      },
+      "size": {
+        "description": "字号",
+        "type": "int",
+        "default": 34,
+        "hint": "必须为大于 0 的整数"
+      },
+      "color": {
+        "description": "文字颜色",
+        "type": "string",
+        "default": "#000000",
+        "hint": "使用 #RRGGBB 或 #RRGGBBAA 格式"
+      }
+    }
+  },
+  "nickname_font": {
+    "description": "用户昵称字体",
+    "type": "object",
+    "hint": "只影响头衔右侧或无头衔时显示的用户名称",
+    "items": {
+      "path": {
+        "description": "字体文件路径",
+        "type": "string",
+        "default": "",
+        "hint": "留空使用持久化目录中自动下载的默认字体"
+      },
+      "size": {
+        "description": "字号",
+        "type": "int",
+        "default": 25,
+        "hint": "必须为大于 0 的整数"
+      },
+      "color": {
+        "description": "文字颜色",
+        "type": "string",
+        "default": "#808080",
+        "hint": "使用 #RRGGBB 或 #RRGGBBAA 格式"
+      }
+    }
+  },
+  "title_font": {
+    "description": "用户头衔字体",
+    "type": "object",
+    "hint": "只影响彩色头衔徽章内的文字",
+    "items": {
+      "path": {
+        "description": "字体文件路径",
+        "type": "string",
+        "default": "",
+        "hint": "留空使用持久化目录中自动下载的默认字体"
+      },
+      "size": {
+        "description": "字号",
+        "type": "int",
+        "default": 19,
+        "hint": "必须为大于 0 的整数"
+      },
+      "color": {
+        "description": "文字颜色",
+        "type": "string",
+        "default": "#FFFFFF",
+        "hint": "使用 #RRGGBB 或 #RRGGBBAA 格式"
+      }
+    }
+  },
   "bubble_font_path": {
-    "description": "气泡字体路径；留空使用自动下载的默认字体",
+    "description": "旧版气泡字体路径（仅用于自动迁移）",
     "type": "string",
     "default": "",
-    "hint": "可选：自定义字体的绝对路径"
+    "invisible": true
   },
   "nickname_font_path": {
-    "description": "名称字体路径；留空使用自动下载的默认字体",
+    "description": "旧版昵称字体路径（仅用于自动迁移）",
     "type": "string",
     "default": "",
-    "hint": "可选：自定义字体的绝对路径"
+    "invisible": true
   },
   "title_font_path": {
-    "description": "头衔字体路径；留空使用自动下载的默认字体",
+    "description": "旧版头衔字体路径（仅用于自动迁移）",
     "type": "string",
     "default": "",
-    "hint": "可选：自定义字体的绝对路径"
+    "invisible": true
   },
   "font_auto_download": {
-    "description": "默认字体缺失时后台自动下载",
+    "description": "旧版字体自动下载开关（仅用于自动迁移）",
     "type": "bool",
-    "default": true
+    "default": true,
+    "invisible": true
   },
   "font_github_mirror": {
-    "description": "可选 GitHub 镜像前缀；留空直连官方 Release",
+    "description": "旧版 GitHub 镜像前缀（仅用于自动迁移）",
     "type": "string",
     "default": "",
-    "hint": "使用与 AstrBot 更新器相同的 URL 前缀格式"
+    "invisible": true
+  },
+  "font_config_version": {
+    "description": "字体配置迁移版本",
+    "type": "int",
+    "default": 0,
+    "invisible": true
   }
 }

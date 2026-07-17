@@ -54,6 +54,7 @@ class FontPaths:
 class FontBundle:
     bubble: ImageFont.FreeTypeFont
     nickname: ImageFont.FreeTypeFont
+    nickname_scaled: ImageFont.FreeTypeFont
     title: ImageFont.FreeTypeFont
     title_scaled: ImageFont.FreeTypeFont
     paths: FontPaths
@@ -97,9 +98,7 @@ class FontManifest:
         if set(manifest.files) != required:
             raise ValueError("字体清单文件角色不完整")
         if any(
-            Path(filename).name != filename
-            or "/" in filename
-            or "\\" in filename
+            Path(filename).name != filename or "/" in filename or "\\" in filename
             for filename in manifest.files.values()
         ):
             raise ValueError("字体清单文件名不得包含目录")
@@ -201,7 +200,9 @@ class FontManager:
     def status(self) -> FontStatus:
         return FontStatus(
             state=self._state,
-            version=(self._bundle.version if self._bundle else self.manifest.pack_version),
+            version=(
+                self._bundle.version if self._bundle else self.manifest.pack_version
+            ),
             cache_path=self._active_cache_dir or self.version_dir,
             error=self._error,
             downloaded=self._downloaded,
@@ -300,10 +301,9 @@ class FontManager:
         self, configured: dict[str, Path | None], cache_dir: Path
     ) -> FontPaths:
         return FontPaths(
-            bubble=configured["bubble"]
-            or cache_dir / self.manifest.files["normal"],
+            bubble=configured["bubble"] or cache_dir / self.manifest.files["normal"],
             nickname=configured["nickname"]
-            or cache_dir / self.manifest.files["extra_light"],
+            or cache_dir / self.manifest.files["normal"],
             title=configured["title"] or cache_dir / self.manifest.files["bold"],
         )
 
@@ -327,7 +327,9 @@ class FontManager:
                     self.staging_dir / f"install-{uuid.uuid4().hex}"
                 )
                 self._owned_staging.add(install_dir)
-                await asyncio.to_thread(self._extract_and_install, part_path, install_dir)
+                await asyncio.to_thread(
+                    self._extract_and_install, part_path, install_dir
+                )
             except Exception:
                 await asyncio.to_thread(self._cleanup_owned_staging)
                 raise
@@ -365,7 +367,9 @@ class FontManager:
         try:
             from astrbot.core.utils.io import download_file
         except ImportError as exc:
-            raise FontUnsupportedError("当前 AstrBot 不提供异步下载接口，请升级 AstrBot") from exc
+            raise FontUnsupportedError(
+                "当前 AstrBot 不提供异步下载接口，请升级 AstrBot"
+            ) from exc
         await download_file(
             url,
             str(path),
@@ -448,6 +452,9 @@ class FontManager:
                 raise FileNotFoundError(f"字体文件不存在: {path}")
         bubble = ImageFont.truetype(str(paths.bubble), self.bubble_size * self.scale)
         nickname = ImageFont.truetype(str(paths.nickname), self.nickname_size)
+        nickname_scaled = ImageFont.truetype(
+            str(paths.nickname), self.nickname_size * self.scale
+        )
         title = ImageFont.truetype(str(paths.title), self.title_size)
         title_scaled = ImageFont.truetype(
             str(paths.title), self.title_size * self.scale
@@ -455,6 +462,7 @@ class FontManager:
         return FontBundle(
             bubble=bubble,
             nickname=nickname,
+            nickname_scaled=nickname_scaled,
             title=title,
             title_scaled=title_scaled,
             paths=paths,
@@ -465,7 +473,7 @@ class FontManager:
     def _validate_default_fonts(paths: FontPaths) -> None:
         expected_styles = {
             paths.bubble: {"normal", "regular"},
-            paths.nickname: {"extralight"},
+            paths.nickname: {"normal", "regular"},
             paths.title: {"bold"},
         }
         for path, accepted_styles in expected_styles.items():
@@ -474,7 +482,9 @@ class FontManager:
                 family, style = font.getname()
             except Exception as exc:
                 raise FontVerifyError(f"默认字体无法加载: {path.name}") from exc
-            normalized_family = "".join(char for char in family.lower() if char.isalnum())
+            normalized_family = "".join(
+                char for char in family.lower() if char.isalnum()
+            )
             normalized_style = "".join(char for char in style.lower() if char.isalnum())
             if "sourcehansanscn" not in normalized_family:
                 raise FontVerifyError(f"默认字体家族不匹配: {path.name}")
@@ -514,7 +524,9 @@ class FontManager:
             (
                 path
                 for path in self.font_root.iterdir()
-                if path.is_dir() and not path.name.startswith(".") and path != self.version_dir
+                if path.is_dir()
+                and not path.name.startswith(".")
+                and path != self.version_dir
             ),
             key=lambda path: path.stat().st_mtime,
             reverse=True,
@@ -526,7 +538,9 @@ class FontManager:
     async def _acquire_file_lock(self) -> None:
         token = uuid.uuid4().hex
         while True:
-            payload = json.dumps({"pid": os.getpid(), "time": time.time(), "token": token})
+            payload = json.dumps(
+                {"pid": os.getpid(), "time": time.time(), "token": token}
+            )
             try:
                 descriptor = os.open(
                     self.lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY

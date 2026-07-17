@@ -195,6 +195,7 @@ def test_cache_hit_and_custom_paths_do_not_download(tmp_path: Path) -> None:
     assert mixed_calls == []
     assert mixed.get_bundle().paths.bubble == custom.resolve()
     assert mixed.get_bundle().paths.nickname.is_relative_to(mixed.font_root)
+    assert mixed.get_bundle().paths.nickname.name == mixed.manifest.files["normal"]
 
 
 def test_previous_version_cache_survives_new_download_failure(tmp_path: Path) -> None:
@@ -564,7 +565,7 @@ def test_default_font_family_and_weight_are_verified(
 ) -> None:
     paths = FontPaths(
         bubble=tmp_path / "SourceHanSansCN-Normal.otf",
-        nickname=tmp_path / "SourceHanSansCN-ExtraLight.otf",
+        nickname=tmp_path / "SourceHanSansCN-Normal.otf",
         title=tmp_path / "SourceHanSansCN-Bold.otf",
     )
 
