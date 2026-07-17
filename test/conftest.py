@@ -166,6 +166,7 @@ def generator(plugin_module, tmp_path: Path):
         SimpleNamespace(
             bubble=default_font,
             nickname=default_font,
+            nickname_scaled=default_font,
             title=default_font,
             title_scaled=default_font,
         )

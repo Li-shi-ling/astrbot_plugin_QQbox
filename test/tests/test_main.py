@@ -938,6 +938,23 @@ def test_render_uses_one_bundle_snapshot_during_hot_swap(generator, plugin_modul
     assert generator.bubble_font == "second"
 
 
+def test_nickname_uses_larger_gray_supersampled_rendering(generator) -> None:
+    generator._font_bundle.nickname_scaled = generator.nickname_font.font_variant(size=144)
+    background = Image.new("RGBA", (260, 100), (240, 240, 242, 255))
+
+    generator._draw_supersampled_nickname(background, (20, 10), "Amiya")
+
+    assert generator._font_configs["nickname"][1] == 38
+    assert generator.nickname_color == (128, 128, 128, 255)
+    changed_pixels = [
+        pixel
+        for pixel in background.get_flattened_data()
+        if pixel != (240, 240, 242, 255)
+    ]
+    assert changed_pixels
+    assert any(pixel[:3] == (128, 128, 128) for pixel in changed_pixels)
+
+
 def test_wrap_text_uses_safe_width_fallback_when_pillow_measurement_fails(
     generator, monkeypatch
 ) -> None:

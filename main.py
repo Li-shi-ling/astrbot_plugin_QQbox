@@ -59,7 +59,7 @@ def _with_font_snapshot(method):
     return wrapped
 
 
-@register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.3.13")
+@register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.3.14")
 class QQbox(Star):
     def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)
@@ -789,7 +789,7 @@ class ChatBubbleGenerator:
         title_font_path,
         avatar_image_path,
         bubble_font_size=34,
-        nickname_font_size=25,
+        nickname_font_size=38,
         title_font_size=19,
         bubble_padding=20,
         title_padding_x=25,
@@ -798,6 +798,7 @@ class ChatBubbleGenerator:
         title_bubble_offset=5,
         bubble_bg_color=(255, 255, 255, 220),
         text_color=(0, 0, 0, 255),
+        nickname_color=(128, 128, 128, 255),
         corner_radius=27,
         avatar_size=(89, 89),
         margin=20,
@@ -849,6 +850,7 @@ class ChatBubbleGenerator:
         # 样式参数
         self.bubble_bg_color = bubble_bg_color
         self.text_color = text_color
+        self.nickname_color = nickname_color
         self.avatar_image_path = avatar_image_path
 
         # 背景颜色处理
@@ -875,6 +877,11 @@ class ChatBubbleGenerator:
     def nickname_font(self):
         bundle = self._current_font_bundle()
         return bundle.nickname if bundle else None
+
+    @property
+    def nickname_SCALE_font(self):
+        bundle = self._current_font_bundle()
+        return bundle.nickname_scaled if bundle else None
 
     @property
     def title_font(self):
@@ -1543,8 +1550,6 @@ class ChatBubbleGenerator:
 
     def _add_name_and_title(self, background, nickname, title_info=None):
         """添加昵称和头衔到背景"""
-        draw = ImageDraw.Draw(background)
-
         if title_info and title_info.get("content", None):
             # 处理头衔
             t_c = title_info.get("color", None)
@@ -1575,20 +1580,48 @@ class ChatBubbleGenerator:
             name_x = (
                 self.bubble_position[0] + title_width + self.title_bubble_name_offset
             )
-            draw.text(
+            self._draw_supersampled_nickname(
+                background,
                 (name_x, self.avatar_position[1]),
                 nickname,
-                fill=self.text_color,
-                font=self.nickname_font,
             )
         else:
             # 只绘制昵称
-            draw.text(
+            self._draw_supersampled_nickname(
+                background,
                 (self.bubble_position[0], self.avatar_position[1]),
                 nickname,
-                fill=self.text_color,
-                font=self.nickname_font,
             )
+
+    def _draw_supersampled_nickname(self, background, position, nickname):
+        """在透明高分辨率图层绘制昵称，再缩小合成以模拟 QQ 的柔和字缘。"""
+        scale = self.SCALE
+        font = self.nickname_SCALE_font
+        bbox = font.getbbox(nickname)
+        padding = 2 * scale
+        width = max(1, bbox[2] - bbox[0] + padding * 2)
+        height = max(1, bbox[3] - bbox[1] + padding * 2)
+        overlay = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        ImageDraw.Draw(overlay).text(
+            (padding - bbox[0], padding - bbox[1]),
+            nickname,
+            fill=self.nickname_color,
+            font=font,
+            stroke_width=max(1, scale // 4),
+            stroke_fill=self.nickname_color,
+        )
+        overlay = overlay.resize(
+            (
+                max(1, round(width / scale)),
+                max(1, round(height / scale)),
+            ),
+            Image.Resampling.LANCZOS,
+        )
+        destination = (
+            round(position[0] + bbox[0] / scale - padding / scale),
+            round(position[1] + bbox[1] / scale - padding / scale),
+        )
+        background.alpha_composite(overlay, dest=destination)
 
     def resize_by_scale(self, image, scale_factor):
         w, h = image.size
