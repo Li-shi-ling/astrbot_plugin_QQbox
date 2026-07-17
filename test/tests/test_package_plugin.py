@@ -22,7 +22,7 @@ def test_read_metadata_name_and_version() -> None:
 
     assert package_plugin.read_metadata_name_and_version() == (
         "astrbot_plugin_QQbox",
-        "v1.3.11",
+        "v1.3.12",
     )
 
 
@@ -32,6 +32,7 @@ def test_should_package_path_filters_local_and_runtime_files() -> None:
     assert package_plugin.should_package_path(Path("main.py")) is True
     assert package_plugin.should_package_path(Path("src/db/repo.py")) is True
     assert package_plugin.should_package_path(Path("AGENTS.md")) is False
+    assert package_plugin.should_package_path(Path(".omx/state/runtime.json")) is False
     assert package_plugin.should_package_path(Path("test/tests/test_main.py")) is False
     assert package_plugin.should_package_path(Path(".idea/misc.xml")) is False
     assert package_plugin.should_package_path(Path(".pipeline-workspace/spec.json")) is False
