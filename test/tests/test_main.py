@@ -112,31 +112,20 @@ def test_font_config_schema_defaults_to_persistent_downloads(plugin_module) -> N
     schema_path = Path(plugin_module.__file__).resolve().parent / "_conf_schema.json"
     schema = json.loads(schema_path.read_text(encoding="utf-8"))
 
+    assert set(schema) == {"font_download"}
     assert schema["font_download"]["type"] == "object"
     assert schema["font_download"]["items"]["auto_download"]["default"] is True
     assert schema["font_download"]["items"]["github_mirror"]["default"] == ""
-    expected = {
-        "bubble_font": (34, "#000000"),
-        "nickname_font": (25, "#808080"),
-        "title_font": (19, "#FFFFFF"),
-    }
-    for group, (size, color) in expected.items():
-        assert schema[group]["type"] == "object"
-        assert schema[group]["items"]["path"]["default"] == ""
-        assert schema[group]["items"]["size"]["default"] == size
-        assert schema[group]["items"]["color"]["default"] == color
-    assert schema["bubble_font_path"]["invisible"] is True
-    assert schema["font_config_version"]["invisible"] is True
 
 
-def test_nested_font_config_applies_each_category_independently(
+def test_visual_config_uses_web_defaults_and_only_download_settings_remain(
     plugin_module, tmp_path: Path, monkeypatch
 ) -> None:
     monkeypatch.setattr(plugin_module.StarTools, "get_data_dir", staticmethod(lambda: tmp_path))
     instance = plugin_module.QQbox(
         context=object(),
         config={
-            "font_config_version": 1,
+            "corner_radius": 99,
             "font_download": {
                 "auto_download": False,
                 "github_mirror": "https://mirror.example/",
@@ -160,21 +149,22 @@ def test_nested_font_config_applies_each_category_independently(
     )
 
     assert instance.qqbox._font_configs == {
-        "bubble": ("D:/fonts/bubble.otf", 31),
-        "nickname": ("D:/fonts/nickname.otf", 24),
-        "title": ("D:/fonts/title.otf", 18),
+        "bubble": ("", 34),
+        "nickname": ("", 25),
+        "title": ("", 19),
     }
-    assert instance.qqbox.text_color == (17, 34, 51, 255)
-    assert instance.qqbox.nickname_color == (68, 85, 102, 204)
-    assert instance.qqbox.title_color == (119, 136, 153, 255)
-    assert instance.font_manager.bubble_size == 31
-    assert instance.font_manager.nickname_size == 24
-    assert instance.font_manager.title_size == 18
+    assert instance.qqbox.corner_radius == 27
+    assert instance.qqbox.text_color == (0, 0, 0, 255)
+    assert instance.qqbox.nickname_color == (128, 128, 128, 255)
+    assert instance.qqbox.title_color == (255, 255, 255, 255)
+    assert instance.font_manager.bubble_size == 34
+    assert instance.font_manager.nickname_size == 25
+    assert instance.font_manager.title_size == 19
     assert instance.font_manager.config.auto_download is False
     assert instance.font_manager.config.github_mirror == "https://mirror.example/"
 
 
-def test_init_migrates_old_bundled_paths_and_keeps_persistent_font_root(
+def test_removed_font_paths_are_ignored_and_fonts_stay_in_persistent_root(
     plugin_module, tmp_path: Path, monkeypatch
 ) -> None:
     monkeypatch.setattr(plugin_module.StarTools, "get_data_dir", staticmethod(lambda: tmp_path))
@@ -200,67 +190,6 @@ def test_init_migrates_old_bundled_paths_and_keeps_persistent_font_root(
     assert instance.title_font_path == ""
 
 
-def test_legacy_font_config_is_saved_but_external_paths_are_preserved(
-    plugin_module, tmp_path: Path, monkeypatch
-) -> None:
-    monkeypatch.setattr(plugin_module.StarTools, "get_data_dir", staticmethod(lambda: tmp_path))
-
-    class ConfigStub(dict):
-        def __init__(self):
-            super().__init__(
-                bubble_font_path=(
-                    "C:/astrbot/data/plugins/astrbot_plugin_QQbox/resources/fonts/"
-                    "Microsoft-YaHei-Semilight.ttc"
-                ),
-                nickname_font_path="D:/user-fonts/custom.otf",
-                title_font_path="",
-            )
-            self.saved = 0
-
-        def save_config(self):
-            self.saved += 1
-
-    config = ConfigStub()
-    instance = plugin_module.QQbox(context=object(), config=config)
-
-    assert config["bubble_font_path"] == ""
-    assert config["nickname_font_path"] == ""
-    assert config["nickname_font"]["path"] == "D:/user-fonts/custom.otf"
-    assert config["font_config_version"] == 1
-    assert config.saved == 1
-    assert instance.nickname_font_path == "D:/user-fonts/custom.otf"
-
-
-def test_legacy_download_config_moves_into_download_group(
-    plugin_module, tmp_path: Path, monkeypatch
-) -> None:
-    monkeypatch.setattr(plugin_module.StarTools, "get_data_dir", staticmethod(lambda: tmp_path))
-
-    class ConfigStub(dict):
-        def __init__(self):
-            super().__init__(
-                font_auto_download=False,
-                font_github_mirror="https://mirror.example/",
-            )
-            self.saved = 0
-
-        def save_config(self):
-            self.saved += 1
-
-    config = ConfigStub()
-    instance = plugin_module.QQbox(context=object(), config=config)
-
-    assert config["font_download"] == {
-        "auto_download": False,
-        "github_mirror": "https://mirror.example/",
-    }
-    assert config["font_auto_download"] is True
-    assert config["font_github_mirror"] == ""
-    assert config["font_config_version"] == 1
-    assert config.saved == 1
-    assert instance.font_manager.config.auto_download is False
-
-
 def test_log_font_not_ready_paths_prints_runtime_paths_once(qqbox, plugin_module, monkeypatch) -> None:
     warnings = []
 
@@ -277,7 +206,6 @@ def test_log_font_not_ready_paths_prints_runtime_paths_once(qqbox, plugin_module
     assert sum("字体未加载" in message for message in warnings) == 1
     assert any("持久化数据目录" in message for message in warnings)
     assert any("字体持久化目录" in message for message in warnings)
-    assert any("气泡自定义字体" in message for message in warnings)
 
 
 def test_initialize_starts_font_preparation_without_awaiting_it(

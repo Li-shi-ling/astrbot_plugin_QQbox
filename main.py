@@ -68,15 +68,15 @@ def _with_font_snapshot(method):
     return wrapped
 
 
-@register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.4.2")
+@register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.4.3")
 class QQbox(Star):
     def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)
         self.Config = config
-        self._migrate_legacy_font_config()
+        base_layout = normalize_layout(DEFAULT_LAYOUT)
 
-        # 获取圆角
-        self.corner_radius = int(self.Config.get("corner_radius", 27))
+        # 视觉参数全部由插件页面的布局预设管理；AstrBot 配置仅保留下载设置。
+        self.corner_radius = base_layout["bubble"]["corner_radius"]
 
         # 使用框架提供的插件持久化数据目录
         self.plugin_dir = Path(__file__).resolve().parent
@@ -84,26 +84,17 @@ class QQbox(Star):
         self.avatar_image_path = self.data_dir / "avatars"
         self.db_dir = self.data_dir / "db"
 
-        bubble_font = self._config_group("bubble_font")
-        nickname_font = self._config_group("nickname_font")
-        title_font = self._config_group("title_font")
         font_download = self._config_group("font_download")
 
-        self.bubble_font_path = str(bubble_font.get("path", "") or "")
-        self.nickname_font_path = str(nickname_font.get("path", "") or "")
-        self.title_font_path = str(title_font.get("path", "") or "")
-        self.bubble_font_size = self._positive_font_size(bubble_font, 34)
-        self.nickname_font_size = self._positive_font_size(nickname_font, 25)
-        self.title_font_size = self._positive_font_size(title_font, 19)
-        self.bubble_text_color = self._parse_font_color(
-            bubble_font.get("color"), (0, 0, 0, 255)
-        )
-        self.nickname_text_color = self._parse_font_color(
-            nickname_font.get("color"), (128, 128, 128, 255)
-        )
-        self.title_text_color = self._parse_font_color(
-            title_font.get("color"), (255, 255, 255, 255)
-        )
+        self.bubble_font_path = ""
+        self.nickname_font_path = ""
+        self.title_font_path = ""
+        self.bubble_font_size = base_layout["bubble"]["font_size"]
+        self.nickname_font_size = base_layout["nickname"]["font_size"]
+        self.title_font_size = base_layout["title"]["font_size"]
+        self.bubble_text_color = color_tuple(base_layout["bubble"]["text_color"])
+        self.nickname_text_color = color_tuple(base_layout["nickname"]["color"])
+        self.title_text_color = color_tuple(base_layout["title"]["color"])
 
         # 创建必要的目录
         self.avatar_image_path.mkdir(parents=True, exist_ok=True)
@@ -481,99 +472,10 @@ class QQbox(Star):
         log(f"[qqbox] 数据库路径: {self.qq_db_file}")
         log(f"[qqbox] 旧JSON迁移检测路径: {self.qq_data_file}")
         log(f"[qqbox] 字体持久化目录: {self.font_manager.font_root}")
-        log(f"[qqbox] 气泡自定义字体: {self.bubble_font_path or '(默认)'}")
-        log(f"[qqbox] 昵称自定义字体: {self.nickname_font_path or '(默认)'}")
-        log(f"[qqbox] 头衔自定义字体: {self.title_font_path or '(默认)'}")
-
-    def _migrate_legacy_font_config(self):
-        try:
-            config_version = int(self.Config.get("font_config_version", 0))
-        except (TypeError, ValueError):
-            config_version = 0
-        if config_version >= 1:
-            return
-
-        legacy_fonts = {
-            "bubble_font": (
-                "bubble_font_path",
-                "microsoft-yahei-semilight.ttc",
-            ),
-            "nickname_font": (
-                "nickname_font_path",
-                "sourcehansanssc-extralight.otf",
-            ),
-            "title_font": ("title_font_path", "microsoft-yahei-bold.ttc"),
-        }
-        changed = False
-        for group_key, (legacy_key, filename) in legacy_fonts.items():
-            group = dict(self._config_group(group_key))
-            value = str(self.Config.get(legacy_key, "") or "")
-            normalized = value.replace("\\", "/").lower()
-            legacy_suffix = f"/astrbot_plugin_qqbox/resources/fonts/{filename}"
-            if (
-                value
-                and not normalized.endswith(legacy_suffix)
-                and not group.get("path")
-            ):
-                group["path"] = value
-                self.Config[group_key] = group
-                changed = True
-            if value:
-                self.Config[legacy_key] = ""
-                changed = True
-
-        download = dict(self._config_group("font_download"))
-        if "font_auto_download" in self.Config:
-            legacy_auto_download = bool(self.Config.get("font_auto_download", True))
-            if download.get("auto_download", True) != legacy_auto_download:
-                download["auto_download"] = legacy_auto_download
-                changed = True
-            if self.Config.get("font_auto_download") is not True:
-                self.Config["font_auto_download"] = True
-                changed = True
-        legacy_mirror = str(self.Config.get("font_github_mirror", "") or "")
-        if legacy_mirror:
-            if not download.get("github_mirror"):
-                download["github_mirror"] = legacy_mirror
-                changed = True
-            self.Config["font_github_mirror"] = ""
-            changed = True
-        if download:
-            self.Config["font_download"] = download
-        self.Config["font_config_version"] = 1
-        changed = True
-        if changed and callable(getattr(self.Config, "save_config", None)):
-            try:
-                self.Config.save_config()
-            except OSError as exc:
-                logger.warning(f"[qqbox] 旧字体配置已在内存中清空，但写回失败: {exc}")
 
     def _config_group(self, key):
         value = self.Config.get(key, {})
         return value if isinstance(value, dict) else {}
-
-    @staticmethod
-    def _positive_font_size(group, default):
-        try:
-            size = int(group.get("size", default))
-        except (TypeError, ValueError):
-            return default
-        return size if size > 0 else default
-
-    @staticmethod
-    def _parse_font_color(value, default):
-        if not isinstance(value, str):
-            return default
-        color = value.strip().removeprefix("#")
-        if len(color) not in {6, 8}:
-            return default
-        try:
-            channels = tuple(
-                int(color[index : index + 2], 16) for index in range(0, len(color), 2)
-            )
-        except ValueError:
-            return default
-        return channels + (255,) if len(channels) == 3 else channels
 
     def _log_font_not_ready_paths(self):
         if getattr(self, "_font_paths_logged_on_failure", False):
