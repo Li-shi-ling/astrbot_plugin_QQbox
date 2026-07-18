@@ -28,6 +28,7 @@ from .src.chat_bubble_generator import (
     ChatBubbleGenerator,
     _with_font_snapshot,
 )
+from .src.constraints import MAX_MESSAGE_TEXT_LENGTH
 from .src.font_manager import (
     FontBundle,
     FontConfig,
@@ -46,7 +47,7 @@ from .src.web_pages import QQBoxWebController
 MSG_ID_PATTERN = re.compile(r"\[MSG_ID:[^\]]*\]")
 # 布局生成器缓存上限（条），超出后按最近使用顺序逐出
 LAYOUT_GENERATOR_CACHE_LIMIT = 8
-@register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.4.9")
+@register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.4.10")
 class QQbox(Star):
     def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)
@@ -150,7 +151,7 @@ class QQbox(Star):
             .replace("echo", "", 1)
             .strip()
         )
-        text = self._remove_message_id_markers(text)[:500]
+        text = self._remove_message_id_markers(text)[:MAX_MESSAGE_TEXT_LENGTH]
         bot = getattr(event, "bot", None)
         info = await self.get_qq_info(qq, bot)
         img_bytes = await asyncio.to_thread(
@@ -843,7 +844,9 @@ class QQbox(Star):
             color = 4
         if color not in generator.color_map:
             color = 4
-        text = str(payload.get("text") or "这是一条可实时调整布局的示例气泡。")[:500]
+        text = str(
+            payload.get("text") or "这是一条可实时调整布局的示例气泡。"
+        )[:MAX_MESSAGE_TEXT_LENGTH]
         avatar_path = next(self.avatar_image_path.glob(f"{qq}-*.png"), None)
         return qq, display_name, title, color, text, avatar_path
 

@@ -805,6 +805,9 @@ class ChatBubbleGenerator:
                 - nickname_bbox[0]
                 + self.margin
             )
+            # The configured position is Pillow's text origin, not the glyph
+            # box top. _draw_supersampled_nickname composites at
+            # position + bbox[:2], so the exact rendered bottom is y + bbox[3].
             height_candidates.append(
                 self.nickname_position[1] + nickname_bbox[3] + self.margin
             )

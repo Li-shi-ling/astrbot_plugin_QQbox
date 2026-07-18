@@ -122,6 +122,7 @@ class QQBoxWebController:
         fonts = [
             {"id": font_id, "label": path.name}
             for font_id, path in sorted(self.owner.available_font_files().items())
+            if not font_id.startswith("current-")
         ]
         return json_response({"fonts": fonts})
 

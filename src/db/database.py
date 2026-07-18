@@ -103,6 +103,9 @@ class QQBoxDBManager:
         self, statements: list[tuple[str, tuple[Any, ...]]]
     ) -> None:
         with self._connection() as conn:
+            # `with conn` owns commit/rollback but does not start a transaction
+            # on entry. IMMEDIATE intentionally acquires SQLite's writer lock
+            # before the first statement in this multi-statement operation.
             conn.execute("BEGIN IMMEDIATE")
             for sql, params in statements:
                 conn.execute(sql, params)
@@ -139,6 +142,8 @@ class QQBoxDBManager:
         rows: list[tuple[Any, ...]],
     ) -> None:
         with self._connection() as conn:
+            # Keep the delete and replacement inserts behind one eagerly
+            # acquired writer lock; _connection still handles commit/rollback.
             conn.execute("BEGIN IMMEDIATE")
             conn.execute(delete_sql)
             if rows:
