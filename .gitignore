@@ -213,5 +213,9 @@ __marimo__/
 docs/
 AGENTS.md
 scripts/
+!/.codex/skills/astrbot-plugin-pages/scripts/
+!/.codex/skills/astrbot-plugin-pages/scripts/scaffold_plugin_page.py
 resources/fonts/
 .omx/
+.codex/
+test/

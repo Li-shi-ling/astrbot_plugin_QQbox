@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>QQbox 控制台</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="app-sidebar" aria-label="QQbox 功能导航">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">Q</span>
+          <div><strong>QQbox</strong><small>PLUGIN CONSOLE</small></div>
+        </div>
+        <nav class="side-nav">
+          <button class="nav-item active" type="button" data-view="bubble" aria-selected="true">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14v9H9l-4 3V6Zm3 3h8M8 12h5" /></svg>
+            <span><strong>气泡调节</strong><small>布局、字体与预览</small></span>
+          </button>
+          <button class="nav-item" type="button" data-view="database" aria-selected="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="3" /><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6" /></svg>
+            <span><strong>数据库管理</strong><small>名称、头衔与颜色</small></span>
+          </button>
+        </nav>
+        <div class="sidebar-foot"><span class="live-dot"></span>QQbox v1.4.10</div>
+      </aside>
+
+      <main class="app-main">
+        <section id="view-bubble" class="app-view studio" data-view-panel="bubble">
+          <header class="bubble-header">
+            <div>
+              <p class="eyebrow">QQBOX BUBBLE STUDIO</p>
+              <h1>预生成示范与布局预设</h1>
+              <p class="subtitle">填写数值或直接拖动头像、头衔、昵称和气泡，随后调用真实生成接口查看结果。</p>
+            </div>
+            <div id="status" class="status" role="status">正在连接…</div>
+          </header>
+
+          <section class="preset-bar">
+            <label>预设<select id="preset-select"></select></label>
+            <label class="preset-name">名称<input id="preset-name" maxlength="64" placeholder="例如：紧凑布局" /></label>
+            <button id="new-preset" type="button">新建</button>
+            <button id="save-preset" class="primary" type="button">保存</button>
+            <button id="activate-preset" type="button">设为当前</button>
+            <button id="deactivate-preset" type="button">停用预设</button>
+            <button id="reset-preset" type="button">一键重置</button>
+            <button id="delete-preset" class="danger" type="button">删除</button>
+          </section>
+
+          <section class="main-grid">
+            <div class="preview-column">
+              <section class="canvas-panel">
+                <div class="section-heading">
+                  <div><p class="eyebrow">DRAG CANVAS</p><h2>拖拽布局</h2></div>
+                  <span class="hint">拖动元素会实时回填 X / Y</span>
+                </div>
+                <div id="stage-wrap">
+                  <div id="stage">
+                    <img id="stage-image" alt="与实际生成一致的气泡预览" />
+                    <button class="part avatar-part" data-section="avatar" type="button" aria-label="拖动头像">头像</button>
+                    <button class="part title-part" data-section="title" type="button" aria-label="拖动头衔">头衔</button>
+                    <button class="part nickname-part" data-section="nickname" type="button" aria-label="拖动昵称">昵称</button>
+                    <button class="part bubble-part" data-section="bubble" type="button" aria-label="拖动消息气泡">气泡</button>
+                  </div>
+                </div>
+              </section>
+
+              <section class="real-preview">
+                <div class="section-heading">
+                  <div><p class="eyebrow">REAL RENDER</p><h2>真实生成预览</h2></div>
+                  <button id="generate-preview" class="primary" type="button">生成示例气泡</button>
+                </div>
+                <div class="sample-fields">
+                  <label>QQ<input id="sample-qq" value="10001" inputmode="numeric" /></label>
+                  <label>名称<input id="sample-name" value="预览用户" maxlength="64" /></label>
+                  <label>头衔<input id="sample-title" value="示例头衔" maxlength="64" /></label>
+                  <label>颜色<select id="sample-color"><option value="1">灰</option><option value="2">紫</option><option value="3">黄</option><option value="4" selected>绿</option></select></label>
+                  <label class="sample-text">气泡正文<textarea id="sample-text">这是一条可实时调整布局的示例气泡。</textarea></label>
+                </div>
+                <div id="render-output" class="render-output">
+                  <span>点击“生成示例气泡”调用后端 Pillow 接口。</span>
+                  <img id="preview-image" alt="气泡生成预览" hidden />
+                </div>
+              </section>
+            </div>
+
+            <aside class="controls-panel">
+              <div class="section-heading"><div><p class="eyebrow">PARAMETERS</p><h2>全部参数</h2></div><span class="hint">向下滚动查看更多</span></div>
+              <div id="controls"></div>
+            </aside>
+          </section>
+        </section>
+
+        <section id="view-database" class="app-view database-view" data-view-panel="database" hidden>
+          <div class="database-header">
+            <div>
+              <p class="eyebrow">QQBOX DATABASE</p>
+              <h1>用户资料管理</h1>
+              <p class="subtitle">直接维护气泡使用的用户名称、头衔与颜色。</p>
+            </div>
+            <button id="new-profile" class="primary" type="button">新增用户</button>
+          </div>
+
+          <section class="db-toolbar">
+            <label class="db-search-field"><span>搜索</span><input id="search" type="search" placeholder="QQ、名称或头衔" /></label>
+            <button id="refresh" type="button">刷新数据库</button>
+            <span id="count" class="muted"></span>
+          </section>
+
+          <section class="db-workspace">
+            <div class="db-table-card">
+              <div class="db-table-scroll">
+                <table>
+                  <thead><tr><th>QQ</th><th>用户名称</th><th>用户头衔</th><th>用户颜色</th><th>操作</th></tr></thead>
+                  <tbody id="profile-list"></tbody>
+                </table>
+              </div>
+              <div id="empty" class="db-empty" hidden>数据库中还没有匹配的用户记录。</div>
+            </div>
+
+            <form id="editor" class="db-editor" hidden>
+              <div class="db-editor-heading">
+                <div><p class="eyebrow">PROFILE</p><h2 id="editor-title">新增用户</h2></div>
+                <button id="close-editor" class="icon-button" type="button" aria-label="关闭">×</button>
+              </div>
+              <label>QQ<input id="qq" name="qq" inputmode="numeric" required /></label>
+              <label>用户名称<input id="name" name="name" maxlength="64" placeholder="留空时使用缓存昵称" /></label>
+              <label>用户头衔<input id="title" name="title" maxlength="64" /></label>
+              <label>用户颜色<select id="color" name="color"><option value="1">灰色 · #B5B6B5</option><option value="2">紫色 · #D69AFF</option><option value="3">黄色 · #FFC629</option><option value="4">绿色 · #52D7C5</option></select></label>
+              <div class="db-form-actions"><button id="cancel" type="button">取消</button><button class="primary" type="submit">保存到数据库</button></div>
+            </form>
+          </section>
+          <div id="notice" class="db-notice" role="status" aria-live="polite"></div>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="./shell.js"></script>
+    <script type="module" src="./app.js"></script>
+    <script type="module" src="./database.js"></script>
+  </body>
+</html>
