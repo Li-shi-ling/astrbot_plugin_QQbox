@@ -2,7 +2,7 @@
 
 AstrBot QQ 聊天气泡生成插件，支持文字、图片和 GIF 气泡。
 
-- 当前版本：`v1.4.11`
+- 当前版本：`v1.4.13`
 - AstrBot：`>= 4.26.3`
 - 平台：QQ（aiocqhttp）
 
@@ -23,7 +23,9 @@ AstrBot QQ 聊天气泡生成插件，支持文字、图片和 GIF 气泡。
 3. 首次启动时等待字体下载完成。
 4. 使用 `/qb font status` 查看字体状态。
 
-如果 GitHub 下载较慢，可在插件配置的“字体资源下载”中填写 `github_mirror`。
+字体下载会继承 AstrBot 的全局网络代理。GitHub 直连失败时，插件会自动切换 AstrBot 内置镜像，无需重复配置。
+
+字体尚在下载时，文字、图片和 GIF 生图命令会立即返回当前下载进度，不会一直等待。
 
 ## 命令
 
@@ -82,7 +84,6 @@ AstrBot 配置页只保留字体下载设置。
 | 配置项 | 说明 | 默认值 |
 |---|---|---|
 | `font_download.auto_download` | 字体缺失时自动下载 | `true` |
-| `font_download.github_mirror` | GitHub 镜像前缀，留空时直连 GitHub | 空 |
 
 插件会使用 AstrBot 的全局网络代理。字体、字号、颜色和布局请在插件页面中设置。
 
@@ -99,7 +100,7 @@ AstrBot 配置页只保留字体下载设置。
 ### 提示字体尚未准备完成
 
 1. 发送 `/qb font status` 查看状态。
-2. 检查 AstrBot 网络代理或 `github_mirror`。
+2. 检查 AstrBot 的全局网络代理。
 3. 发送 `/qb font retry` 重新下载。
 
 ### 图片或 GIF 命令没有找到图片
@@ -120,9 +121,9 @@ AstrBot 配置页只保留字体下载设置。
 ## 开发者
 
 - 开发者：Lishining
-- 标语：我想要说的，群友都替为说了
+- 标语：我想要说的，群友都替我说了
 - QQ 群：1083090761
 
 欢迎 issue 和 PR，我看到后会认真处理。
 
-[![Moe Counter](https://count.getloli.com/get/@li-shi-ling?theme=minecraft)](https://github.com/Li-shi-ling/astrbot_plugin_mrfzccl)
+[![Moe Counter](https://count.getloli.com/get/@li-shi-ling?theme=minecraft)](https://github.com/Li-shi-ling/astrbot_plugin_QQbox)

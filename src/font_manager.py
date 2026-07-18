@@ -18,6 +18,16 @@ from PIL import ImageFont
 DownloadFunction = Callable[[str, Path, Callable[[dict], None]], Awaitable[None]]
 _ROOT_LOCKS: dict[Path, asyncio.Lock] = {}
 
+# Keep this list aligned with AstrBot Dashboard's ProxySelector defaults. QQbox
+# still delegates the actual transfer and global HTTP proxy handling to
+# astrbot.core.utils.io.download_file.
+ASTRBOT_GITHUB_MIRRORS = (
+    "https://edgeone.gh-proxy.com",
+    "https://hk.gh-proxy.com",
+    "https://gh-proxy.com",
+    "https://gh.dpik.top",
+)
+
 
 class FontState(str, Enum):
     NOT_STARTED = "not_started"
@@ -40,7 +50,6 @@ class FontConfig:
     nickname_path: str = ""
     title_path: str = ""
     auto_download: bool = True
-    github_mirror: str = ""
 
 
 @dataclass(frozen=True)
@@ -72,6 +81,110 @@ class FontStatus:
     error: str | None
     downloaded: int
     total: int
+
+
+def _format_size(size: int) -> str:
+    value = max(0, int(size))
+    if value < 1024:
+        return f"{value} B"
+    if value < 1024 * 1024:
+        return f"{value / 1024:.2f} KB"
+    return f"{value / (1024 * 1024):.2f} MB"
+
+
+def _progress_details(status: FontStatus, width: int = 12) -> tuple[str, str]:
+    if status.total <= 0:
+        return f"[{'░' * width}] 等待文件大小", f"已下载：{_format_size(status.downloaded)}"
+    percent = min(100.0, max(0.0, status.downloaded * 100 / status.total))
+    completed = min(width, int(percent * width / 100))
+    bar = "█" * completed + "░" * (width - completed)
+    return (
+        f"[{bar}] {percent:.1f}%",
+        f"已下载：{_format_size(status.downloaded)} / {_format_size(status.total)}",
+    )
+
+
+def format_font_status(status: FontStatus) -> str:
+    """Format the font command response for people instead of state-machine logs."""
+    if status.state is FontState.DOWNLOADING:
+        bar, size = _progress_details(status)
+        return (
+            "字体正在下载\n\n"
+            f"进度：{bar}\n"
+            f"{size}\n\n"
+            f"字体版本：{status.version}\n"
+            f"保存位置：{status.cache_path}\n\n"
+            "下载完成后会自动加载，无需重启插件。"
+        )
+    if status.state is FontState.READY:
+        return (
+            "字体已准备完成\n\n"
+            f"字体版本：{status.version}\n"
+            f"保存位置：{status.cache_path}\n\n"
+            "现在可以正常使用文字、图片和 GIF 生图命令。"
+        )
+    preparing_titles = {
+        FontState.NOT_STARTED: "字体任务尚未启动",
+        FontState.CHECKING: "正在检查本地字体",
+        FontState.VERIFYING: "字体已下载，正在校验",
+        FontState.LOADING: "字体校验完成，正在加载",
+    }
+    if status.state in preparing_titles:
+        return (
+            f"{preparing_titles[status.state]}\n\n"
+            f"字体版本：{status.version}\n"
+            f"保存位置：{status.cache_path}\n\n"
+            "任务会在后台继续，请稍后再次查看。"
+        )
+    if status.state is FontState.STOPPED:
+        return (
+            "字体任务已停止\n\n"
+            "插件可能正在关闭或重载。启动完成后可再次查看字体状态。"
+        )
+    failed_titles = {
+        FontState.FAILED_CONFIG: "字体配置有误",
+        FontState.FAILED_DOWNLOAD: "字体下载失败",
+        FontState.FAILED_VERIFY: "字体文件校验失败",
+        FontState.FAILED_LOAD: "字体加载失败",
+        FontState.FAILED_UNSUPPORTED: "当前 AstrBot 不支持字体下载",
+    }
+    title = failed_titles.get(status.state, "字体准备失败")
+    reason = status.error or "没有提供详细错误信息"
+    return (
+        f"{title}\n\n"
+        f"原因：{reason}\n\n"
+        "请先检查 AstrBot 的全局网络代理，然后发送：\n"
+        "/qb font retry"
+    )
+
+
+def format_font_generation_unavailable(status: FontStatus) -> str:
+    """Return an immediate, user-facing response for image commands."""
+    if status.state is FontState.DOWNLOADING:
+        bar, size = _progress_details(status)
+        return (
+            "字体正在后台下载\n\n"
+            f"进度：{bar}\n"
+            f"{size}\n\n"
+            "下载完成后，请重新发送生图命令。\n"
+            "查看详情：/qb font status"
+        )
+    if status.state in {
+        FontState.CHECKING,
+        FontState.VERIFYING,
+        FontState.LOADING,
+        FontState.NOT_STARTED,
+    }:
+        return (
+            "字体正在后台准备\n\n"
+            "准备完成后，请重新发送生图命令。\n"
+            "查看详情：/qb font status"
+        )
+    return (
+        "字体暂时无法使用\n\n"
+        "查看原因：/qb font status\n"
+        "重新下载：/qb font retry"
+    )
 
 
 @dataclass(frozen=True)
@@ -321,8 +434,6 @@ class FontManager:
                 )
                 self._owned_staging.add(part_path)
                 await self._download_with_retries(part_path)
-                self._state = FontState.VERIFYING
-                await asyncio.to_thread(self._verify_archive, part_path)
                 install_dir = self._inside(
                     self.staging_dir / f"install-{uuid.uuid4().hex}"
                 )
@@ -338,15 +449,23 @@ class FontManager:
 
     async def _download_with_retries(self, part_path: Path) -> None:
         self._state = FontState.DOWNLOADING
-        mirror = self.config.github_mirror.strip().rstrip("/")
-        url = f"{mirror}/{self.manifest.url}" if mirror else self.manifest.url
         last_error: Exception | None = None
-        for attempt in range(3):
+        urls = (self.manifest.url,) + tuple(
+            f"{mirror}/{self.manifest.url}" for mirror in ASTRBOT_GITHUB_MIRRORS
+        )
+        for url in urls:
             try:
+                self._state = FontState.DOWNLOADING
                 part_path.unlink(missing_ok=True)
+                self._downloaded = 0
+                self._total = 0
                 await self._downloader(url, part_path, self._on_progress)
                 if not part_path.is_file():
                     raise FontDownloadError("下载函数未生成字体归档")
+                # AstrBot's downloader may persist a non-200 response body, so
+                # validate each source before accepting it or moving on.
+                self._state = FontState.VERIFYING
+                await asyncio.to_thread(self._verify_archive, part_path)
                 return
             except asyncio.CancelledError:
                 raise
@@ -355,10 +474,9 @@ class FontManager:
             except Exception as exc:
                 last_error = exc
                 part_path.unlink(missing_ok=True)
-                if attempt < 2:
-                    await asyncio.sleep(2**attempt)
         raise FontDownloadError(
-            "字体下载失败，请检查 AstrBot 网络代理或 GitHub 镜像配置"
+            "字体下载失败，已尝试 GitHub 直连和 AstrBot 内置镜像；"
+            "请检查 AstrBot 全局网络代理"
         ) from last_error
 
     async def _astrbot_download(

@@ -2,18 +2,12 @@
   "font_download": {
     "description": "字体资源下载",
     "type": "object",
-    "hint": "只控制默认字体包的异步下载和 GitHub 镜像；字体、字号、颜色与气泡布局请在插件页面中调整",
+    "hint": "只控制默认字体包的异步下载；下载会继承 AstrBot 全局代理，并在失败时自动切换内置 GitHub 镜像",
     "items": {
       "auto_download": {
         "description": "默认字体缺失时后台自动下载",
         "type": "bool",
         "default": true
-      },
-      "github_mirror": {
-        "description": "GitHub 镜像前缀",
-        "type": "string",
-        "default": "",
-        "hint": "留空直连官方 Release；格式与 AstrBot 更新器使用的镜像前缀一致"
       }
     }
   }

@@ -35,6 +35,8 @@ from .src.font_manager import (
     FontManager,
     FontPaths,
     FontState,
+    format_font_generation_unavailable,
+    format_font_status,
 )
 from .src.layout import (
     DEFAULT_LAYOUT,
@@ -47,7 +49,7 @@ from .src.web_pages import QQBoxWebController
 MSG_ID_PATTERN = re.compile(r"\[MSG_ID:[^\]]*\]")
 # 布局生成器缓存上限（条），超出后按最近使用顺序逐出
 LAYOUT_GENERATOR_CACHE_LIMIT = 8
-@register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.4.10")
+@register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.4.13")
 class QQbox(Star):
     def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)
@@ -114,7 +116,6 @@ class QQbox(Star):
                 nickname_path=self.nickname_font_path,
                 title_path=self.title_font_path,
                 auto_download=bool(font_download.get("auto_download", True)),
-                github_mirror=str(font_download.get("github_mirror", "") or ""),
             ),
             bubble_size=self.bubble_font_size,
             nickname_size=self.nickname_font_size,
@@ -293,15 +294,24 @@ class QQbox(Star):
                 self.font_manager.status().state is FontState.READY
                 and not self.font_manager.needs_update
             ):
-                yield event.plain_result("字体已就绪，无需重试")
+                yield event.plain_result(
+                    "字体已准备完成\n\n"
+                    "无需重复下载，现在可以直接使用生图命令。"
+                )
                 return
             self.font_manager.retry()
             yield event.plain_result(
-                "已启动字体检查/下载任务，可用 /qb font status 查看进度"
+                "已重新启动字体下载\n\n"
+                "下载会在后台继续，不会阻塞其他命令。\n"
+                "查看进度：/qb font status"
             )
             return
         if action != "status":
-            yield event.plain_result("用法：/qb font status 或 /qb font retry")
+            yield event.plain_result(
+                "字体命令使用方法\n\n"
+                "查看状态：/qb font status\n"
+                "重新下载：/qb font retry"
+            )
             return
         yield event.plain_result(self._format_font_status())
 
@@ -472,28 +482,10 @@ class QQbox(Star):
         self._log_runtime_paths(level="warning")
 
     def _format_font_status(self):
-        status = self.font_manager.status()
-        progress = ""
-        if status.total > 0:
-            progress = f"\n进度：{status.downloaded}/{status.total} bytes"
-        error = f"\n错误：{status.error}" if status.error else ""
-        return (
-            f"字体状态：{status.state.value}\n"
-            f"版本：{status.version}\n"
-            f"缓存：{status.cache_path}{progress}{error}"
-        )
+        return format_font_status(self.font_manager.status())
 
     def _font_unavailable_message(self):
-        status = self.font_manager.status()
-        if status.state in {
-            FontState.CHECKING,
-            FontState.DOWNLOADING,
-            FontState.VERIFYING,
-            FontState.LOADING,
-            FontState.NOT_STARTED,
-        }:
-            return "字体正在后台准备，请稍后重试；可用 /qb font status 查看进度"
-        return "字体准备失败，请用 /qb font status 查看原因，或用 /qb font retry 重试"
+        return format_font_generation_unavailable(self.font_manager.status())
 
     # 检测qq号是否合法
     def _validate_qq(self, qq):
