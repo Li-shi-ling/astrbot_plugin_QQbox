@@ -23,7 +23,7 @@
             <span><strong>数据库管理</strong><small>名称、头衔与颜色</small></span>
           </button>
         </nav>
-        <div class="sidebar-foot"><span class="live-dot"></span>QQbox v1.4.4</div>
+        <div class="sidebar-foot"><span class="live-dot"></span>QQbox v1.4.7</div>
       </aside>
 
       <main class="app-main">
@@ -37,7 +37,7 @@
             <div id="status" class="status" role="status">正在连接…</div>
           </header>
 
-          <section class="preset-bar panel">
+          <section class="preset-bar">
             <label>预设<select id="preset-select"></select></label>
             <label class="preset-name">名称<input id="preset-name" maxlength="64" placeholder="例如：紧凑布局" /></label>
             <button id="new-preset" type="button">新建</button>
@@ -50,7 +50,7 @@
 
           <section class="main-grid">
             <div class="preview-column">
-              <section class="panel canvas-panel">
+              <section class="canvas-panel">
                 <div class="section-heading">
                   <div><p class="eyebrow">DRAG CANVAS</p><h2>拖拽布局</h2></div>
                   <span class="hint">拖动元素会实时回填 X / Y</span>
@@ -66,7 +66,7 @@
                 </div>
               </section>
 
-              <section class="panel real-preview">
+              <section class="real-preview">
                 <div class="section-heading">
                   <div><p class="eyebrow">REAL RENDER</p><h2>真实生成预览</h2></div>
                   <button id="generate-preview" class="primary" type="button">生成示例气泡</button>
@@ -85,7 +85,7 @@
               </section>
             </div>
 
-            <aside class="panel controls-panel">
+            <aside class="controls-panel">
               <div class="section-heading"><div><p class="eyebrow">PARAMETERS</p><h2>全部参数</h2></div><span class="hint">向下滚动查看更多</span></div>
               <div id="controls"></div>
             </aside>
@@ -102,14 +102,14 @@
             <button id="new-profile" class="primary" type="button">新增用户</button>
           </div>
 
-          <section class="db-toolbar db-card">
+          <section class="db-toolbar">
             <label class="db-search-field"><span>搜索</span><input id="search" type="search" placeholder="QQ、名称或头衔" /></label>
             <button id="refresh" type="button">刷新数据库</button>
             <span id="count" class="muted"></span>
           </section>
 
           <section class="db-workspace">
-            <div class="db-table-card db-card">
+            <div class="db-table-card">
               <div class="db-table-scroll">
                 <table>
                   <thead><tr><th>QQ</th><th>用户名称</th><th>用户头衔</th><th>用户颜色</th><th>操作</th></tr></thead>
@@ -119,7 +119,7 @@
               <div id="empty" class="db-empty" hidden>数据库中还没有匹配的用户记录。</div>
             </div>
 
-            <form id="editor" class="db-editor db-card" hidden>
+            <form id="editor" class="db-editor" hidden>
               <div class="db-editor-heading">
                 <div><p class="eyebrow">PROFILE</p><h2 id="editor-title">新增用户</h2></div>
                 <button id="close-editor" class="icon-button" type="button" aria-label="关闭">×</button>

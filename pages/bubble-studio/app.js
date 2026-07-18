@@ -61,9 +61,10 @@ function createField(section, [field, label, type]) {
 function renderControls() {
   controls.replaceChildren();
   SECTIONS.forEach(([section, title, fields]) => {
-    const block = document.createElement("section");
+    const block = document.createElement("details");
     block.className = "control-section";
-    const heading = document.createElement("h3");
+    block.open = true;
+    const heading = document.createElement("summary");
     heading.textContent = title;
     const grid = document.createElement("div");
     grid.className = "control-grid";

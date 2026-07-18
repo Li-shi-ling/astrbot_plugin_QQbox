@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import sqlite3
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -35,7 +37,7 @@ class QQBoxDBManager:
             self._initialized = True
 
     def _init_db_sync(self) -> None:
-        with self._connect() as conn:
+        with self._connection() as conn:
             conn.execute("PRAGMA journal_mode=WAL")
             conn.execute("PRAGMA synchronous=NORMAL")
             conn.execute("PRAGMA busy_timeout=5000")
@@ -51,6 +53,20 @@ class QQBoxDBManager:
         conn.execute("PRAGMA busy_timeout=5000")
         return conn
 
+    @contextmanager
+    def _connection(self) -> Iterator[sqlite3.Connection]:
+        """Open a connection with transaction semantics that is always closed.
+
+        `with sqlite3.Connection` only commits/rolls back the transaction; it
+        never closes the connection, so every operation must go through here.
+        """
+        conn = self._connect()
+        try:
+            with conn:
+                yield conn
+        finally:
+            conn.close()
+
     async def fetch_all(
         self, sql: str, params: tuple[Any, ...] = ()
     ) -> list[sqlite3.Row]:
@@ -58,7 +74,7 @@ class QQBoxDBManager:
         return await asyncio.to_thread(self._fetch_all_sync, sql, params)
 
     def _fetch_all_sync(self, sql: str, params: tuple[Any, ...]) -> list[sqlite3.Row]:
-        with self._connect() as conn:
+        with self._connection() as conn:
             return list(conn.execute(sql, params).fetchall())
 
     async def execute(self, sql: str, params: tuple[Any, ...] = ()) -> None:
@@ -72,9 +88,8 @@ class QQBoxDBManager:
             return await asyncio.to_thread(self._execute_returning_id_sync, sql, params)
 
     def _execute_returning_id_sync(self, sql: str, params: tuple[Any, ...]) -> int:
-        with self._connect() as conn:
+        with self._connection() as conn:
             cursor = conn.execute(sql, params)
-            conn.commit()
             return int(cursor.lastrowid)
 
     async def execute_transaction(
@@ -87,16 +102,14 @@ class QQBoxDBManager:
     def _execute_transaction_sync(
         self, statements: list[tuple[str, tuple[Any, ...]]]
     ) -> None:
-        with self._connect() as conn:
+        with self._connection() as conn:
             conn.execute("BEGIN IMMEDIATE")
             for sql, params in statements:
                 conn.execute(sql, params)
-            conn.commit()
 
     def _execute_sync(self, sql: str, params: tuple[Any, ...]) -> None:
-        with self._connect() as conn:
+        with self._connection() as conn:
             conn.execute(sql, params)
-            conn.commit()
 
     async def execute_many(self, sql: str, rows: list[tuple[Any, ...]]) -> None:
         await self.init_db()
@@ -104,9 +117,8 @@ class QQBoxDBManager:
             await asyncio.to_thread(self._execute_many_sync, sql, rows)
 
     def _execute_many_sync(self, sql: str, rows: list[tuple[Any, ...]]) -> None:
-        with self._connect() as conn:
+        with self._connection() as conn:
             conn.executemany(sql, rows)
-            conn.commit()
 
     async def replace_all(
         self,
@@ -126,9 +138,8 @@ class QQBoxDBManager:
         insert_sql: str,
         rows: list[tuple[Any, ...]],
     ) -> None:
-        with self._connect() as conn:
+        with self._connection() as conn:
             conn.execute("BEGIN IMMEDIATE")
             conn.execute(delete_sql)
             if rows:
                 conn.executemany(insert_sql, rows)
-            conn.commit()

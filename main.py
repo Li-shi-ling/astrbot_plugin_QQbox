@@ -1,10 +1,12 @@
 import asyncio
+import hashlib
 import json
 import os
 import re
 import sqlite3
 import threading
 import unicodedata
+from collections import OrderedDict
 from functools import wraps
 from io import BytesIO
 from pathlib import Path
@@ -38,6 +40,8 @@ from .src.layout import (
 from .src.web_pages import QQBoxWebController
 
 MSG_ID_PATTERN = re.compile(r"\[MSG_ID:[^\]]*\]")
+# 布局生成器缓存上限（条），超出后按最近使用顺序逐出
+LAYOUT_GENERATOR_CACHE_LIMIT = 8
 # CLReq 6.1.1 "strict" line-start/line-end prohibition subset.  This is a
 # deliberately documented Chinese tailoring of UAX #14 rather than a claim of
 # implementing every Unicode line-breaking class.
@@ -68,7 +72,7 @@ def _with_font_snapshot(method):
     return wrapped
 
 
-@register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.4.4")
+@register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.4.7")
 class QQbox(Star):
     def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)
@@ -147,6 +151,7 @@ class QQbox(Star):
         self.http_client = None
         self._font_paths_logged_on_failure = False
         self.active_layout_preset = None
+        self._generator_cache: OrderedDict[str, ChatBubbleGenerator] = OrderedDict()
         self.web_controller = QQBoxWebController(self)
         self.web_controller.register(context)
 
@@ -171,7 +176,7 @@ class QQbox(Star):
             .replace("echo", "", 1)
             .strip()
         )
-        text = self._remove_message_id_markers(text)
+        text = self._remove_message_id_markers(text)[:500]
         bot = getattr(event, "bot", None)
         info = await self.get_qq_info(qq, bot)
         img_bytes = await asyncio.to_thread(
@@ -191,6 +196,9 @@ class QQbox(Star):
             self._log_font_not_ready_paths()
             yield event.plain_result(self._font_unavailable_message())
             return
+        if not self._validate_qq(qq):
+            yield event.plain_result("QQ号格式错误，请使用纯数字")
+            return
         img_url = self._get_image_url(event)
         if not img_url:
             yield event.plain_result("未检测到图片")
@@ -202,6 +210,7 @@ class QQbox(Star):
         pil_gif = Image.open(BytesIO(img_data))
         if not getattr(pil_gif, "is_animated", False):
             yield event.plain_result("该图片不是GIF")
+            return
         bot = getattr(event, "bot", None)
         info = await self.get_qq_info(qq, bot)
         img_bytes = await asyncio.to_thread(
@@ -246,6 +255,9 @@ class QQbox(Star):
         """设置对应qq的头衔颜色(color:1:灰色,2:紫色,3:黄色,4:绿色) /qb sc [qq] [color]"""
         if not self._validate_qq(qq):
             yield event.plain_result("QQ号格式错误，请使用纯数字")
+            return
+        if color not in self.qqbox.color_map:
+            yield event.plain_result("颜色编号需在 1-4 之间")
             return
         await self.update_qq_title_key(qq, color=color)
         yield event.plain_result(f"设置成功 qq:{qq}, color:{color}")
@@ -575,7 +587,7 @@ class QQbox(Star):
                 try:
                     old_avatar.unlink()
                 except OSError as exc:
-                    logger.warning(f"鍒犻櫎鏃уご鍍忓け璐? {old_avatar}: {exc}")
+                    logger.warning(f"删除旧头像失败 {old_avatar}: {exc}")
 
         avatar_url = f"https://q1.qlogo.cn/g?b=qq&nk={qq}&s=640"
         save_path = avatar_dir / f"{qq}-.png"
@@ -797,11 +809,43 @@ class QQbox(Star):
         generator.install_font_bundle(bundle)
         return generator
 
+    def _layout_generator_cache_key(self, layout) -> str:
+        """缓存键：布局内容 + 当前字体快照，任一侧变化都会得到新键。"""
+        normalized = normalize_layout(layout)
+        bundle = self.qqbox._current_font_bundle()
+        paths = getattr(bundle, "paths", None)
+        font_state = (
+            getattr(bundle, "version", None),
+            str(getattr(paths, "bubble", "")),
+            str(getattr(paths, "nickname", "")),
+            str(getattr(paths, "title", "")),
+        )
+        payload = json.dumps(normalized, ensure_ascii=False, sort_keys=True)
+        return hashlib.sha1(repr((font_state, payload)).encode("utf-8")).hexdigest()
+
+    def _build_layout_generator_cached(self, raw_layout):
+        """按缓存键复用布局生成器，避免每次渲染重复加载字体文件。
+
+        字体重装会更换 bundle 版本与路径，自然得到新缓存键；缓存有界，
+        超出 LAYOUT_GENERATOR_CACHE_LIMIT 后按最近使用顺序逐出。
+        """
+        key = self._layout_generator_cache_key(raw_layout)
+        cache = self._generator_cache
+        cached = cache.get(key)
+        if cached is not None:
+            cache.move_to_end(key)
+            return cached
+        generator = self._build_layout_generator(raw_layout)
+        cache[key] = generator
+        while len(cache) > LAYOUT_GENERATOR_CACHE_LIMIT:
+            cache.popitem(last=False)
+        return generator
+
     def _active_generator(self):
         active_layout_preset = getattr(self, "active_layout_preset", None)
         if not active_layout_preset:
             return self.qqbox
-        return self._build_layout_generator(active_layout_preset["config"])
+        return self._build_layout_generator_cached(active_layout_preset["config"])
 
     def create_chat_message(self, **kwargs):
         return self._active_generator().create_chat_message(**kwargs)
@@ -830,7 +874,7 @@ class QQbox(Star):
         return qq, display_name, title, color, text, avatar_path
 
     def render_layout_preview(self, layout, payload):
-        generator = self._build_layout_generator(layout)
+        generator = self._build_layout_generator_cached(layout)
         qq, display_name, title, color, text, avatar_path = (
             self._preview_render_context(generator, payload)
         )
@@ -848,7 +892,7 @@ class QQbox(Star):
         )
 
     def render_layout_preview_details(self, layout, payload):
-        generator = self._build_layout_generator(layout)
+        generator = self._build_layout_generator_cached(layout)
         qq, display_name, title, color, text, avatar_path = (
             self._preview_render_context(generator, payload)
         )
@@ -1145,9 +1189,8 @@ class ChatBubbleGenerator:
             4: (82, 215, 197, 220),  # #52D7C5
         }
 
-        # 缓存
-        self._temp_canvas = None
-        self._temp_draw = None
+        # 文本测量上下文改为每线程一份，避免并发渲染竞争共享画布
+        self._measure_state = threading.local()
 
         self._font_bundle = None
         self._render_font_state = threading.local()
@@ -1227,11 +1270,14 @@ class ChatBubbleGenerator:
     # 工具方法
     # ------------------------------------------------------------------------------
     def _get_temp_draw(self):
-        """获取临时绘图上下文（延迟初始化）"""
-        if self._temp_canvas is None:
-            self._temp_canvas = Image.new("RGBA", (10, 10))
-            self._temp_draw = ImageDraw.Draw(self._temp_canvas)
-        return self._temp_draw
+        """获取测量用的临时绘图上下文（延迟初始化，每线程一份）。"""
+        draw = getattr(self._measure_state, "draw", None)
+        if draw is None:
+            canvas = Image.new("RGBA", (10, 10))
+            draw = ImageDraw.Draw(canvas)
+            self._measure_state.canvas = canvas
+            self._measure_state.draw = draw
+        return draw
 
     def _wrap_text(self, text, font):
         """按 Unicode 文本单元和中文标点禁则自动换行。"""
