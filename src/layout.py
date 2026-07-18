@@ -38,11 +38,11 @@ DEFAULT_LAYOUT: dict[str, Any] = {
         "color": "#FFFFFFFF",
     },
     "nickname": {
-        "x": 330,
-        "y": 25,
+        "x": 216,
+        "y": 14,
         "auto_position": True,
         "font": "",
-        "font_size": 25,
+        "font_size": 21,
         "color": "#808080FF",
     },
 }
