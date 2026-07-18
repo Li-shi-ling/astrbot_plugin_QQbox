@@ -166,7 +166,7 @@ class QQbox(Star):
 
     @qb.command("gif")
     async def get_gif(self, event: AstrMessageEvent, qq: str):
-        """获取消息链或回复的gif,生成聊天气泡 /qb [qq] [图片] 或者 [图片] 回复 /qb [qq]"""
+        """获取消息链或回复的gif,生成聊天气泡 /qb gif [qq] [图片] 或者 [图片] 回复 /qb gif [qq]"""
         if not self.qqbox.is_load_fonts:
             self._log_font_not_ready_paths()
             yield event.plain_result(self._font_unavailable_message())
@@ -200,7 +200,7 @@ class QQbox(Star):
 
     @qb.command("img")
     async def echo_img(self, event: AstrMessageEvent, qq: str):
-        """获取消息链或回复的图片,生成聊天气泡 /qb [qq] [图片] 或者 [图片] 回复 /qb [qq]"""
+        """获取消息链或回复的图片,生成聊天气泡 /qb img [qq] [图片] 或者 [图片] 回复 /qb img [qq]"""
         if not self.qqbox.is_load_fonts:
             self._log_font_not_ready_paths()
             yield event.plain_result(self._font_unavailable_message())
