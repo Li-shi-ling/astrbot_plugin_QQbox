@@ -143,6 +143,16 @@ def normalize_layout(payload: Any) -> dict[str, Any]:
                 value = normalize_color(value)
             elif key in FONT_FIELDS:
                 value = _normalize_font_id(value)
+                if value.startswith("current-"):
+                    if value == f"current-{section}":
+                        # v1.4.9 exposed runtime-only IDs in the font picker.
+                        # An empty ID is the durable representation of the
+                        # current font for this role.
+                        value = ""
+                    else:
+                        raise LayoutValidationError(
+                            f"{section}.font 不能引用其他角色的当前字体"
+                        )
             elif key in BOOLEAN_FIELDS:
                 if not isinstance(value, bool):
                     raise LayoutValidationError(f"{section}.{field} 必须是布尔值")
@@ -168,6 +178,12 @@ def normalize_layout(payload: Any) -> dict[str, Any]:
             }.intersection(incoming)
         ):
             normalized[section]["auto_position"] = False
+
+    bubble = normalized["bubble"]
+    if bubble["max_width"] <= bubble["padding"] * 2:
+        raise LayoutValidationError(
+            "bubble.max_width 必须大于 bubble.padding 的两倍"
+        )
     return normalized
 
 

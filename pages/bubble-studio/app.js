@@ -6,6 +6,9 @@ const stageImage = document.getElementById("stage-image");
 const presetSelect = document.getElementById("preset-select");
 const presetName = document.getElementById("preset-name");
 const previewImage = document.getElementById("preview-image");
+const MAX_MESSAGE_TEXT_LENGTH = 500;
+const sampleText = document.getElementById("sample-text");
+sampleText.maxLength = MAX_MESSAGE_TEXT_LENGTH;
 let defaults;
 let config;
 let presets = [];
@@ -49,9 +52,17 @@ function createField(section, [field, label, type]) {
   input.id = fieldId(section, field);
   if (type !== "boolean") input.value = config[section][field];
   input.addEventListener("input", () => {
+    let value;
+    if (input.type === "number") {
+      if (input.value === "") return;
+      value = Number(input.value);
+      if (!Number.isFinite(value)) return;
+    } else {
+      value = input.type === "checkbox" ? input.checked : input.value;
+    }
     if (section === "canvas" && ["width", "height"].includes(field)) freezeAutoMode("canvas");
     if (["title", "nickname"].includes(section) && ["x", "y"].includes(field)) freezeAutoMode(section);
-    config[section][field] = input.type === "checkbox" ? input.checked : input.type === "number" ? Number(input.value) : input.value;
+    config[section][field] = value;
     schedulePreview();
   });
   wrapper.append(input);
@@ -117,7 +128,7 @@ function previewPayload() {
     display_name: document.getElementById("sample-name").value,
     title: document.getElementById("sample-title").value,
     color: Number(document.getElementById("sample-color").value),
-    text: document.getElementById("sample-text").value,
+    text: sampleText.value,
   };
 }
 
