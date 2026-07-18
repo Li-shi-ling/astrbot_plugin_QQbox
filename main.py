@@ -72,7 +72,7 @@ def _with_font_snapshot(method):
     return wrapped
 
 
-@register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.4.7")
+@register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.4.8")
 class QQbox(Star):
     def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)
