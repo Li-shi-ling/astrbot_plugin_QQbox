@@ -413,4 +413,597 @@ class ChatBubbleGenerator:
 
     # ------------------------------------------------------------------------------
     # æ°”æ³¡åˆ›å»ºæ–¹æ³•
-    # --------------------------------------------------------------ÛŽ:¶‰žËkºwµçUÐ ‰¹½Ñ•Ìˆ¤è4(€€€€€€€€€€€€€€€¹¥­¹…µ”€ôÑ¥Ñ±•}¥¹™½l‰¹½Ñ•Ì‰t4(4(€€€€€€€€Œƒ¢º‡žº_–â–Æ–Âë–¾à4(€€€€€€€‰}Í¥é”€ôÍ•±˜¹}…±Õ±…Ñ•}‰…­É½Õ¹‘}Í¥é”¡‰Õ‰‰±”°¹¥­¹…µ”°Ñ¥Ñ±•}¥¹™¼¤4(€€€€€€€‰…­É½Õ¹€ôÍ•±˜¹}É•…Ñ•}‰…­É½Õ¹‘}…¹Ù…Ì ©‰}Í¥é”¤4(4(€€€€€€€€ŒƒšÞï–*ƒšÂSšÎ„4(€€€€€€€‰…­É½Õ¹¹…±Á¡…}½µÁ½Í¥Ñ”¡‰Õ‰‰±”°‘•ÍÐõÍ•±˜¹‰Õ‰‰±•}Á½Í¥Ñ¥½¸¤4(4(€€€€€€€€ŒƒšÞï–*ƒ–’Ó–<4(€€€€€€€Í•±˜¹}…‘‘}…Ù…Ñ…È¡‰…­É½Õ¹°…Ù…Ñ…É}Á…Ñ ¤4(4(€€€€€€€€ŒƒšÞï–*ƒšb×žžÃ–J3–’Ó¢†P4(€€€€€€€Í•±˜¹}…‘‘}¹…µ•}…¹‘}Ñ¥Ñ±”¡‰…­É½Õ¹°¹¥­¹…µ”°Ñ¥Ñ±•}¥¹™¼¤4(4(€€€€€€€€Œƒ¢þS–n{–¶_¢*šÖ4(€€€€€€€¥µ}‰åÑ•Ì€ô	åÑ•Í%< ¤4(€€€€€€€‰…­É½Õ¹¹Í…Ù”¡¥µ}‰åÑ•Ì°™½Éµ…Ðô‰A9ˆ°½ÁÑ¥µ¥é”õQÉÕ”¤4(€€€€€€€¥µ}‰åÑ•Ì¹Í••¬ À¤4(€€€€€€€É•ÑÕÉ¸¥µ}‰åÑ•Ì4(4(€€€}Ý¥Ñ¡}™½¹Ñ}Í¹…ÁÍ¡½Ð4(€€€‘•˜É•…Ñ•}¡…Ñ}µ•ÍÍ…•}‰å}¥˜ 4(€€€€€€€Í•±˜°ÅÄ°Ñ•áÐ°¥µ…”°ÅÅ}Ñ¥Ñ±•}­•äõ9½¹”°ÕÍ•É}¥¹™¼õ9½¹”4(€€€€¤è4(€€€€€€€¥˜ÕÍ•É}¥¹™¼¥Ì9½¹”è4(€€€€€€€€€€€É…¥Í”Y…±Õ•ÉÉ½È ‹¦r¢šš>C’úmÕÍ•É}¥¹™¿–>šVÃ¾ò3¦ÿ–7–B3š¶•!QQC¢ÂžR ˆ¤4(4(€€€€€€€€Œƒš>C–>[žR£š"ß’þ‡š¼4(€€€€€€€¹¥­¹…µ”€ôÕÍ•É}¥¹™¼¹•Ð ‰¹…µ”ˆ°€‹šr«ž~—žR£š"Üˆ¤4(€€€€€€€…Ù…Ñ…É}Á…Ñ €ôÕÍ•É}¥¹™¼¹•Ð ‰…Ù…Ñ…É}Á…Ñ ˆ¤4(4(€€€€€€€€Œƒ–’žB–’Ó¢†S’þ‡š¼4(€€€€€€€Ñ¥Ñ±•}¥¹™¼€ô9½¹”4(€€€€€€€¥˜ÅÅ}Ñ¥Ñ±•}­•ä…¹ÅÄ¥¸ÅÅ}Ñ¥Ñ±•}­•äè4(€€€€€€€€€€€Ñ¥Ñ±•}¥¹™¼€ôÅÅ}Ñ¥Ñ±•}­•åmÅÅt4(€€€€€€€€€€€¥˜Ñ¥Ñ±•}¥¹™¼¹•Ð ‰¹½Ñ•Ìˆ¤è4(€€€€€€€€€€€€€€€¹¥­¹…µ”€ôÑ¥Ñ±•}¥¹™½l‰¹½Ñ•Ì‰t4(4(€€€€€€€€Œƒ–"žší%žjš¾?’â–âœ4(€€€€€€€™É…µ•Ì€ômt4(€€€€€€€‘ÕÉ…Ñ¥½¹Ì€ômt4(4(€€€€€€€™½È™É…µ”¥¸%µ…•M•ÅÕ•¹”¹%Ñ•É…Ñ½È¡¥µ…”¤è4(€€€€€€€€€€€‘ÕÉ…Ñ¥½¹Ì¹…ÁÁ•¹¡µ…à ÈÀ°¥¹Ð¡™É…µ”¹¥¹™¼¹•Ð ‰‘ÕÉ…Ñ¥½¸ˆ°€ÄÀÀ¤¤¤¤4(€€€€€€€€€€€™É…µ•}É‰„€ô™É…µ”¹½Áä ¤¹½¹Ù•ÉÐ ‰I	ˆ¤4(€€€€€€€€€€€™É…µ•Ì¹…ÁÁ•¹¡™É…µ•}É‰„¤4(4(€€€€€€€¥˜¹½Ð™É…µ•Ìè4(€€€€€€€€€€€É…¥Í”Y…±Õ•ÉÉ½È ‰%–nûž&šÊ‡šr'šr'šV#–âœˆ¤4(4(€€€€€€€€Œƒ’öÿžR£ž²³’â–âŸ–"o–îëšÂSšÎ‡–æÛ¢º‡žº_–â–Æ 4(€€€€€€€™¥ÉÍÑ}‰Õ‰‰±”€ôÍ•±˜¹É•…Ñ•}¡…Ñ}¥µ}‰Õ‰‰±”¡™É…µ•ÍlÁt¤4(€€€€€€€‰}Í¥é”€ôÍ•±˜¹}…±Õ±…Ñ•}‰…­É½Õ¹‘}Í¥é”¡™¥ÉÍÑ}‰Õ‰‰±”°¹¥­¹…µ”°Ñ¥Ñ±•}¥¹™¼¤4(4(€€€€€€€€Œƒ–"o–îë¦vgš¢3šf¿¾ò#–2–B¯–’Ó–?Žšb×žžÃŽ–’Ó¢†S¾ò$4(€€€€€€€ÍÑ…Ñ¥}‰…­É½Õ¹€ôÍ•±˜¹}É•…Ñ•}‰…­É½Õ¹‘}…¹Ù…Ì ©‰}Í¥é”¤4(€€€€€€€Í•±˜¹}…‘‘}…Ù…Ñ…È¡ÍÑ…Ñ¥}‰…­É½Õ¹°…Ù…Ñ…É}Á…Ñ ¤4(€€€€€€€Í•±˜¹}…‘‘}¹…µ•}…¹‘}Ñ¥Ñ±”¡ÍÑ…Ñ¥}‰…­É½Õ¹°¹¥­¹…µ”°Ñ¥Ñ±•}¥¹™¼¤4(4(€€€€€€€€Œƒš&ç¦?–’žBš&šr'–âœ4(€€€€€€€ÁÉ½•ÍÍ•‘}™É…µ•Ì€ômt4(€€€€€€€‰Õ‰‰±•}Á½Ì€ôÍ•±˜¹‰Õ‰‰±•}Á½Í¥Ñ¥½¸4(4(€€€€€€€™½È¤°™É…µ”¥¸•¹Õµ•É…Ñ”¡™É…µ•Ì¤è4(€€€€€€€€€€€€Œƒ–"o–îë–öO–&7–âŸžjšÂSšÎ„4(€€€€€€€€€€€‰Õ‰‰±”€ôÍ•±˜¹É•…Ñ•}¡…Ñ}¥µ}‰Õ‰‰±”¡™É…µ”¤4(4(€€€€€€€€€€€€Œƒ–"o–îëšZÃžj¢3šf¼4(€€€€€€€€€€€‰…­É½Õ¹€ôÍ•±˜¹}É•…Ñ•}‰…­É½Õ¹‘}…¹Ù…Ì ©‰}Í¥é”¤4(4(€€€€€€€€€€€€Œƒ–#žÊc¢ÒÓšÂSšÎ„4(€€€€€€€€€€€‰…­É½Õ¹¹…±Á¡…}½µÁ½Í¥Ñ”¡‰Õ‰‰±”°‘•ÍÐõ‰Õ‰‰±•}Á½Ì¤4(4(€€€€€€€€€€€€Œƒ–7žÊc¢ÒÓ¦vgš–žÒƒ¾ò3’ö¦ÿ–òšÂSšÎ‡–2ë–~|4(€€€€€€€€€€€€Œƒ–"o–îë’â’â«’â;¢3šf¿žnã–B3–’Ÿ–Â?žjš:§ž‚4(€€€€€€€€€€€µ…Í¬€ô%µ…”¹¹•Ü ‰0ˆ°‰}Í¥é”°€ÈÔÔ¤4(4(€€€€€€€€€€€€Œƒ–r£šÂSšÎ‡–2ë–~–"o–îë¦îG¢&Ë¾ò#¦?šb;¾ò'–2ë–~|4(€€€€€€€€€€€‰Õ‰‰±•}Ý¥‘Ñ °‰Õ‰‰±•}¡•¥¡Ð€ô‰Õ‰‰±”¹Í¥é”4(€€€€€€€€€€€‰Õ‰‰±•}…É•„€ô€ 4(€€€€€€€€€€€€€€€‰Õ‰‰±•}Á½ÍlÁt°4(€€€€€€€€€€€€€€€‰Õ‰‰±•}Á½ÍlÅt°4(€€€€€€€€€€€€€€€‰Õ‰‰±•}Á½ÍlÁt€¬‰Õ‰‰±•}Ý¥‘Ñ °4(€€€€€€€€€€€€€€€‰Õ‰‰±•}Á½ÍlÅt€¬‰Õ‰‰±•}¡•¥¡Ð°4(€€€€€€€€€€€€¤4(4(€€€€€€€€€€€€Œƒ–r£š:§ž‚’â·š2[ž¦ëšÂSšÎ‡–2ë–~|4(€€€€€€€€€€€‘É…Ý}µ…Í¬€ô%µ…•É…Ü¹É…Ü¡µ…Í¬¤4(€€€€€€€€€€€‘É…Ý}µ…Í¬¹É•Ñ…¹±”¡‰Õ‰‰±•}…É•„°™¥±°ôÀ¤4(4(€€€€€€€€€€€€ŒƒžÊc¢ÒÓ¦vgš–žÒƒ¾ò#–’Ó–?Žšb×žžÃŽ–’Ó¢†S¾ò$4(€€€€€€€€€€€‰…­É½Õ¹¹Á…ÍÑ”¡ÍÑ…Ñ¥}‰…­É½Õ¹°€ À°€À¤°µ…Í¬¤4(4(€€€€€€€€€€€ÁÉ½•ÍÍ•‘}™É…µ•Ì¹…ÁÁ•¹¡‰…­É½Õ¹¤4(4(€€€€€€€€Œƒ–"o–îé%4(€€€€€€€¥™}‰åÑ•Ì€ô	åÑ•Í%< ¤4(4(€€€€€€€¥˜±•¸¡ÁÉ½•ÍÍ•‘}™É…µ•Ì¤€ø€Äè4(€€€€€€€€€€€ÁÉ½•ÍÍ•‘}™É…µ•ÍlÁt¹Í…Ù” 4(€€€€€€€€€€€€€€€¥™}‰åÑ•Ì°4(€€€€€€€€€€€€€€€™½Éµ…Ðô‰%ˆ°4(€€€€€€€€€€€€€€€Í…Ù•}…±°õQÉÕ”°4(€€€€€€€€€€€€€€€…ÁÁ•¹‘}¥µ…•ÌõÁÉ½•ÍÍ•‘}™É…µ•ÍlÄét°4(€€€€€€€€€€€€€€€‘ÕÉ…Ñ¥½¸õ‘ÕÉ…Ñ¥½¹Ì°4(€€€€€€€€€€€€€€€±½½ÀôÀ°4(€€€€€€€€€€€€€€€½ÁÑ¥µ¥é”õQÉÕ”°4(€€€€€€€€€€€€€€€‘¥ÍÁ½Í…°ôÈ°4(€€€€€€€€€€€€¤4(€€€€€€€•±Í”è4(€€€€€€€€€€€ÁÉ½•ÍÍ•‘}™É…µ•ÍlÁt¹Í…Ù”¡¥™}‰åÑ•Ì°™½Éµ…Ðô‰A9ˆ°½ÁÑ¥µ¥é”õQÉÕ”¤4(4(€€€€€€€¥™}‰åÑ•Ì¹Í••¬ À¤4(€€€€€€€É•ÑÕÉ¸¥™}‰åÑ•Ì4(4(€€€€Œ€´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´4(€€€€Œƒ¢ú–*§šZçšÎT4(€€€€Œ€´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´´4(€€€‘•˜}…±Õ±…Ñ•}‰…­É½Õ¹‘}Í¥é”¡Í•±˜°‰Õ‰‰±”°¹¥­¹…µ”°Ñ¥Ñ±•}¥¹™¼õ9½¹”¤è4(€€€€€€€€ˆˆ‹¢º‡žº_¢3šf¿žRï–â–Âë–¾àˆˆˆ4(€€€€€€€‰Õ‰‰±•}Ü°‰Õ‰‰±•} €ô‰Õ‰‰±”¹Í¥é”4(4(€€€€€€€€ŒƒšÖ/¦?šZšr³–º÷–ê˜4(€€€€€€€‘É…Ü€ôÍ•±˜¹}•Ñ}Ñ•µÁ}‘É…Ü ¤4(€€€€€€€¹¥­¹…µ•}Ý¥‘Ñ €ô€ 4(€€€€€€€€€€€‘É…Ü¹Ñ•áÑ±•¹Ñ ¡¹¥­¹…µ”°™½¹ÐõÍ•±˜¹¹¥­¹…µ•}™½¹Ð¤€¬Í•±˜¹‰Õ‰‰±•}Á…‘‘¥¹œ4(€€€€€€€€¤4(4(€€€€€€€€Œƒ¢º‡žº_–~ëž†–º÷–ê˜4(€€€€€€€Ý¥‘Ñ¡}…¹‘¥‘…Ñ•Ì€ôl4(€€€€€€€€€€€Í•±˜¹‰Õ‰‰±•}Á½Í¥Ñ¥½¹lÁt€¬‰Õ‰‰±•}Ü€¬Í•±˜¹µ…É¥¸°4(€€€€€€€€€€€Í•±˜¹…Ù…Ñ…É}Á½Í¥Ñ¥½¹lÁt€¬Í•±˜¹…Ù…Ñ…É}Í¥é•lÁt€¬Í•±˜¹µ…É¥¸°4(€€€€€€€€€€€Í•±˜¹‰Õ‰‰±•}Á½Í¥Ñ¥½¹lÁt€¬¹¥­¹…µ•}Ý¥‘Ñ °4(€€€€€€€t4(4(€€€€€€€€Œƒ¢º‡žº_¦®c–ê˜4(€€€€€€€¡•¥¡Ñ}…¹‘¥‘…Ñ•Ì€ôl4(€€€€€€€€€€€Í•±˜¹‰Õ‰‰±•}Á½Í¥Ñ¥½¹lÅt€¬‰Õ‰‰±•} €¬Í•±˜¹µ…É¥¸°4(€€€€€€€€€€€Í•±˜¹…Ù…Ñ…É}Á½Í¥Ñ¥½¹lÅt€¬Í•±˜¹…Ù…Ñ…É}Í¥é•lÅt€¬Í•±˜¹µ…É¥¸°4(€€€€€€€t4(4(€€€€€€€€Œƒ–’Ó¢†S–J3šb×žžÃ–þ¦†ï’â;–º{¦fžîc–"Û–ÇžR£–B3’â––_–º{š^ÛšÖ/¦?žîOšzsŽ4(€€€€€€€¥˜Ñ¥Ñ±•}¥¹™¼…¹Ñ¥Ñ±•}¥¹™¼¹•Ð ‰½¹Ñ•¹Ðˆ¤è4(€€€€€€€€€€€Ñ¥Ñ±•}Ý¥‘Ñ¡}Í…±•°Ñ¥Ñ±•}¡•¥¡Ñ}Í…±•°|€ôÍ•±˜¹}µ•…ÍÕÉ•}Ñ¥Ñ±•}‰Õ‰‰±” 4(€€€€€€€€€€€€€€€Ñ¥Ñ±•}¥¹™½l‰½¹Ñ•¹Ð‰t4(€€€€€€€€€€€€¤4(€€€€€€€€€€€Ñ¥Ñ±•}Ý¥‘Ñ €ôÑ¥Ñ±•}Ý¥‘Ñ¡}Í…±•€¼¼Í•±˜¹M14(€€€€€€€€€€€Ñ¥Ñ±•}¡•¥¡Ð€ôÑ¥Ñ±•}¡•¥¡Ñ}Í…±•€¼¼Í•±˜¹M14(€€€€€€€€€€€Ñ¥Ñ±•}à°Ñ¥Ñ±•}ä€ôÍ•±˜¹Ñ¥Ñ±•}Á½Í¥Ñ¥½¸½È€ 4(€€€€€€€€€€€€€€€Í•±˜¹‰Õ‰‰±•}Á½Í¥Ñ¥½¹lÁt°4(€€€€€€€€€€€€€€€Í•±˜¹…Ù…Ñ…É}Á½Í¥Ñ¥½¹lÅt€¬Í•±˜¹Ñ¥Ñ±•}‰Õ‰‰±•}½™™Í•Ð°4(€€€€€€€€€€€€¤4(€€€€€€€€€€€¹…µ•}à€ô€ 4(€€€€€€€€€€€€€€€Í•±˜¹¹¥­¹…µ•}Á½Í¥Ñ¥½¹lÁt4(€€€€€€€€€€€€€€€¥˜Í•±˜¹¹¥­¹…µ•}Á½Í¥Ñ¥½¸4(€€€€€€€€€€€€€€€•±Í”Ñ¥Ñ±•}à€¬Ñ¥Ñ±•}Ý¥‘Ñ €¬Í•±˜¹Ñ¥Ñ±•}‰Õ‰‰±•}¹…µ•}…À4(€€€€€€€€€€€€¤4(€€€€€€€€€€€Ý¥‘Ñ¡}…¹‘¥‘…Ñ•Ì¹…ÁÁ•¹¡¹…µ•}à€¬¹¥­¹…µ•}Ý¥‘Ñ ¤4(€€€€€€€€€€€Ñ¥Ñ±•}Ñ½À€ôÑ¥Ñ±•}ä4(€€€€€€€€€€€¹¥­¹…µ•}ä€ô€ 4(€€€€€€€€€€€€€€€Í•±˜¹¹¥­¹…µ•}Á½Í¥Ñ¥½¹lÅt4(€€€€€€€€€€€€€€€¥˜Í•±˜¹¹¥­¹…µ•}Á½Í¥Ñ¥½¸4(€€€€€€€€€€€€€€€•±Í”Í•±˜¹}•¹Ñ•É•‘}¹¥­¹…µ•}ä¡Ñ¥Ñ±•}¡•¥¡Ð°¹¥­¹…µ”°Ñ¥Ñ±•}ä¤4(€€€€€€€€€€€€¤4(€€€€€€€€€€€¹¥­¹…µ•}‰‰½à€ôÍ•±˜¹¹¥­¹…µ•}™½¹Ð¹•Ñ‰‰½à¡¹¥­¹…µ”¤4(€€€€€€€€€€€Ý¥‘Ñ¡}…¹‘¥‘…Ñ•Ì¹…ÁÁ•¹¡Ñ¥Ñ±•}à€¬Ñ¥Ñ±•}Ý¥‘Ñ €¬Í•±˜¹µ…É¥¸¤4(€€€€€€€€€€€¡•¥¡Ñ}…¹‘¥‘…Ñ•Ì¹•áÑ•¹ 4(€€€€€€€€€€€€€€€€ 4(€€€€€€€€€€€€€€€€€€€Ñ¥Ñ±•}Ñ½À€¬Ñ¥Ñ±•}¡•¥¡Ð€¬Í•±˜¹µ…É¥¸°4(€€€€€€€€€€€€€€€€€€€¹¥­¹…µ•}ä€¬¹¥­¹…µ•}‰‰½álÍt€¬Í•±˜¹µ…É¥¸°4(€€€€€€€€€€€€€€€€¤4(€€€€€€€€€€€€¤4(4(€€€€€€€¥˜Í•±˜¹¹¥­¹…µ•}Á½Í¥Ñ¥½¸…¹¹½Ð€¡Ñ¥Ñ±•}¥¹™¼…¹Ñ¥Ñ±•}¥¹™¼¹•Ð ‰½¹Ñ•¹Ðˆ¤¤è4(€€€€€€€€€€€¹¥­¹…µ•}‰‰½à€ôÍ•±˜¹¹¥­¹…µ•}™½¹Ð¹•Ñ‰‰½à¡¹¥­¹…µ”¤4(€€€€€€€€€€€Ý¥‘Ñ¡}…¹‘¥‘…Ñ•Ì¹…ÁÁ•¹ 4(€€€€€€€€€€€€€€€Í•±˜¹¹¥­¹…µ•}Á½Í¥Ñ¥½¹lÁt4(€€€€€€€€€€€€€€€€¬¹¥­¹…µ•}‰‰½álÉt4(€€€€€€€€€€€€€€€€´¹¥­¹…µ•}‰‰½álÁt4(€€€€€€€€€€€€€€€€¬Í•±˜¹µ…É¥¸4(€€€€€€€€€€€€¤4(€€€€€€€€€€€¡•¥¡Ñ}…¹‘¥‘…Ñ•Ì¹…ÁÁ•¹ 4(€€€€€€€€€€€€€€€Í•±˜¹¹¥­¹…µ•}Á½Í¥Ñ¥½¹lÅt€¬¹¥­¹…µ•}‰‰½álÍt€¬Í•±˜¹µ…É¥¸4(€€€€€€€€€€€€¤4(4(€€€€€€€¥˜Í•±˜¹…¹Ù…Í}Í¥é”è4(€€€€€€€€€€€Ý¥‘Ñ¡}…¹‘¥‘…Ñ•Ì¹…ÁÁ•¹¡Í•±˜¹…¹Ù…Í}Í¥é•lÁt¤4(€€€€€€€€€€€¡•¥¡Ñ}…¹‘¥‘…Ñ•Ì¹…ÁÁ•¹¡Í•±˜¹…¹Ù…Í}Í¥é•lÅt¤4(4(€€€€€€€É•ÑÕÉ¸¥¹Ð¡µ…à¡Ý¥‘Ñ¡}…¹‘¥‘…Ñ•Ì¤¤°¥¹Ð¡µ…à¡¡•¥¡Ñ}…¹‘¥‘…Ñ•Ì¤¤4(4(€€€‘•˜}É•…Ñ•}‰…­É½Õ¹‘}…¹Ù…Ì¡Í•±˜°Ý¥‘Ñ °¡•¥¡Ð¤è4(€€€€€€€€ˆˆ‹–"o–îë¢3šf¿žRï–âˆˆˆ4(€€€€€€€É•ÑÕÉ¸%µ…”¹¹•Ü ‰I	ˆ°€¡Ý¥‘Ñ °¡•¥¡Ð¤°Í•±˜¹‰…­É½Õ¹‘}½±½È¤4(4(€€€‘•˜}…‘‘}…Ù…Ñ…È¡Í•±˜°‰…­É½Õ¹°…Ù…Ñ…É}Á…Ñ ¤è4(€€€€€€€€ˆˆ‹šÞï–*ƒ–’Ó–?–"Ã¢3šf¼ˆˆˆ4(€€€€€€€ÑÉäè4(€€€€€€€€€€€¥˜…Ù…Ñ…É}Á…Ñ …¹½Ì¹Á…Ñ ¹•á¥ÍÑÌ¡…Ù…Ñ…É}Á…Ñ ¤è4(€€€€€€€€€€€€€€€…Ù…Ñ…È€ô%µ…”¹½Á•¸¡…Ù…Ñ…É}Á…Ñ ¤¹½¹Ù•ÉÐ ‰I	ˆ¤4(€€€€€€€€€€€€€€€…Ù…Ñ…È€ô…Ù…Ñ…È¹É•Í¥é”¡Í•±˜¹…Ù…Ñ…É}Í¥é”°%µ…”¹I•Í…µÁ±¥¹œ¹19i=L¤4(€€€€€€€€€€€€€€€µ…Í­}Í…±”€ôÍ•±˜¹M14(€€€€€€€€€€€€€€€µ…Í­}Í¥é”€ô€ 4(€€€€€€€€€€€€€€€€€€€Í•±˜¹…Ù…Ñ…É}Í¥é•lÁt€¨µ…Í­}Í…±”°4(€€€€€€€€€€€€€€€€€€€Í•±˜¹…Ù…Ñ…É}Í¥é•lÅt€¨µ…Í­}Í…±”°4(€€€€€€€€€€€€€€€€¤4(€€€€€€€€€€€€€€€¥ÉÕ±…É}µ…Í¬€ô%µ…”¹¹•Ü ‰0ˆ°µ…Í­}Í¥é”°€À¤4(€€€€€€€€€€€€€€€%µ…•É…Ü¹É…Ü¡¥ÉÕ±…É}µ…Í¬¤¹•±±¥ÁÍ” 4(€€€€€€€€€€€€€€€€€€€€ À°€À°µ…Í­}Í¥é•lÁt€´€Ä°µ…Í­}Í¥é•lÅt€´€Ä¤°™¥±°ôÈÔÔ4(€€€€€€€€€€€€€€€€¤4(€€€€€€€€€€€€€€€¥ÉÕ±…É}µ…Í¬€ô¥ÉÕ±…É}µ…Í¬¹É•Í¥é” 4(€€€€€€€€€€€€€€€€€€€Í•±˜¹…Ù…Ñ…É}Í¥é”°%µ…”¹I•Í…µÁ±¥¹œ¹19i=L4(€€€€€€€€€€€€€€€€¤4(€€€€€€€€€€€€€€€…Ù…Ñ…È¹ÁÕÑ…±Á¡„ 4(€€€€€€€€€€€€€€€€€€€%µ…•¡½ÁÌ¹µÕ±Ñ¥Á±ä¡…Ù…Ñ…È¹•Ñ¡…¹¹•° ‰ˆ¤°¥ÉÕ±…É}µ…Í¬¤4(€€€€€€€€€€€€€€€€¤4(€€€€€€€€€€€€€€€‰…­É½Õ¹¹…±Á¡…}½µÁ½Í¥Ñ”¡…Ù…Ñ…È°‘•ÍÐõÍ•±˜¹…Ù…Ñ…É}Á½Í¥Ñ¥½¸¤4(€€€€€€€€€€€•±Í”è4(€€€€€€€€€€€€€€€Í•±˜¹}É•…Ñ•}‘•™…Õ±Ñ}…Ù…Ñ…È¡‰…­É½Õ¹¤4(€€€€€€€•á•ÁÐá•ÁÑ¥½¸…Ì”è4(€€€€€€€€€€€±½•È¹•ÉÉ½È¡˜‹–*ƒ¢ö÷–’Ó–?–’Ç¢Ò”èí•ôˆ¤4(€€€€€€€€€€€Í•±˜¹}É•…Ñ•}‘•™…Õ±Ñ}…Ù…Ñ…È¡‰…­É½Õ¹¤4(4(€€€‘•˜}É•…Ñ•}‘•™…Õ±Ñ}…Ù…Ñ…È¡Í•±˜°‰…­É½Õ¹¤è4(€€€€€€€€ˆˆ‹–"o–îë¦îc¢º“–’Ó–<ˆˆˆ4(€€€€€€€‘•™…Õ±Ñ}…Ù…Ñ…È€ô%µ…”¹¹•Ü ‰I	ˆ°Í•±˜¹…Ù…Ñ…É}Í¥é”°€ ÈÀÀ°€ÈÀÀ°€ÈÀÀ°€ÈÔÔ¤¤4(€€€€€€€‰…­É½Õ¹¹Á…ÍÑ”¡‘•™…Õ±Ñ}…Ù…Ñ…È°Í•±˜¹…Ù…Ñ…É}Á½Í¥Ñ¥½¸¤4(4(€€€‘•˜}…‘‘}¹…µ•}…¹‘}Ñ¥Ñ±”¡Í•±˜°‰…­É½Õ¹°¹¥­¹…µ”°Ñ¥Ñ±•}¥¹™¼õ9½¹”¤è4(€€€€€€€€ˆˆ‹šÞï–*ƒšb×žžÃ–J3–’Ó¢†S–"Ã¢3šf¼ˆˆˆ4(€€€€€€€¥˜Ñ¥Ñ±•}¥¹™¼…¹Ñ¥Ñ±•}¥¹™¼¹•Ð ‰½¹Ñ•¹Ðˆ°9½¹”¤è4(€€€€€€€€€€€€Œƒ–’žB–’Ó¢†P4(€€€€€€€€€€€Ñ}Œ€ôÑ¥Ñ±•}¥¹™¼¹•Ð ‰½±½Èˆ°9½¹”¤4(€€€€€€€€€€€Ñ¥Ñ±•}½±½È€ôÍ•±˜¹½±½É}µ…À¹•Ð 4(€€€€€€€€€€€€€€€¥¹Ð Ä¥˜Ñ}Œ¥Ì9½¹”•±Í”Ñ}Œ¤°Í•±˜¹½±½É}µ…ÁlÅt4(€€€€€€€€€€€€¤4(€€€€€€€€€€€Ñ¥Ñ±•}½¹Ñ•¹Ð€ôÑ¥Ñ±•}¥¹™¼¹•Ð ‰½¹Ñ•¹Ðˆ°€ˆˆ¤4(4(€€€€€€€€€€€€Œƒ–"o–îë–’Ó¢†SšÂSšÎ„4(€€€€€€€€€€€Ñ¥Ñ±•}‰Õ‰‰±”€ôÍ•±˜¹É•…Ñ•}Ñ¥Ñ±•}‰Õ‰‰±”¡Ñ¥Ñ±•}½¹Ñ•¹Ð°Ñ¥Ñ±•}½±½È¤4(€€€€€€€€€€€Ñ¥Ñ±•}Á½Í¥Ñ¥½¸€ôÍ•±˜¹Ñ¥Ñ±•}Á½Í¥Ñ¥½¸½È€ 4(€€€€€€€€€€€€€€€Í•±˜¹‰Õ‰‰±•}Á½Í¥Ñ¥½¹lÁt°4(€€€€€€€€€€€€€€€Í•±˜¹…Ù…Ñ…É}Á½Í¥Ñ¥½¹lÅt€¬Í•±˜¹Ñ¥Ñ±•}‰Õ‰‰±•}½™™Í•Ð°4(€€€€€€€€€€€€¤4(€€€€€€€€€€€‰…­É½Õ¹¹Á…ÍÑ”¡Ñ¥Ñ±•}‰Õ‰‰±”°Ñ¥Ñ±•}Á½Í¥Ñ¥½¸°Ñ¥Ñ±•}‰Õ‰‰±”¤4(4(€€€€€€€€€€€¹…µ•}à€ôÑ¥Ñ±•}Á½Í¥Ñ¥½¹lÁt€¬Ñ¥Ñ±•}‰Õ‰‰±”¹Ý¥‘Ñ €¬Í•±˜¹Ñ¥Ñ±•}‰Õ‰‰±•}¹…µ•}…À4(€€€€€€€€€€€¹¥­¹…µ•}Á½Í¥Ñ¥½¸€ôÍ•±˜¹¹¥­¹…µ•}Á½Í¥Ñ¥½¸½È€ 4(€€€€€€€€€€€€€€€¹…µ•}à°4(€€€€€€€€€€€€€€€Í•±˜¹}•¹Ñ•É•‘}¹¥­¹…µ•}ä 4(€€€€€€€€€€€€€€€€€€€Ñ¥Ñ±•}‰Õ‰‰±”¹¡•¥¡Ð°¹¥­¹…µ”°Ñ¥Ñ±•}Á½Í¥Ñ¥½¹lÅt4(€€€€€€€€€€€€€€€€¤°4(€€€€€€€€€€€€¤4(€€€€€€€€€€€Í•±˜¹}‘É…Ý}ÍÕÁ•ÉÍ…µÁ±•‘}¹¥­¹…µ” 4(€€€€€€€€€€€€€€€‰…­É½Õ¹°4(€€€€€€€€€€€€€€€¹¥­¹…µ•}Á½Í¥Ñ¥½¸°4(€€€€€€€€€€€€€€€¹¥­¹…µ”°4(€€€€€€€€€€€€¤4(€€€€€€€•±Í”è4(€€€€€€€€€€€€Œƒ–>«žîc–"Ûšb×žžÀ4(€€€€€€€€€€€Í•±˜¹}‘É…Ý}ÍÕÁ•ÉÍ…µÁ±•‘}¹¥­¹…µ” 4(€€€€€€€€€€€€€€€‰…­É½Õ¹°4(€€€€€€€€€€€€€€€Í•±˜¹¹¥­¹…µ•}Á½Í¥Ñ¥½¸4(€€€€€€€€€€€€€€€½È€¡Í•±˜¹‰Õ‰‰±•}Á½Í¥Ñ¥½¹lÁt°Í•±˜¹…Ù…Ñ…É}Á½Í¥Ñ¥½¹lÅt¤°4(€€€€€€€€€€€€€€€¹¥­¹…µ”°4(€€€€€€€€€€€€¤4(4(€€€‘•˜}•¹Ñ•É•‘}¹¥­¹…µ•}ä¡Í•±˜°Ñ¥Ñ±•}‰Õ‰‰±•}¡•¥¡Ð°¹¥­¹…µ”°Ñ¥Ñ±•}äõ9½¹”¤è4(€€€€€€€€ˆˆ‰•¹Ñ•ÈÑ¡”¹¥­¹…µ”Ì±½¥…°±åÁ ‰½à……¥¹ÍÐÑ¡”Ñ¥Ñ±”‰…‘”¸ˆˆˆ4(€€€€€€€‰‰½à€ôÍ•±˜¹¹¥­¹…µ•}™½¹Ð¹•Ñ‰‰½à¡¹¥­¹…µ”¤4(€€€€€€€±åÁ¡}¡•¥¡Ð€ô‰‰½álÍt€´‰‰½álÅt4(€€€€€€€‰Õ‰‰±•}Ñ½À€ô€ 4(€€€€€€€€€€€Í•±˜¹…Ù…Ñ…É}Á½Í¥Ñ¥½¹lÅt€¬Í•±˜¹Ñ¥Ñ±•}‰Õ‰‰±•}½™™Í•Ð4(€€€€€€€€€€€¥˜Ñ¥Ñ±•}ä¥Ì9½¹”4(€€€€€€€€€€€•±Í”Ñ¥Ñ±•}ä4(€€€€€€€€¤4(€€€€€€€±åÁ¡}Ñ½À€ô‰Õ‰‰±•}Ñ½À€¬€¡Ñ¥Ñ±•}‰Õ‰‰±•}¡•¥¡Ð€´±åÁ¡}¡•¥¡Ð¤€¼€È4(€€€€€€€É•ÑÕÉ¸É½Õ¹¡±åÁ¡}Ñ½À€´‰‰½álÅt¤4(4(€€€‘•˜}‘É…Ý}ÍÕÁ•ÉÍ…µÁ±•‘}¹¥­¹…µ”¡Í•±˜°‰…­É½Õ¹°Á½Í¥Ñ¥½¸°¹¥­¹…µ”¤è4(€€€€€€€€ˆˆ‹–r£š^Ÿ–¶_’öL‰½àƒ–¢þo¢†3¦®c–"¢ú£ž:žîc–"Û¾ò3’â7šRç–>cšb×žžÃ–Âë–¾ã–J3’ö7žö»Žˆˆˆ4(€€€€€€€Í…±”€ôÍ•±˜¹M14(€€€€€€€±½¥…±}‰‰½à€ôÍ•±˜¹¹¥­¹…µ•}™½¹Ð¹•Ñ‰‰½à¡¹¥­¹…µ”¤4(€€€€€€€Ý¥‘Ñ €ôµ…à Ä°±½¥…±}‰‰½álÉt€´±½¥…±}‰‰½álÁt¤4(€€€€€€€¡•¥¡Ð€ôµ…à Ä°±½¥…±}‰‰½álÍt€´±½¥…±}‰‰½álÅt¤4(€€€€€€€Í…±•‘}™½¹Ð€ôÍ•±˜¹¹¥­¹…µ•}M1}™½¹Ð4(€€€€€€€Í…±•‘}‰‰½à€ôÍ…±•‘}™½¹Ð¹•Ñ‰‰½à¡¹¥­¹…µ”¤4(€€€€€€€½Ù•É±…ä€ô%µ…”¹¹•Ü ‰I	ˆ°€¡Ý¥‘Ñ €¨Í…±”°¡•¥¡Ð€¨Í…±”¤°€ À°€À°€À°€À¤¤4(€€€€€€€%µ…•É…Ü¹É…Ü¡½Ù•É±…ä¤¹Ñ•áÐ 4(€€€€€€€€€€€€ µÍ…±•‘}‰‰½álÁt°€µÍ…±•‘}‰‰½álÅt¤°4(€€€€€€€€€€€¹¥­¹…µ”°4(€€€€€€€€€€€™¥±°õÍ•±˜¹¹¥­¹…µ•}½±½È°4(€€€€€€€€€€€™½¹ÐõÍ…±•‘}™½¹Ð°4(€€€€€€€€€€€ÍÑÉ½­•}Ý¥‘Ñ õµ…à Ä°Í…±”€¼¼€Ð¤°4(€€€€€€€€€€€ÍÑÉ½­•}™¥±°õÍ•±˜¹¹¥­¹…µ•}½±½È°4(€€€€€€€€¤4(€€€€€€€½Ù•É±…ä€ô½Ù•É±…ä¹É•Í¥é” 4(€€€€€€€€€€€€¡Ý¥‘Ñ °¡•¥¡Ð¤°4(€€€€€€€€€€€%µ…”¹I•Í…µÁ±¥¹œ¹19i=L°4(€€€€€€€€¤4(€€€€€€€‘•ÍÑ¥¹…Ñ¥½¸€ô€ 4(€€€€€€€€€€€É½Õ¹¡Á½Í¥Ñ¥½¹lÁt€¬±½¥…±}‰‰½álÁt¤°4(€€€€€€€€€€€É½Õ¹¡Á½Í¥Ñ¥½¹lÅt€¬±½¥…±}‰‰½álÅt¤°4(€€€€€€€€¤4(€€€€€€€‰…­É½Õ¹¹…±Á¡…}½µÁ½Í¥Ñ”¡½Ù•É±…ä°‘•ÍÐõ‘•ÍÑ¥¹…Ñ¥½¸¤4(4(€€€‘•˜É•Í¥é•}‰å}Í…±”¡Í•±˜°¥µ…”°Í…±•}™…Ñ½È¤è4(€€€€€€€Ü° €ô¥µ…”¹Í¥é”4(€€€€€€€É•ÑÕÉ¸¥µ…”¹É•Í¥é” 4(€€€€€€€€€€€€¡¥¹Ð¡Ü€¨Í…±•}™…Ñ½È¤°¥¹Ð¡ €¨Í…±•}™…Ñ½È¤¤°%µ…”¹I•Í…µÁ±¥¹œ¹19i=L4(€€€€€€€€¤4(4(€€€‘•˜}Í…™•}Ñ•áÑ}Ý¥‘Ñ ¡Í•±˜°‘É…Ü°Ñ•áÐ°™½¹Ð°™…±±‰…­}¡…É}Ý¥‘Ñ ¤è4(€€€€€€€€ˆˆˆ4(€€€€€€€ƒšÂã’â7š*o–ò–âãžjšZšr³–º÷–ê›šÖ/¦<4(€€€€€€€€´ƒ–ó–ºäA¥±±½ÜƒšZÃš^Ÿž&#šr°4(€€€€€€€€´™½¹Ðƒ’âè9½¹”€¼±åÁ ƒžòë–’Ä€¼•µ½©¤ƒ–v–>¿–s–êT4(€€€€€€€€ˆˆˆ4(€€€€€€€¥˜¹½ÐÑ•áÐè4(€€€€€€€€€€€É•ÑÕÉ¸€À4(4(€€€€€€€ÑÉäè4(€€€€€€€€€€€¥˜™½¹Ð¥Ì9½¹”è4(€€€€€€€€€€€€€€€É…¥Í”Y…±Õ•ÉÉ½È ‰™½¹Ð¥Ì9½¹”ˆ¤4(4(€€€€€€€€€€€€ŒA¥±±½Ü€øô€à¹à4(€€€€€€€€€€€¥˜¡…Í…ÑÑÈ¡‘É…Ü°€‰Ñ•áÑ‰‰½àˆ¤è4(€€€€€€€€€€€€€€€‰‰½à€ô‘É…Ü¹Ñ•áÑ‰‰½à  À°€À¤°Ñ•áÐ°™½¹Ðõ™½¹Ð¤4(€€€€€€€€€€€€€€€Ü€ô‰‰½álÉt€´‰‰½álÁt4(€€€€€€€€€€€•±Í”è4(€€€€€€€€€€€€€€€€ŒA¥±±½Ü€ð€à¹à4(€€€€€€€€€€€€€€€Ü€ô‘É…Ü¹Ñ•áÑ±•¹Ñ ¡Ñ•áÐ°™½¹Ðõ™½¹Ð¤4(4(€€€€€€€€€€€€Œƒ¦v{šÎWžîOšzs–s–êT4(€€€€€€€€€€€¥˜¹½Ð¥Í¥¹ÍÑ…¹”¡Ü°€¡¥¹Ð°™±½…Ð¤¤½ÈÜ€ðô€Àè4(€€€€€€€€€€€€€€€É…¥Í”Y…±Õ•ÉÉ½È ‰¥¹Ù…±¥Ý¥‘Ñ ˆ¤4(4(€€€€€€€€€€€É•ÑÕÉ¸¥¹Ð¡Ü¤4(4(€€€€€€€•á•ÁÐá•ÁÑ¥½¸è4(€€€€€€€€€€€€Œƒšržî#–s–êW¾òk–¶_ž²›šVÀƒ\ƒ’òÃžº_–º÷–ê˜4(€€€€€€€€€€€ÑÉäè4(€€€€€€€€€€€€€€€É•ÑÕÉ¸±•¸¡Ñ•áÐ¤€¨¥¹Ð¡™…±±‰…­}¡…É}Ý¥‘Ñ ¤4(€€€€€€€€€€€•á•ÁÐá•ÁÑ¥½¸è4(€€€€€€€€€€€€€€€É•ÑÕÉ¸€À4(4(€€€‘•˜}É•…Ñ•}Í¥¹±•}¥™}‰Õ‰‰±•}™É…µ”¡Í•±˜°™É…µ”°…ÁÁ±å}Í…±¥¹œõQÉÕ”¤è4(€€€€€€€€ˆˆ‹’òc–2[ž&#šr³¾òk–þ¯¦–"o–îë–6W–âŸšÂSšÎ‡¾ò3¦ÿ–7¦7–’7–"w–ž/–2Xˆˆˆ4(€€€€€€€€Œƒ¢ÂšVÓ–nûž&–’Ÿ–Â<4(€€€€€€€¥˜…ÁÁ±å}Í…±¥¹œè4(€€€€€€€€€€€€Œƒ–r¡ÅÇ’òk¢Š­Ñã–:/žò§–nûž&³š&’î—¢š–#šRû–’Ÿ–nûž&4(€€€€€€€€€€€™É…µ”€ôÍ•±˜¹É•Í¥é•}‰å}Í…±”¡™É…µ”°€È¤4(4(€€€€€€€€Œƒ¢ÂšVÓ–nûž&’î—¦–êSšÂSšÎ„4(€€€€€€€Á…‘‘¥¹œ€ôÍ•±˜¹‰Õ‰‰±•}Á…‘‘¥¹œ€¨€¡Í•±˜¹M1¥˜…ÁÁ±å}Í…±¥¹œ•±Í”€Ä¤4(€€€€€€€µ…á}Ý¥‘Ñ €ôÍ•±˜¹µ…á}Ý¥‘Ñ €¨€¡Í•±˜¹M1¥˜…ÁÁ±å}Í…±¥¹œ•±Í”€Ä¤€´Á…‘‘¥¹œ€¨€È4(€€€€€€€½É¥}Ý¥‘Ñ °½É¥}¡•¥¡Ð€ô™É…µ”¹Í¥é”4(4(€€€€€€€¥˜½É¥}Ý¥‘Ñ €øµ…á}Ý¥‘Ñ è4(€€€€€€€€€€€É…Ñ¥¼€ôµ…á}Ý¥‘Ñ €¼½É¥}Ý¥‘Ñ 4(€€€€€€€€€€€¹•Ý}Ý¥‘Ñ €ô¥¹Ð¡½É¥}Ý¥‘Ñ €¨É…Ñ¥¼¤4(€€€€€€€€€€€¹•Ý}¡•¥¡Ð€ô¥¹Ð¡½É¥}¡•¥¡Ð€¨É…Ñ¥¼¤4(€€€€€€€€€€€™É…µ”€ô™É…µ”¹É•Í¥é” ¡¹•Ý}Ý¥‘Ñ °¹•Ý}¡•¥¡Ð¤°%µ…”¹I•Í…µÁ±¥¹œ¹19i=L¤4(4(€€€€€€€Ý¥‘Ñ °¡•¥¡Ð€ô™É…µ”¹Í¥é”4(4(€€€€€€€€Œƒ–"o–îë–r¢žKšÂSšÎ„4(€€€€€€€¥˜…ÁÁ±å}Í…±¥¹œè4(€€€€€€€€€€€…¹Ù…Ì€ô%µ…”¹¹•Ü ‰I	ˆ°€¡Ý¥‘Ñ °¡•¥¡Ð¤°€ À°€À°€À°€À¤¤4(€€€€€€€€€€€µ…Í¬€ôÍ•±˜¹}É•…Ñ•}É½Õ¹‘•‘}µ…Í¬¡Ý¥‘Ñ °¡•¥¡Ð¤4(€€€€€€€€€€€…¹Ù…Ì¹Á…ÍÑ”¡™É…µ”°€ À°€À¤°µ…Í¬¤4(4(€€€€€€€€€€€€Œƒžò§šRû–"Ãš¶–âã–Âë–¾à4(€€€€€€€€€€€¥˜Í•±˜¹M1€ø€Äè4(€€€€€€€€€€€€€€€…¹Ù…Ì€ô…¹Ù…Ì¹É•Í¥é” 4(€€€€€€€€€€€€€€€€€€€€¡Ý¥‘Ñ €¼¼Í•±˜¹M1°¡•¥¡Ð€¼¼Í•±˜¹M1¤°4(€€€€€€€€€€€€€€€€€€€%µ…”¹I•Í…µÁ±¥¹œ¹19i=L°4(€€€€€€€€€€€€€€€€¤4(€€€€€€€€€€€É•ÑÕÉ¸…¹Ù…Ì4(€€€€€€€•±Í”è4(€€€€€€€€€€€€Œƒ’îžR£’ê;–â–Æ¢º‡žº_¾ò3’â7–êSžR£–º{¦fšV#šzp4(€€€€€€€€€€€É•ÑÕÉ¸%µ…”¹¹•Ü ‰I	ˆ°€¡Ý¥‘Ñ °¡•¥¡Ð¤°€ À°€À°€À°€À¤¤4(4(
+    # ------------------------------------------------------------------------------
+    def create_chat_bubble(self, text):
+        """åˆ›å»ºçº¯æ–‡æœ¬èŠå¤©æ°”æ³¡"""
+        SCALE = self.SCALE
+        font = self.bubble_font
+        padding = self.bubble_padding * SCALE
+
+        lines, justify_lines, line_height, text_width, text_height = (
+            self._text_layout_metrics(text, font)
+        )
+        line_count = len(lines)
+
+        width = int(text_width + padding * 2)
+        height = int(text_height + padding * (2 + line_count))
+
+        # åˆ›å»ºç”»å¸ƒ
+        canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        draw_canvas = ImageDraw.Draw(canvas)
+
+        # ç»˜åˆ¶æ°”æ³¡èƒŒæ™¯
+        draw_canvas.rounded_rectangle(
+            (0, 0, width, height),
+            radius=self.corner_radius * SCALE,
+            fill=self.bubble_bg_color,
+        )
+
+        # ç»˜åˆ¶æ–‡æœ¬
+        y = padding
+        for line, justify in zip(lines, justify_lines):
+            self._draw_text_line(
+                draw_canvas,
+                (padding, y),
+                line,
+                font,
+                self.text_color,
+                text_width if justify else None,
+            )
+            y += line_height + padding
+
+        # ç¼©æ”¾åˆ°æ­£å¸¸å°ºå¯¸
+        return canvas.resize(
+            (width // SCALE, height // SCALE), Image.Resampling.LANCZOS
+        )
+
+    def create_chat_img_bubble(self, image):
+        """åˆ›å»ºçº¯å›¾ç‰‡èŠå¤©æ°”æ³¡"""
+        SCALE = self.SCALE
+
+        # åŠ è½½å›¾ç‰‡
+        if isinstance(image, str):
+            img = Image.open(image)
+        else:
+            img = image
+
+        # ç¼©æ”¾å›¾ç‰‡
+        # åœ¨qqä¼šè¢«txåŽ‹ç¼©å›¾ç‰‡,æ‰€ä»¥è¦å…ˆæ”¾å¤§å›¾ç‰‡
+        img = self.resize_by_scale(img, 2)
+        img = self._resize_image_for_bubble(img)
+        width, height = img.size
+
+        # åˆ›å»ºåœ†è§’å›¾ç‰‡
+        canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        mask = self._create_rounded_mask(width, height)
+        canvas.paste(img, (0, 0), mask)
+
+        # ç¼©æ”¾åˆ°æ­£å¸¸å°ºå¯¸
+        if SCALE > 1:
+            canvas = canvas.resize(
+                (width // SCALE, height // SCALE), Image.Resampling.LANCZOS
+            )
+
+        return canvas
+
+    def create_chat_text_img_bubble(self, text, image):
+        """åˆ›å»ºå›¾æ–‡æ··åˆèŠå¤©æ°”æ³¡"""
+        SCALE = self.SCALE
+        font = self.bubble_font
+        padding = self.bubble_padding * SCALE
+
+        # å¤„ç†å›¾ç‰‡éƒ¨åˆ†
+        img_canvas = self.create_chat_img_bubble(image)
+        if SCALE > 1:
+            img_canvas = img_canvas.resize(
+                (img_canvas.width * SCALE, img_canvas.height * SCALE),
+                Image.Resampling.LANCZOS,
+            )
+
+        # å¤„ç†æ–‡æœ¬éƒ¨åˆ†
+        if text:
+            lines, justify_lines, line_height, text_width, text_height = (
+                self._text_layout_metrics(text, font)
+            )
+            line_count = len(lines)
+        else:
+            lines = []
+            justify_lines = []
+            line_height = text_width = text_height = line_count = 0
+
+        width = int(max(text_width, img_canvas.width) + padding * 2)
+        height = int(
+            text_height + padding * (2 + line_count) + img_canvas.height + padding
+        )
+
+        # åˆ›å»ºæœ€ç»ˆç”»å¸ƒ
+        canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        draw_canvas = ImageDraw.Draw(canvas)
+
+        # ç»˜åˆ¶æ°”æ³¡èƒŒæ™¯
+        draw_canvas.rounded_rectangle(
+            (0, 0, width, height),
+            radius=self.corner_radius * SCALE,
+            fill=self.bubble_bg_color,
+        )
+
+        # ç»˜åˆ¶æ–‡æœ¬
+        if lines:
+            y = padding
+            for line, justify in zip(lines, justify_lines):
+                self._draw_text_line(
+                    draw_canvas,
+                    (padding, y),
+                    line,
+                    font,
+                    self.text_color,
+                    text_width if justify else None,
+                )
+                y += line_height + padding
+
+        # ç²˜è´´å›¾ç‰‡
+        img_x = (width - img_canvas.width) // 2
+        img_y = text_height + padding * (2 + line_count if lines else 1)
+        canvas.paste(img_canvas, (img_x, img_y), img_canvas)
+
+        # ç¼©æ”¾åˆ°æ­£å¸¸å°ºå¯¸
+        return canvas.resize(
+            (width // SCALE, height // SCALE), Image.Resampling.LANCZOS
+        )
+
+    def _measure_title_bubble(self, text):
+        """Return the scaled canvas size and glyph box for the current title font."""
+        scale = self.SCALE
+        font = self.title_SCALE_font
+        draw = self._get_temp_draw()
+        text_width = int(draw.textlength(text, font=font))
+        bbox = font.getbbox(text)
+        text_height = bbox[3] - bbox[1] + 4 * scale
+        width = int(text_width + self.title_padding_x * 2)
+        height = int(text_height + self.title_padding_y * 3)
+        return max(scale, width), max(scale, height), bbox
+
+    def create_title_bubble(self, text, bg_color):
+        """åˆ›å»ºå¤´è¡”æ°”æ³¡ï¼Œå¹¶æŒ‰å½“å‰å­—å½¢å°ºå¯¸å®žæ—¶å±…ä¸­ã€‚"""
+        scale = self.SCALE
+        font = self.title_SCALE_font
+        width, height, bbox = self._measure_title_bubble(text)
+
+        # åˆ›å»ºæ°”æ³¡
+        canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        draw_canvas = ImageDraw.Draw(canvas)
+
+        # ç»˜åˆ¶èƒŒæ™¯
+        draw_canvas.rounded_rectangle(
+            (0, 0, width, height), radius=8 * scale, fill=bg_color
+        )
+
+        glyph_width = bbox[2] - bbox[0]
+        glyph_height = bbox[3] - bbox[1]
+        text_x = round((width - glyph_width) / 2 - bbox[0])
+        text_y = round((height - glyph_height) / 2 - bbox[1])
+        draw_canvas.text(
+            (text_x, text_y),
+            text,
+            fill=self.title_color,
+            font=font,
+        )
+
+        # ç¼©æ”¾åˆ°æ­£å¸¸å°ºå¯¸
+        return canvas.resize(
+            (width // scale, height // scale), Image.Resampling.LANCZOS
+        )
+
+    # ------------------------------------------------------------------------------
+    # ä¸»è¦æŽ¥å£ï¼ˆä¿æŒç­¾åä¸å˜ï¼‰
+    # ------------------------------------------------------------------------------
+    @_with_font_snapshot
+    def create_chat_message(self, qq, text, image, qq_title_key=None, user_info=None):
+        if user_info is None:
+            raise ValueError("éœ€è¦æä¾›user_infoå‚æ•°ï¼Œé¿å…åŒæ­¥HTTPè°ƒç”¨")
+
+        # æå–ç”¨æˆ·ä¿¡æ¯
+        nickname = user_info.get("name", "æœªçŸ¥ç”¨æˆ·")
+        avatar_path = user_info.get("avatar_path")
+
+        # é€‰æ‹©åˆé€‚çš„æ°”æ³¡ç±»åž‹
+        if text and not image:
+            bubble = self.create_chat_bubble(text)
+        elif image and not text:
+            bubble = self.create_chat_img_bubble(image)
+        elif text and image:
+            bubble = self.create_chat_text_img_bubble(text, image)
+        else:
+            # ç©ºæ¶ˆæ¯ï¼Œåˆ›å»ºä¸€ä¸ªæœ€å°æ°”æ³¡
+            bubble = self.create_chat_bubble(" ")
+
+        # å¤„ç†å¤´è¡”ä¿¡æ¯
+        title_info = None
+        if qq_title_key and qq in qq_title_key:
+            title_info = qq_title_key[qq]
+            # ä¼˜å…ˆä½¿ç”¨å¤‡æ³¨å
+            if title_info.get("notes"):
+                nickname = title_info["notes"]
+
+        # è®¡ç®—å¸ƒå±€å°ºå¯¸
+        bg_size = self._calculate_background_size(bubble, nickname, title_info)
+        background = self._create_background_canvas(*bg_size)
+
+        # æ·»åŠ æ°”æ³¡
+        background.alpha_composite(bubble, dest=self.bubble_position)
+
+        # æ·»åŠ å¤´åƒ
+        self._add_avatar(background, avatar_path)
+
+        # æ·»åŠ æ˜µç§°å’Œå¤´è¡”
+        self._add_name_and_title(background, nickname, title_info)
+
+        # è¿”å›žå­—èŠ‚æµ
+        img_bytes = BytesIO()
+        background.save(img_bytes, format="PNG", optimize=True)
+        img_bytes.seek(0)
+        return img_bytes
+
+    @_with_font_snapshot
+    def create_chat_message_by_gif(
+        self, qq, text, image, qq_title_key=None, user_info=None
+    ):
+        if user_info is None:
+            raise ValueError("éœ€è¦æä¾›user_infoå‚æ•°ï¼Œé¿å…åŒæ­¥HTTPè°ƒç”¨")
+
+        # æå–ç”¨æˆ·ä¿¡æ¯
+        nickname = user_info.get("name", "æœªçŸ¥ç”¨æˆ·")
+        avatar_path = user_info.get("avatar_path")
+
+        # å¤„ç†å¤´è¡”ä¿¡æ¯
+        title_info = None
+        if qq_title_key and qq in qq_title_key:
+            title_info = qq_title_key[qq]
+            if title_info.get("notes"):
+                nickname = title_info["notes"]
+
+        # åˆ†ç¦»GIFçš„æ¯ä¸€å¸§
+        frames = []
+        durations = []
+
+        for frame in ImageSequence.Iterator(image):
+            durations.append(max(20, int(frame.info.get("duration", 100))))
+            frame_rgba = frame.copy().convert("RGBA")
+            frames.append(frame_rgba)
+
+        if not frames:
+            raise ValueError("GIFå›¾ç‰‡æ²¡æœ‰æœ‰æ•ˆå¸§")
+
+        # ä½¿ç”¨ç¬¬ä¸€å¸§åˆ›å»ºæ°”æ³¡å¹¶è®¡ç®—å¸ƒå±€
+        first_bubble = self.create_chat_img_bubble(frames[0])
+        bg_size = self._calculate_background_size(first_bubble, nickname, title_info)
+
+        # åˆ›å»ºé™æ€èƒŒæ™¯ï¼ˆåŒ…å«å¤´åƒã€æ˜µç§°ã€å¤´è¡”ï¼‰
+        static_background = self._create_background_canvas(*bg_size)
+        self._add_avatar(static_background, avatar_path)
+        self._add_name_and_title(static_background, nickname, title_info)
+
+        # æ‰¹é‡å¤„ç†æ‰€æœ‰å¸§
+        processed_frames = []
+        bubble_pos = self.bubble_position
+
+        for i, frame in enumerate(frames):
+            # åˆ›å»ºå½“å‰å¸§çš„æ°”æ³¡
+            bubble = self.create_chat_img_bubble(frame)
+
+            # åˆ›å»ºæ–°çš„èƒŒæ™¯
+            background = self._create_background_canvas(*bg_size)
+
+            # å…ˆç²˜è´´æ°”æ³¡
+            background.alpha_composite(bubble, dest=bubble_pos)
+
+            # å†ç²˜è´´é™æ€å…ƒç´ ï¼Œä½†é¿å¼€æ°”æ³¡åŒºåŸŸ
+            # åˆ›å»ºä¸€ä¸ªä¸ŽèƒŒæ™¯ç›¸åŒå¤§å°çš„æŽ©ç 
+            mask = Image.new("L", bg_size, 255)
+
+            # åœ¨æ°”æ³¡åŒºåŸŸåˆ›å»ºé»‘è‰²ï¼ˆé€æ˜Žï¼‰åŒºåŸŸ
+            bubble_width, bubble_height = bubble.size
+            bubble_area = (
+                bubble_pos[0],
+                bubble_pos[1],
+                bubble_pos[0] + bubble_width,
+                bubble_pos[1] + bubble_height,
+            )
+
+            # åœ¨æŽ©ç ä¸­æŒ–ç©ºæ°”æ³¡åŒºåŸŸ
+            draw_mask = ImageDraw.Draw(mask)
+            draw_mask.rectangle(bubble_area, fill=0)
+
+            # ç²˜è´´é™æ€å…ƒç´ ï¼ˆå¤´åƒã€æ˜µç§°ã€å¤´è¡”ï¼‰
+            background.paste(static_background, (0, 0), mask)
+
+            processed_frames.append(background)
+
+        # åˆ›å»ºGIF
+        gif_bytes = BytesIO()
+
+        if len(processed_frames) > 1:
+            processed_frames[0].save(
+                gif_bytes,
+                format="GIF",
+                save_all=True,
+                append_images=processed_frames[1:],
+                duration=durations,
+                loop=0,
+                optimize=True,
+                disposal=2,
+            )
+        else:
+            processed_frames[0].save(gif_bytes, format="PNG", optimize=True)
+
+        gif_bytes.seek(0)
+        return gif_bytes
+
+    # ------------------------------------------------------------------------------
+    # è¾…åŠ©æ–¹æ³•
+    # ------------------------------------------------------------------------------
+    def _calculate_background_size(self, bubble, nickname, title_info=None):
+        """è®¡ç®—èƒŒæ™¯ç”»å¸ƒå°ºå¯¸"""
+        bubble_w, bubble_h = bubble.size
+
+        # æµ‹é‡æ–‡æœ¬å®½åº¦
+        draw = self._get_temp_draw()
+        nickname_width = (
+            draw.textlength(nickname, font=self.nickname_font) + self.bubble_padding
+        )
+
+        # è®¡ç®—åŸºç¡€å®½åº¦
+        width_candidates = [
+            self.bubble_position[0] + bubble_w + self.margin,
+            self.avatar_position[0] + self.avatar_size[0] + self.margin,
+            self.bubble_position[0] + nickname_width,
+        ]
+
+        # è®¡ç®—é«˜åº¦
+        height_candidates = [
+            self.bubble_position[1] + bubble_h + self.margin,
+            self.avatar_position[1] + self.avatar_size[1] + self.margin,
+        ]
+
+        # å¤´è¡”å’Œæ˜µç§°å¿…é¡»ä¸Žå®žé™…ç»˜åˆ¶å…±ç”¨åŒä¸€å¥—å®žæ—¶æµ‹é‡ç»“æžœã€‚
+        if title_info and title_info.get("content"):
+            title_width_scaled, title_height_scaled, _ = self._measure_title_bubble(
+                title_info["content"]
+            )
+            title_width = title_width_scaled // self.SCALE
+            title_height = title_height_scaled // self.SCALE
+            title_x, title_y = self.title_position or (
+                self.bubble_position[0],
+                self.avatar_position[1] + self.title_bubble_offset,
+            )
+            name_x = (
+                self.nickname_position[0]
+                if self.nickname_position
+                else title_x + title_width + self.title_bubble_name_gap
+            )
+            width_candidates.append(name_x + nickname_width)
+            title_top = title_y
+            nickname_y = (
+                self.nickname_position[1]
+                if self.nickname_position
+                else self._centered_nickname_y(title_height, nickname, title_y)
+            )
+            nickname_bbox = self.nickname_font.getbbox(nickname)
+            width_candidates.append(title_x + title_width + self.margin)
+            height_candidates.extend(
+                (
+                    title_top + title_height + self.margin,
+                    nickname_y + nickname_bbox[3] + self.margin,
+                )
+            )
+
+        if self.nickname_position and not (title_info and title_info.get("content")):
+            nickname_bbox = self.nickname_font.getbbox(nickname)
+            width_candidates.append(
+                self.nickname_position[0]
+                + nickname_bbox[2]
+                - nickname_bbox[0]
+                + self.margin
+            )
+            height_candidates.append(
+                self.nickname_position[1] + nickname_bbox[3] + self.margin
+            )
+
+        if self.canvas_size:
+            width_candidates.append(self.canvas_size[0])
+            height_candidates.append(self.canvas_size[1])
+
+        return int(max(width_candidates)), int(max(height_candidates))
+
+    def _create_background_canvas(self, width, height):
+        """åˆ›å»ºèƒŒæ™¯ç”»å¸ƒ"""
+        return Image.new("RGBA", (width, height), self.background_color)
+
+    def _add_avatar(self, background, avatar_path):
+        """æ·»åŠ å¤´åƒåˆ°èƒŒæ™¯"""
+        try:
+            if avatar_path and os.path.exists(avatar_path):
+                avatar = Image.open(avatar_path).convert("RGBA")
+                avatar = avatar.resize(self.avatar_size, Image.Resampling.LANCZOS)
+                mask_scale = self.SCALE
+                mask_size = (
+                    self.avatar_size[0] * mask_scale,
+                    self.avatar_size[1] * mask_scale,
+                )
+                circular_mask = Image.new("L", mask_size, 0)
+                ImageDraw.Draw(circular_mask).ellipse(
+                    (0, 0, mask_size[0] - 1, mask_size[1] - 1), fill=255
+                )
+                circular_mask = circular_mask.resize(
+                    self.avatar_size, Image.Resampling.LANCZOS
+                )
+                avatar.putalpha(
+                    ImageChops.multiply(avatar.getchannel("A"), circular_mask)
+                )
+                background.alpha_composite(avatar, dest=self.avatar_position)
+            else:
+                self._create_default_avatar(background)
+        except Exception as e:
+            logger.error(f"åŠ è½½å¤´åƒå¤±è´¥: {e}")
+            self._create_default_avatar(background)
+
+    def _create_default_avatar(self, background):
+        """åˆ›å»ºé»˜è®¤å¤´åƒ"""
+        default_avatar = Image.new("RGBA", self.avatar_size, (200, 200, 200, 255))
+        background.paste(default_avatar, self.avatar_position)
+
+    def _add_name_and_title(self, background, nickname, title_info=None):
+        """æ·»åŠ æ˜µç§°å’Œå¤´è¡”åˆ°èƒŒæ™¯"""
+        if title_info and title_info.get("content", None):
+            # å¤„ç†å¤´è¡”
+            t_c = title_info.get("color", None)
+            title_color = self.color_map.get(
+                int(1 if t_c is None else t_c), self.color_map[1]
+            )
+            title_content = title_info.get("content", "")
+
+            # åˆ›å»ºå¤´è¡”æ°”æ³¡
+            title_bubble = self.create_title_bubble(title_content, title_color)
+            title_position = self.title_position or (
+                self.bubble_position[0],
+                self.avatar_position[1] + self.title_bubble_offset,
+            )
+            background.paste(title_bubble, title_position, title_bubble)
+
+            name_x = title_position[0] + title_bubble.width + self.title_bubble_name_gap
+            nickname_position = self.nickname_position or (
+                name_x,
+                self._centered_nickname_y(
+                    title_bubble.height, nickname, title_position[1]
+                ),
+            )
+            self._draw_supersampled_nickname(
+                background,
+                nickname_position,
+                nickname,
+            )
+        else:
+            # åªç»˜åˆ¶æ˜µç§°
+            self._draw_supersampled_nickname(
+                background,
+                self.nickname_position
+                or (self.bubble_position[0], self.avatar_position[1]),
+                nickname,
+            )
+
+    def _centered_nickname_y(self, title_bubble_height, nickname, title_y=None):
+        """Center the nickname's logical glyph box against the title badge."""
+        bbox = self.nickname_font.getbbox(nickname)
+        glyph_height = bbox[3] - bbox[1]
+        bubble_top = (
+            self.avatar_position[1] + self.title_bubble_offset
+            if title_y is None
+            else title_y
+        )
+        glyph_top = bubble_top + (title_bubble_height - glyph_height) / 2
+        return round(glyph_top - bbox[1])
+
+    def _draw_supersampled_nickname(self, background, position, nickname):
+        """åœ¨æ—§å­—ä½“ box å†…è¿›è¡Œé«˜åˆ†è¾¨çŽ‡ç»˜åˆ¶ï¼Œä¸æ”¹å˜æ˜µç§°å°ºå¯¸å’Œä½ç½®ã€‚"""
+        scale = self.SCALE
+        logical_bbox = self.nickname_font.getbbox(nickname)
+        width = max(1, logical_bbox[2] - logical_bbox[0])
+        height = max(1, logical_bbox[3] - logical_bbox[1])
+        scaled_font = self.nickname_SCALE_font
+        scaled_bbox = scaled_font.getbbox(nickname)
+        overlay = Image.new("RGBA", (width * scale, height * scale), (0, 0, 0, 0))
+        ImageDraw.Draw(overlay).text(
+            (-scaled_bbox[0], -scaled_bbox[1]),
+            nickname,
+            fill=self.nickname_color,
+            font=scaled_font,
+            stroke_width=max(1, scale // 4),
+            stroke_fill=self.nickname_color,
+        )
+        overlay = overlay.resize(
+            (width, height),
+            Image.Resampling.LANCZOS,
+        )
+        destination = (
+            round(position[0] + logical_bbox[0]),
+            round(position[1] + logical_bbox[1]),
+        )
+        background.alpha_composite(overlay, dest=destination)
+
+    def resize_by_scale(self, image, scale_factor):
+        w, h = image.size
+        return image.resize(
+            (int(w * scale_factor), int(h * scale_factor)), Image.Resampling.LANCZOS
+        )
+
+    def _safe_text_width(self, draw, text, font, fallback_char_width):
+        """
+        æ°¸ä¸æŠ›å¼‚å¸¸çš„æ–‡æœ¬å®½åº¦æµ‹é‡
+        - å…¼å®¹ Pillow æ–°æ—§ç‰ˆæœ¬
+        - font ä¸º None / glyph ç¼ºå¤± / emoji å‡å¯å…œåº•
+        """
+        if not text:
+            return 0
+
+        try:
+            if font is None:
+                raise ValueError("font is None")
+
+            # Pillow >= 8.x
+            if hasattr(draw, "textbbox"):
+                bbox = draw.textbbox((0, 0), text, font=font)
+                w = bbox[2] - bbox[0]
+            else:
+                # Pillow < 8.x
+                w = draw.textlength(text, font=font)
+
+            # éžæ³•ç»“æžœå…œåº•
+            if not isinstance(w, (int, float)) or w <= 0:
+                raise ValueError("invalid width")
+
+            return int(w)
+
+        except Exception:
+            # æœ€ç»ˆå…œåº•ï¼šå­—ç¬¦æ•° Ã— ä¼°ç®—å®½åº¦
+            try:
+                return len(text) * int(fallback_char_width)
+            except Exception:
+                return 0
+
+    def _create_single_gif_bubble_frame(self, frame, apply_scaling=True):
+        """ä¼˜åŒ–ç‰ˆæœ¬ï¼šå¿«é€Ÿåˆ›å»ºå•å¸§æ°”æ³¡ï¼Œé¿å…é‡å¤åˆå§‹åŒ–"""
+        # è°ƒæ•´å›¾ç‰‡å¤§å°
+        if apply_scaling:
+            # åœ¨qqä¼šè¢«txåŽ‹ç¼©å›¾ç‰‡,æ‰€ä»¥è¦å…ˆæ”¾å¤§å›¾ç‰‡
+            frame = self.resize_by_scale(frame, 2)
+
+        # è°ƒæ•´å›¾ç‰‡ä»¥é€‚åº”æ°”æ³¡
+        padding = self.bubble_padding * (self.SCALE if apply_scaling else 1)
+        max_width = self.max_width * (self.SCALE if apply_scaling else 1) - padding * 2
+        orig_width, orig_height = frame.size
+
+        if orig_width > max_width:
+            ratio = max_width / orig_width
+            new_width = int(orig_width * ratio)
+            new_height = int(orig_height * ratio)
+            frame = frame.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+        width, height = frame.size
+
+        # åˆ›å»ºåœ†è§’æ°”æ³¡
+        if apply_scaling:
+            canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+            mask = self._create_rounded_mask(width, height)
+            canvas.paste(frame, (0, 0), mask)
+
+            # ç¼©æ”¾åˆ°æ­£å¸¸å°ºå¯¸
+            if self.SCALE > 1:
+                canvas = canvas.resize(
+                    (width // self.SCALE, height // self.SCALE),
+                    Image.Resampling.LANCZOS,
+                )
+            return canvas
+        else:
+            # ä»…ç”¨äºŽå¸ƒå±€è®¡ç®—ï¼Œä¸åº”ç”¨å®žé™…æ•ˆæžœ
+            return Image.new("RGBA", (width, height), (0, 0, 0, 0))
+

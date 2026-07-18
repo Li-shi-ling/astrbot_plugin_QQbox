@@ -372,4 +372,741 @@ class QQbox(Star):
         try:
             await self.qq_profile_repo.upsert_profile(qq, self.qq_title_key[qq])
         except (OSError, sqlite3.DatabaseError) as e:
-            logger.error(f"ä¿å­˜QQæ•°æ®å¤±èçO9¶‰Ëkºwµçl‰Á…‘‘¥¹}ä‰t°4(€€€€€€€€€€€‰Õ‰‰±•}‰}½±½Èõ½±½É}ÑÕÁ±”¡±…å½ÕÑl‰‰Õ‰‰±”‰ul‰‰…­É½Õ¹‘}½±½È‰t¤°4(€€€€€€€€€€€Ñ•áÑ}½±½Èõ½±½É}ÑÕÁ±”¡±…å½ÕÑl‰‰Õ‰‰±”‰ul‰Ñ•áÑ}½±½È‰t¤°4(€€€€€€€€€€€¹¥­¹…µ•}½±½Èõ½±½É}ÑÕÁ±”¡±…å½ÕÑl‰¹¥­¹…µ”‰ul‰½±½È‰t¤°4(€€€€€€€€€€€Ñ¥Ñ±•}½±½Èõ½±½É}ÑÕÁ±”¡±…å½ÕÑl‰Ñ¥Ñ±”‰ul‰½±½È‰t¤°4(€€€€€€€€€€€½É¹•É}É…‘¥ÕÌõ±…å½ÕÑl‰‰Õ‰‰±”‰ul‰½É¹•É}É…‘¥ÕÌ‰t°4(€€€€€€€€€€€…Ù…Ñ…É}Í¥é”ô¡±…å½ÕÑl‰…Ù…Ñ…È‰ul‰İ¥‘Ñ ‰t°±…å½ÕÑl‰…Ù…Ñ…È‰ul‰¡•¥¡Ğ‰t¤°4(€€€€€€€€€€€µ…É¥¸õ±…å½ÕÑl‰…¹Ù…Ì‰ul‰µ…É¥¸‰t°4(€€€€€€€€€€€µ…á}İ¥‘Ñ õ±…å½ÕÑl‰‰Õ‰‰±”‰ul‰µ…á}İ¥‘Ñ ‰t°4(€€€€€€€€€€€‰Õ‰‰±•}Á½Í¥Ñ¥½¸ô¡±…å½ÕÑl‰‰Õ‰‰±”‰ul‰à‰t°±…å½ÕÑl‰‰Õ‰‰±”‰ul‰ä‰t¤°4(€€€€€€€€€€€…Ù…Ñ…É}Á½Í¥Ñ¥½¸ô¡±…å½ÕÑl‰…Ù…Ñ…È‰ul‰à‰t°±…å½ÕÑl‰…Ù…Ñ…È‰ul‰ä‰t¤°4(€€€€€€€€€€€Ñ¥Ñ±•}Á½Í¥Ñ¥½¸ô 4(€€€€€€€€€€€€€€€9½¹”4(€€€€€€€€€€€€€€€¥˜±…å½ÕÑl‰Ñ¥Ñ±”‰ul‰…ÕÑ½}Á½Í¥Ñ¥½¸‰t4(€€€€€€€€€€€€€€€•±Í”€¡±…å½ÕÑl‰Ñ¥Ñ±”‰ul‰à‰t°±…å½ÕÑl‰Ñ¥Ñ±”‰ul‰ä‰t¤4(€€€€€€€€€€€€¤°4(€€€€€€€€€€€¹¥­¹…µ•}Á½Í¥Ñ¥½¸ô 4(€€€€€€€€€€€€€€€9½¹”4(€€€€€€€€€€€€€€€¥˜±…å½ÕÑl‰¹¥­¹…µ”‰ul‰…ÕÑ½}Á½Í¥Ñ¥½¸‰t4(€€€€€€€€€€€€€€€•±Í”€¡±…å½ÕÑl‰¹¥­¹…µ”‰ul‰à‰t°±…å½ÕÑl‰¹¥­¹…µ”‰ul‰ä‰t¤4(€€€€€€€€€€€€¤°4(€€€€€€€€€€€…¹Ù…Í}Í¥é”ô 4(€€€€€€€€€€€€€€€9½¹”4(€€€€€€€€€€€€€€€¥˜±…å½ÕÑl‰…¹Ù…Ì‰ul‰…ÕÑ½}Í¥é”‰t4(€€€€€€€€€€€€€€€•±Í”€¡±…å½ÕÑl‰…¹Ù…Ì‰ul‰İ¥‘Ñ ‰t°±…å½ÕÑl‰…¹Ù…Ì‰ul‰¡•¥¡Ğ‰t¤4(€€€€€€€€€€€€¤°4(€€€€€€€€€€€‰…­É½Õ¹‘}½±½Èõ±…å½ÕÑl‰…¹Ù…Ì‰ul‰‰…­É½Õ¹‘}½±½È‰t°4(€€€€€€€€¤4(€€€€€€€•¹•É…Ñ½È¹¥¹ÍÑ…±±}™½¹Ñ}‰Õ¹‘±”¡‰Õ¹‘±”¤4(€€€€€€€É•ÑÕÉ¸•¹•É…Ñ½È4(4(€€€‘•˜}±…å½ÕÑ}•¹•É…Ñ½É}…¡•}­•ä¡Í•±˜°±…å½ÕĞ¤€´øÍÑÈè4(€€€€€€€€ˆˆ‹òO–¶c¦R»¾òk–â–Æ––ºä€¬ƒ–öO–&7–¶_’öO–ş¯Ÿ¾ò3’îï’â’úŸ–>c–2[¦÷’òk–ú_–"ÃšZÃ¦R»ˆˆˆ4(€€€€€€€¹½Éµ…±¥é•€ô¹½Éµ…±¥é•}±…å½ÕĞ¡±…å½ÕĞ¤4(€€€€€€€‰Õ¹‘±”€ôÍ•±˜¹ÅÅ‰½à¹}ÕÉÉ•¹Ñ}™½¹Ñ}‰Õ¹‘±” ¤4(€€€€€€€Á…Ñ¡Ì€ô•Ñ…ÑÑÈ¡‰Õ¹‘±”°€‰Á…Ñ¡Ìˆ°9½¹”¤4(€€€€€€€™½¹Ñ}ÍÑ…Ñ”€ô€ 4(€€€€€€€€€€€•Ñ…ÑÑÈ¡‰Õ¹‘±”°€‰Ù•ÉÍ¥½¸ˆ°9½¹”¤°4(€€€€€€€€€€€ÍÑÈ¡•Ñ…ÑÑÈ¡Á…Ñ¡Ì°€‰‰Õ‰‰±”ˆ°€ˆˆ¤¤°4(€€€€€€€€€€€ÍÑÈ¡•Ñ…ÑÑÈ¡Á…Ñ¡Ì°€‰¹¥­¹…µ”ˆ°€ˆˆ¤¤°4(€€€€€€€€€€€ÍÑÈ¡•Ñ…ÑÑÈ¡Á…Ñ¡Ì°€‰Ñ¥Ñ±”ˆ°€ˆˆ¤¤°4(€€€€€€€€¤4(€€€€€€€Á…å±½…€ô©Í½¸¹‘ÕµÁÌ¡¹½Éµ…±¥é•°•¹ÍÕÉ•}…Í¥¤õ…±Í”°Í½ÉÑ}­•åÌõQÉÕ”¤4(€€€€€€€É•ÑÕÉ¸¡…Í¡±¥ˆ¹Í¡„Ä¡É•ÁÈ ¡™½¹Ñ}ÍÑ…Ñ”°Á…å±½…¤¤¹•¹½‘” ‰ÕÑ˜´àˆ¤¤¹¡•á‘¥•ÍĞ ¤4(4(€€€‘•˜}‰Õ¥±‘}±…å½ÕÑ}•¹•É…Ñ½É}…¡•¡Í•±˜°É…İ}±…å½ÕĞ¤è4(€€€€€€€€ˆˆ‹š2'òO–¶c¦R»–’7R£–â–ÆRš"C–f£¾ò3¦ÿ–7š¾?š²‡šâËš~O¦7–’7–*ƒ¢ö÷–¶_’öOšZ’îÛ4(4(€€€€€€€ƒ–¶_’öO¦7¢’òkšnÓš6ˆ‰Õ¹‘±”ƒ&#šr³’â;¢Ş¿–ú¾ò3¢«Û–ú_–"ÃšZÃòO–¶c¦R»¾òoòO–¶cšr'V3¾ò04(€€€€€€€ƒ¢Ú–è1e=UQ}9IQ=I}!}1%5%Pƒ–B;š2'šr¢şG’öÿR£¦†ë–ê?¦C–ë4(€€€€€€€€ˆˆˆ4(€€€€€€€­•ä€ôÍ•±˜¹}±…å½ÕÑ}•¹•É…Ñ½É}…¡•}­•ä¡É…İ}±…å½ÕĞ¤4(€€€€€€€…¡”€ôÍ•±˜¹}•¹•É…Ñ½É}…¡”4(€€€€€€€…¡•€ô…¡”¹•Ğ¡­•ä¤4(€€€€€€€¥˜…¡•¥Ì¹½Ğ9½¹”è4(€€€€€€€€€€€…¡”¹µ½Ù•}Ñ½}•¹¡­•ä¤4(€€€€€€€€€€€É•ÑÕÉ¸…¡•4(€€€€€€€•¹•É…Ñ½È€ôÍ•±˜¹}‰Õ¥±‘}±…å½ÕÑ}•¹•É…Ñ½È¡É…İ}±…å½ÕĞ¤4(€€€€€€€…¡•m­•åt€ô•¹•É…Ñ½È4(€€€€€€€İ¡¥±”±•¸¡…¡”¤€ø1e=UQ}9IQ=I}!}1%5%Pè4(€€€€€€€€€€€…¡”¹Á½Á¥Ñ•´¡±…ÍĞõ…±Í”¤4(€€€€€€€É•ÑÕÉ¸•¹•É…Ñ½È4(4(€€€‘•˜}…Ñ¥Ù•}•¹•É…Ñ½È¡Í•±˜¤è4(€€€€€€€…Ñ¥Ù•}±…å½ÕÑ}ÁÉ•Í•Ğ€ô•Ñ…ÑÑÈ¡Í•±˜°€‰…Ñ¥Ù•}±…å½ÕÑ}ÁÉ•Í•Ğˆ°9½¹”¤4(€€€€€€€¥˜¹½Ğ…Ñ¥Ù•}±…å½ÕÑ}ÁÉ•Í•Ğè4(€€€€€€€€€€€É•ÑÕÉ¸Í•±˜¹ÅÅ‰½à4(€€€€€€€É•ÑÕÉ¸Í•±˜¹}‰Õ¥±‘}±…å½ÕÑ}•¹•É…Ñ½É}…¡•¡…Ñ¥Ù•}±…å½ÕÑ}ÁÉ•Í•Ñl‰½¹™¥œ‰t¤4(4(€€€‘•˜É•…Ñ•}¡…Ñ}µ•ÍÍ…”¡Í•±˜°€¨©­İ…ÉÌ¤è4(€€€€€€€É•ÑÕÉ¸Í•±˜¹}…Ñ¥Ù•}•¹•É…Ñ½È ¤¹É•…Ñ•}¡…Ñ}µ•ÍÍ…” ¨©­İ…ÉÌ¤4(4(€€€‘•˜É•…Ñ•}¡…Ñ}µ•ÍÍ…•}‰å}¥˜¡Í•±˜°€¨©­İ…ÉÌ¤è4(€€€€€€€É•ÑÕÉ¸Í•±˜¹}…Ñ¥Ù•}•¹•É…Ñ½È ¤¹É•…Ñ•}¡…Ñ}µ•ÍÍ…•}‰å}¥˜ ¨©­İ…ÉÌ¤4(4(€€€‘•˜}ÁÉ•Ù¥•İ}É•¹‘•É}½¹Ñ•áĞ¡Í•±˜°•¹•É…Ñ½È°Á…å±½…¤è4(€€€€€€€ÅÄ€ôÍÑÈ¡Á…å±½…¹•Ğ ‰ÅÄˆ¤½È€ˆÄÀÀÀÄˆ¤4(€€€€€€€ÁÉ½™¥±”€ôÍ•±˜¹ÅÅ}Ñ¥Ñ±•}­•ä¹•Ğ¡ÅÄ°íô¤4(€€€€€€€‘¥ÍÁ±…å}¹…µ”€ôÍÑÈ 4(€€€€€€€€€€€Á…å±½…¹•Ğ ‰‘¥ÍÁ±…å}¹…µ”ˆ¤4(€€€€€€€€€€€½ÈÁÉ½™¥±”¹•Ğ ‰¹½Ñ•Ìˆ¤4(€€€€€€€€€€€½ÈÁÉ½™¥±”¹•Ğ ‰¹¥­¹…µ”ˆ¤4(€€€€€€€€€€€½È€‹¦Š¢#R£š"Üˆ4(€€€€€€€€¥lèØÑt4(€€€€€€€Ñ¥Ñ±”€ôÍÑÈ¡Á…å±½…¹•Ğ ‰Ñ¥Ñ±”ˆ¤½ÈÁÉ½™¥±”¹•Ğ ‰½¹Ñ•¹Ğˆ¤½È€‹’ë’ú/–’Ó¢†Pˆ¥lèØÑt4(€€€€€€€ÑÉäè4(€€€€€€€€€€€½±½È€ô¥¹Ğ¡Á…å±½…¹•Ğ ‰½±½Èˆ°ÁÉ½™¥±”¹•Ğ ‰½±½Èˆ¤½È€Ğ¤¤4(€€€€€€€•á•ÁĞ€¡QåÁ•ÉÉ½È°Y…±Õ•ÉÉ½È¤è4(€€€€€€€€€€€½±½È€ô€Ğ4(€€€€€€€¥˜½±½È¹½Ğ¥¸•¹•É…Ñ½È¹½±½É}µ…Àè4(€€€€€€€€€€€½±½È€ô€Ğ4(€€€€€€€Ñ•áĞ€ôÍÑÈ¡Á…å±½…¹•Ğ ‰Ñ•áĞˆ¤½È€‹¢şgšb¿’âšv‡–>¿–º{š^Û¢ÂšVÓ–â–Æj’ë’ú/šÂSšÎ‡ˆ¥lèÔÀÁt4(€€€€€€€…Ù…Ñ…É}Á…Ñ €ô¹•áĞ¡Í•±˜¹…Ù…Ñ…É}¥µ…•}Á…Ñ ¹±½ˆ¡˜‰íÅÅô´¨¹Á¹œˆ¤°9½¹”¤4(€€€€€€€É•ÑÕÉ¸ÅÄ°‘¥ÍÁ±…å}¹…µ”°Ñ¥Ñ±”°½±½È°Ñ•áĞ°…Ù…Ñ…É}Á…Ñ 4(4(€€€‘•˜É•¹‘•É}±…å½ÕÑ}ÁÉ•Ù¥•Ü¡Í•±˜°±…å½ÕĞ°Á…å±½…¤è4(€€€€€€€•¹•É…Ñ½È€ôÍ•±˜¹}‰Õ¥±‘}±…å½ÕÑ}•¹•É…Ñ½É}…¡•¡±…å½ÕĞ¤4(€€€€€€€ÅÄ°‘¥ÍÁ±…å}¹…µ”°Ñ¥Ñ±”°½±½È°Ñ•áĞ°…Ù…Ñ…É}Á…Ñ €ô€ 4(€€€€€€€€€€€Í•±˜¹}ÁÉ•Ù¥•İ}É•¹‘•É}½¹Ñ•áĞ¡•¹•É…Ñ½È°Á…å±½…¤4(€€€€€€€€¤4(€€€€€€€É•ÑÕÉ¸•¹•É…Ñ½È¹É•…Ñ•}¡…Ñ}µ•ÍÍ…” 4(€€€€€€€€€€€ÅÄõÅÄ°4(€€€€€€€€€€€Ñ•áĞõÑ•áĞ°4(€€€€€€€€€€€¥µ…”õ9½¹”°4(€€€€€€€€€€€ÅÅ}Ñ¥Ñ±•}­•äõì4(€€€€€€€€€€€€€€€ÅÄèì‰¹½Ñ•Ìˆè‘¥ÍÁ±…å}¹…µ”°€‰½¹Ñ•¹ĞˆèÑ¥Ñ±”°€‰½±½Èˆè½±½Éô4(€€€€€€€€€€€ô°4(€€€€€€€€€€€ÕÍ•É}¥¹™¼õì4(€€€€€€€€€€€€€€€€‰¹…µ”ˆè‘¥ÍÁ±…å}¹…µ”°4(€€€€€€€€€€€€€€€€‰…Ù…Ñ…É}Á…Ñ ˆèÍÑÈ¡…Ù…Ñ…É}Á…Ñ ¤¥˜…Ù…Ñ…É}Á…Ñ •±Í”9½¹”°4(€€€€€€€€€€€ô°4(€€€€€€€€¤4(4(€€€‘•˜É•¹‘•É}±…å½ÕÑ}ÁÉ•Ù¥•İ}‘•Ñ…¥±Ì¡Í•±˜°±…å½ÕĞ°Á…å±½…¤è4(€€€€€€€•¹•É…Ñ½È€ôÍ•±˜¹}‰Õ¥±‘}±…å½ÕÑ}•¹•É…Ñ½É}…¡•¡±…å½ÕĞ¤4(€€€€€€€ÅÄ°‘¥ÍÁ±…å}¹…µ”°Ñ¥Ñ±”°½±½È°Ñ•áĞ°…Ù…Ñ…É}Á…Ñ €ô€ 4(€€€€€€€€€€€Í•±˜¹}ÁÉ•Ù¥•İ}É•¹‘•É}½¹Ñ•áĞ¡•¹•É…Ñ½È°Á…å±½…¤4(€€€€€€€€¤4(€€€€€€€É•ÍÕ±Ğ€ô•¹•É…Ñ½È¹É•…Ñ•}¡…Ñ}µ•ÍÍ…” 4(€€€€€€€€€€€ÅÄõÅÄ°4(€€€€€€€€€€€Ñ•áĞõÑ•áĞ°4(€€€€€€€€€€€¥µ…”õ9½¹”°4(€€€€€€€€€€€ÅÅ}Ñ¥Ñ±•}­•äõì4(€€€€€€€€€€€€€€€ÅÄèì‰¹½Ñ•Ìˆè‘¥ÍÁ±…å}¹…µ”°€‰½¹Ñ•¹ĞˆèÑ¥Ñ±”°€‰½±½Èˆè½±½Éô4(€€€€€€€€€€€ô°4(€€€€€€€€€€€ÕÍ•É}¥¹™¼õì4(€€€€€€€€€€€€€€€€‰¹…µ”ˆè‘¥ÍÁ±…å}¹…µ”°4(€€€€€€€€€€€€€€€€‰…Ù…Ñ…É}Á…Ñ ˆèÍÑÈ¡…Ù…Ñ…É}Á…Ñ ¤¥˜…Ù…Ñ…É}Á…Ñ •±Í”9½¹”°4(€€€€€€€€€€€ô°4(€€€€€€€€¤4(€€€€€€€Ñ¥Ñ±•}½±½È€ô•¹•É…Ñ½È¹½±½É}µ…Ám½±½Ét4(€€€€€€€Ñ¥Ñ±•}‰Õ‰‰±”€ô•¹•É…Ñ½È¹É•…Ñ•}Ñ¥Ñ±•}‰Õ‰‰±”¡Ñ¥Ñ±”°Ñ¥Ñ±•}½±½È¤4(€€€€€€€Ñ¥Ñ±•}Á½Í¥Ñ¥½¸€ô•¹•É…Ñ½È¹Ñ¥Ñ±•}Á½Í¥Ñ¥½¸½È€ 4(€€€€€€€€€€€•¹•É…Ñ½È¹‰Õ‰‰±•}Á½Í¥Ñ¥½¹lÁt°4(€€€€€€€€€€€•¹•É…Ñ½È¹…Ù…Ñ…É}Á½Í¥Ñ¥½¹lÅt€¬•¹•É…Ñ½È¹Ñ¥Ñ±•}‰Õ‰‰±•}½™™Í•Ğ°4(€€€€€€€€¤4(€€€€€€€¹¥­¹…µ•}Á½Í¥Ñ¥½¸€ô•¹•É…Ñ½È¹¹¥­¹…µ•}Á½Í¥Ñ¥½¸½È€ 4(€€€€€€€€€€€Ñ¥Ñ±•}Á½Í¥Ñ¥½¹lÁt€¬Ñ¥Ñ±•}‰Õ‰‰±”¹İ¥‘Ñ €¬•¹•É…Ñ½È¹Ñ¥Ñ±•}‰Õ‰‰±•}¹…µ•}…À°4(€€€€€€€€€€€•¹•É…Ñ½È¹}•¹Ñ•É•‘}¹¥­¹…µ•}ä 4(€€€€€€€€€€€€€€€Ñ¥Ñ±•}‰Õ‰‰±”¹¡•¥¡Ğ°‘¥ÍÁ±…å}¹…µ”°Ñ¥Ñ±•}Á½Í¥Ñ¥½¹lÅt4(€€€€€€€€€€€€¤°4(€€€€€€€€¤4(€€€€€€€¹¥­¹…µ•}‰‰½à€ô•¹•É…Ñ½È¹¹¥­¹…µ•}™½¹Ğ¹•Ñ‰‰½à¡‘¥ÍÁ±…å}¹…µ”¤4(€€€€€€€‰Õ‰‰±”€ô•¹•É…Ñ½È¹É•…Ñ•}¡…Ñ}‰Õ‰‰±”¡Ñ•áĞ¤4(€€€€€€€İ¥Ñ %µ…”¹½Á•¸¡É•ÍÕ±Ğ¤…Ì¥µ…”è4(€€€€€€€€€€€…¹Ù…Í}Í¥é”€ô¥µ…”¹Í¥é”4(€€€€€€€É•ÑÕÉ¸É•ÍÕ±Ğ°ì4(€€€€€€€€€€€€‰…¹Ù…Ìˆèì‰İ¥‘Ñ ˆè…¹Ù…Í}Í¥é•lÁt°€‰¡•¥¡Ğˆè…¹Ù…Í}Í¥é•lÅuô°4(€€€€€€€€€€€€‰…Ù…Ñ…Èˆèì4(€€€€€€€€€€€€€€€€‰àˆè•¹•É…Ñ½È¹…Ù…Ñ…É}Á½Í¥Ñ¥½¹lÁt°4(€€€€€€€€€€€€€€€€‰äˆè•¹•É…Ñ½È¹…Ù…Ñ…É}Á½Í¥Ñ¥½¹lÅt°4(€€€€€€€€€€€€€€€€‰İ¥‘Ñ ˆè•¹•É…Ñ½È¹…Ù…Ñ…É}Í¥é•lÁt°4(€€€€€€€€€€€€€€€€‰¡•¥¡Ğˆè•¹•É…Ñ½È¹…Ù…Ñ…É}Í¥é•lÅt°4(€€€€€€€€€€€ô°4(€€€€€€€€€€€€‰Ñ¥Ñ±”ˆèì4(€€€€€€€€€€€€€€€€‰àˆèÑ¥Ñ±•}Á½Í¥Ñ¥½¹lÁt°4(€€€€€€€€€€€€€€€€‰äˆèÑ¥Ñ±•}Á½Í¥Ñ¥½¹lÅt°4(€€€€€€€€€€€€€€€€‰İ¥‘Ñ ˆèÑ¥Ñ±•}‰Õ‰‰±”¹İ¥‘Ñ °4(€€€€€€€€€€€€€€€€‰¡•¥¡ĞˆèÑ¥Ñ±•}‰Õ‰‰±”¹¡•¥¡Ğ°4(€€€€€€€€€€€ô°4(€€€€€€€€€€€€‰¹¥­¹…µ”ˆèì4(€€€€€€€€€€€€€€€€‰àˆè¹¥­¹…µ•}Á½Í¥Ñ¥½¹lÁt°4(€€€€€€€€€€€€€€€€‰äˆè¹¥­¹…µ•}Á½Í¥Ñ¥½¹lÅt°4(€€€€€€€€€€€€€€€€‰İ¥‘Ñ ˆè¹¥­¹…µ•}‰‰½álÉt€´¹¥­¹…µ•}‰‰½álÁt°4(€€€€€€€€€€€€€€€€‰¡•¥¡Ğˆè¹¥­¹…µ•}‰‰½álÍt€´¹¥­¹…µ•}‰‰½álÅt°4(€€€€€€€€€€€ô°4(€€€€€€€€€€€€‰‰Õ‰‰±”ˆèì4(€€€€€€€€€€€€€€€€‰àˆè•¹•É…Ñ½È¹‰Õ‰‰±•}Á½Í¥Ñ¥½¹lÁt°4(€€€€€€€€€€€€€€€€‰äˆè•¹•É…Ñ½È¹‰Õ‰‰±•}Á½Í¥Ñ¥½¹lÅt°4(€€€€€€€€€€€€€€€€‰İ¥‘Ñ ˆè‰Õ‰‰±”¹İ¥‘Ñ °4(€€€€€€€€€€€€€€€€‰¡•¥¡Ğˆè‰Õ‰‰±”¹¡•¥¡Ğ°4(€€€€€€€€€€€ô°4(€€€€€€€ô4(4(€€€€Œƒ¦k¢ş½¹•‰½Ó¢:ß–>Y¹¥­¹…µ”4(€€€…Íå¹Œ‘•˜•Ñ}¹¥­¹…µ•}‰å}½¹•‰½Ğ¡Í•±˜°ÅÄ°‰½Ğõ9½¹”¤è4(€€€€€€€¥˜‰½Ğ¥Ì9½¹”è4(€€€€€€€€€€€É•ÑÕÉ¸9½¹”4(€€€€€€€•±Í”è4(€€€€€€€€€€€ÑÉäè4(€€€€€€€€€€€€€€€Á…å±½…‘Ì€ôì‰ÕÍ•É}¥ˆè¥¹Ğ¡ÅÄ¤°€‰¹½}…¡”ˆèQÉÕ•ô4(€€€€€€€€€€€€€€€ÅÅ}¥¹™¼€ô…İ…¥Ğ‰½Ğ¹…Á¤¹…±±}…Ñ¥½¸ ‰•Ñ}ÍÑÉ…¹•É}¥¹™¼ˆ°€¨©Á…å±½…‘Ì¤4(€€€€€€€€€€€€€€€É•ÑÕÉ¸ÅÅ}¥¹™¼¹•Ğ ‰¹¥¬ˆ°9½¹”¤4(€€€€€€€€€€€•á•ÁĞá•ÁÑ¥½¸è4(€€€€€€€€€€€€€€€±½•È¹•ÉÉ½È ‹¦k¢ş½¹•‰½Ó¢:ß–>Y¹¥¯–’Ç¢Ò”ˆ¤4(4(€€€€Œƒ¦k¢ş…Á§¢:ß–>Y¹¥­¹…µ”4(€€€…Íå¹Œ‘•˜•Ñ}¹¥­¹…µ•}‰å}…Á¤¡Í•±˜°ÅÄ°¡ÑÑÁ}±¥•¹Ğ¤è4(€€€€€€€€Œƒ–’R¡A'–"_¢† 4(€€€€€€€…Á¥Ì€ôl4(€€€€€€€€€€€˜‰¡ÑÑÁÌè¼½Õ…Á¥Ì¹¸½…Á¤½ØÄ½Í½¥…°½ÅÄ½ÕÍ•É¥¹™¼ıÅÄõíÅÅôˆ°4(€€€€€€€€€€€˜‰¡ÑÑÁÌè¼½…Á¤¹µµÀ¹Œ½…Á¤½ÅÅ¹…µ”ıÅÄõíÅÅôˆ°4(€€€€€€€€€€€˜‰¡ÑÑÁÌè¼½…Á¤¹Õ½µœ¹½´½…Á¤½ÅÄ¹¥¹™¼ıÅÄõíÅÅôˆ°4(€€€€€€€t4(4(€€€€€€€¹¥­¹…µ”€ôÅÄ€€Œƒ–ššzqA'¢ºÿ¦^»–’Ç¢Ò”³’öÿR¡ÅÇ–öO¦îc¢º“–ğ³¢º§R£š"ß’öÿR£š>C’úoj–’šÎ£š:—–>’ş»šRç–B7À4(4(€€€€€€€€Œƒ–Âw¢¾W–’k’â©A$4(€€€€€€€™½È…Á¥}ÕÉ°¥¸…Á¥Ìè4(€€€€€€€€€€€ÑÉäè4(€€€€€€€€€€€€€€€É•ÍÁ½¹Í”€ô…İ…¥Ğ¡ÑÑÁ}±¥•¹Ğ¹•Ğ¡…Á¥}ÕÉ°°Ñ¥µ•½ÕĞôÄÀ¸À¤4(€€€€€€€€€€€€€€€¥˜É•ÍÁ½¹Í”¹ÍÑ…ÑÕÍ}½‘”€ôô€ÈÀÀè4(€€€€€€€€€€€€€€€€€€€‘…Ñ„€ôÉ•ÍÁ½¹Í”¹©Í½¸ ¤4(€€€€€€€€€€€€€€€€€€€€Œƒ–Âw¢¾W¢šzC’â7–B1A'j–N7–êSš‚ó–ò<4(€€€€€€€€€€€€€€€€€€€¥˜€‰‘…Ñ„ˆ¥¸‘…Ñ„…¹€‰¹…µ”ˆ¥¸‘…Ñ…l‰‘…Ñ„‰tè4(€€€€€€€€€€€€€€€€€€€€€€€¹¥­¹…µ”€ô‘…Ñ…l‰‘…Ñ„‰ul‰¹…µ”‰t4(€€€€€€€€€€€€€€€€€€€€€€€‰É•…¬4(€€€€€€€€€€€€€€€€€€€•±¥˜€‰¹…µ”ˆ¥¸‘…Ñ„è4(€€€€€€€€€€€€€€€€€€€€€€€¹¥­¹…µ”€ô‘…Ñ…l‰¹…µ”‰t4(€€€€€€€€€€€€€€€€€€€€€€€‰É•…¬4(€€€€€€€€€€€€€€€€€€€•±¥˜€‰¹¥­¹…µ”ˆ¥¸‘…Ñ„è4(€€€€€€€€€€€€€€€€€€€€€€€¹¥­¹…µ”€ô‘…Ñ…l‰¹¥­¹…µ”‰t4(€€€€€€€€€€€€€€€€€€€€€€€‰É•…¬4(€€€€€€€€€€€•á•ÁĞá•ÁÑ¥½¸…Ì”è4(€€€€€€€€€€€€€€€±½•È¹‘•‰Õœ¡˜‰A'¢¾ßšÆ–’Ç¢Ò”í…Á¥}ÕÉ±ôèí•ôˆ¤4(€€€€€€€€€€€€€€€½¹Ñ¥¹Õ”4(€€€€€€€É•ÑÕÉ¸¹¥­¹…µ”4(4(€€€€Œƒ’â/¢ö÷–æÛ¢–&«–’Ó–?’âë–r–öˆ4(€€€…Íå¹Œ‘•˜‘½İ¹±½…‘}¥ÉÕ±…É}…Ù…Ñ…È 4(€€€€€€€Í•±˜°ÕÉ°°Í…Ù•}Á…Ñ °¡ÑÑÁ}±¥•¹Ğõ9½¹”°Í¥é”õ9½¹”4(€€€€¤è4(€€€€€€€€ˆˆ‹–òš¶—’â/¢ö÷–æÛ¢–&«–’Ó–?’âë–r–öˆˆˆˆ4(€€€€€€€¥˜¡ÑÑÁ}±¥•¹Ğ¥Ì9½¹”è4(€€€€€€€€€€€±½•È¹•ÉÉ½È ‰!QQC–º‹š"ß®¿šr«–"w–/–2Xˆ¤4(€€€€€€€€€€€É•ÑÕÉ¸…±Í”4(4(€€€€€€€ÑÉäè4(€€€€€€€€€€€É•ÍÁ½¹Í”€ô…İ…¥Ğ¡ÑÑÁ}±¥•¹Ğ¹•Ğ¡ÕÉ°°Ñ¥µ•½ÕĞôÄÔ¸À¤4(€€€€€€€€€€€É•ÍÁ½¹Í”¹É…¥Í•}™½É}ÍÑ…ÑÕÌ ¤4(4(€€€€€€€€€€€€Œƒ–*ƒ¢ö÷–nû&4(€€€€€€€€€€€¥µ}‘…Ñ„€ôÉ•ÍÁ½¹Í”¹½¹Ñ•¹Ğ4(€€€€€€€€€€€¥µœ€ô%µ…”¹½Á•¸¡	åÑ•Í%<¡¥µ}‘…Ñ„¤¤¹½¹Ù•ÉĞ ‰I	ˆ¤4(4(€€€€€€€€€€€€Œƒ–"o–îë–r–ö‹–’Ó–<4(€€€€€€€€€€€É•ÍÕ±Ğ€ôÍ•±˜¹É•…Ñ•}¥ÉÕ±…É}…Ù…Ñ…È¡¥µœ°Í¥é”¤4(4(€€€€€€€€€€€€Œƒ’şw–¶c–’Ó–<4(€€€€€€€€€€€É•ÍÕ±Ğ¹Í…Ù”¡Í…Ù•}Á…Ñ ¤4(€€€€€€€€€€€±½•È¹‘•‰Õœ¡˜‹–’Ó–?–ŞË’şw–¶`èíÍ…Ù•}Á…Ñ¡ôˆ¤4(€€€€€€€€€€€É•ÑÕÉ¸QÉÕ”4(4(€€€€€€€•á•ÁĞ¡ÑÑÁà¹I•ÅÕ•ÍÑÉÉ½È…Ì”è4(€€€€€€€€€€€±½•È¹•ÉÉ½È¡˜‹’â/¢ö÷–’Ó–?¢¾ßšÆ–’Ç¢Ò”èí•ôˆ¤4(€€€€€€€•á•ÁĞá•ÁÑ¥½¸…Ì”è4(€€€€€€€€€€€±½•È¹•ÉÉ½È¡˜‹–’B–’Ó–?–’Ç¢Ò”èí•ôˆ¤4(4(€€€€€€€É•ÑÕÉ¸…±Í”4(4(€€€€Œƒ–Â–nû&¢–&«’âë–r–öˆ4(€€€‘•˜É•…Ñ•}¥ÉÕ±…É}…Ù…Ñ…È¡Í•±˜°¥µœ°Í¥é”õ9½¹”¤è4(€€€€€€€€ˆˆ‹–Â–nû&¢–&«’âë–r–öˆˆˆˆ4(€€€€€€€€Œƒ¢:ß–>[–nû&–Âë–¾à4(€€€€€€€Ü° €ô¥µœ¹Í¥é”4(€€€€€€€Í¥‘”€ôµ¥¸¡Ü° ¤4(4(€€€€€€€€Œƒ’â·–ş¢–&«’âëš¶šZç–öˆ4(€€€€€€€±•™Ğ€ô€¡Ü€´Í¥‘”¤€¼¼€È4(€€€€€€€Ñ½À€ô€¡ €´Í¥‘”¤€¼¼€È4(€€€€€€€¥µœ€ô¥µœ¹É½À ¡±•™Ğ°Ñ½À°±•™Ğ€¬Í¥‘”°Ñ½À€¬Í¥‘”¤¤4(4(€€€€€€€€Œƒ¢ÂšVÓ–’Ÿ–Â<4(€€€€€€€¥˜Í¥é”¥Ì9½¹”è4(€€€€€€€€€€€Í¥é”€ôÍ¥‘”4(€€€€€€€¥µœ€ô¥µœ¹É•Í¥é” ¡Í¥é”°Í¥é”¤°%µ…”¹I•Í…µÁ±¥¹œ¹19i=L¤4(4(€€€€€€€€Œƒ–"o–îë–r–ö‹¦»ö¤4(€€€€€€€µ…Í¬€ô%µ…”¹¹•Ü ‰0ˆ°€¡Í¥é”°Í¥é”¤°€À¤4(€€€€€€€‘É…Ü€ô%µ…•É…Ü¹É…Ü¡µ…Í¬¤4(€€€€€€€‘É…Ü¹•±±¥ÁÍ”  À°€À°Í¥é”°Í¥é”¤°™¥±°ôÈÔÔ¤4(4(€€€€€€€€Œƒ–êSR£¦»ö¤4(€€€€€€€É•ÍÕ±Ğ€ô%µ…”¹¹•Ü ‰I	ˆ°€¡Í¥é”°Í¥é”¤°€ À°€À°€À°€À¤¤4(€€€€€€€É•ÍÕ±Ğ¹Á…ÍÑ”¡¥µœ°€ À°€À¤°µ…Í¬¤4(€€€€€€€É•ÑÕÉ¸É•ÍÕ±Ğ4(4(€€€€Œƒ¢:ß–>[šÚ#š¿¦3¦v‹j¥µœ4(€€€…Íå¹Œ‘•˜}•Ñ}¥µ…•Ì¡Í•±˜°•Ù•¹ĞèÍÑÉ5•ÍÍ…•Ù•¹Ğ¤€´ø‰åÑ•Ìğ9½¹”è4(€€€€€€€€ˆˆ‹¢:ß–>[–nû&šVÃš6»¾ò3šR¿š2’î;šÚ#š¿–n{–’7’â·¢:ß–>Xˆˆˆ4(€€€€€€€€Œƒš~—š&ûnÓš:—–>G¦j–nû&š"[–n{–’7’â·j–nû&4(€€€€€€€™½È½µÁ½¹•¹Ğ¥¸•Ù•¹Ğ¹µ•ÍÍ…•}½‰¨¹µ•ÍÍ…”è4(€€€€€€€€€€€¥˜¥Í¥¹ÍÑ…¹”¡½µÁ½¹•¹Ğ°	½Ñ%µ…”¤è4(€€€€€€€€€€€€€€€¥˜½µÁ½¹•¹Ğ¹ÕÉ°è4(€€€€€€€€€€€€€€€€€€€É•ÑÕÉ¸…İ…¥ĞÍ•±˜¹}‘½İ¹±½…‘}¥µ…”¡½µÁ½¹•¹Ğ¹ÕÉ°¤4(€€€€€€€€€€€€€€€•±¥˜½µÁ½¹•¹Ğ¹™¥±”è4(€€€€€€€€€€€€€€€€€€€É•ÑÕÉ¸…İ…¥ĞÍ•±˜¹}‘½İ¹±½…‘}¥µ…”¡½µÁ½¹•¹Ğ¹™¥±”¤4(€€€€€€€€€€€•±¥˜¥Í¥¹ÍÑ…¹”¡½µÁ½¹•¹Ğ°I•Á±ä¤…¹½µÁ½¹•¹Ğ¹¡…¥¸è4(€€€€€€€€€€€€€€€™½ÈÉ•Á±å}½µÁ½¹•¹Ğ¥¸½µÁ½¹•¹Ğ¹¡…¥¸è4(€€€€€€€€€€€€€€€€€€€¥˜¥Í¥¹ÍÑ…¹”¡É•Á±å}½µÁ½¹•¹Ğ°	½Ñ%µ…”¤è4(€€€€€€€€€€€€€€€€€€€€€€€¥˜É•Á±å}½µÁ½¹•¹Ğ¹ÕÉ°è4(€€€€€€€€€€€€€€€€€€€€€€€€€€€É•ÑÕÉ¸…İ…¥ĞÍ•±˜¹}‘½İ¹±½…‘}¥µ…”¡É•Á±å}½µÁ½¹•¹Ğ¹ÕÉ°¤4(€€€€€€€€€€€€€€€€€€€€€€€•±¥˜É•Á±å}½µÁ½¹•¹Ğ¹™¥±”è4(€€€€€€€€€€€€€€€€€€€€€€€€€€€É•ÑÕÉ¸…İ…¥ĞÍ•±˜¹}‘½İ¹±½…‘}¥µ…”¡É•Á±å}½µÁ½¹•¹Ğ¹™¥±”¤4(€€€€€€€É•ÑÕÉ¸9½¹”4(4(€€€€Œƒ¦k¢şÕÉ³’â/¢öõ¥µœ4(€€€…Íå¹Œ‘•˜}‘½İ¹±½…‘}¥µ…”¡Í•±˜°ÕÉ°èÍÑÈ¤€´ø‰åÑ•Ìğ9½¹”è4(€€€€€€€€ˆˆ‹¢¾ï–>X!QQ@¡L¤ƒ–nû&š"XÍÑÉ	½Ğƒ’âÓš^Ûn»–öW’â·jšr³–rÃ–nû&ˆˆˆ4(€€€€€€€Á…ÉÍ•€ôÕÉ±Á…ÉÍ”¡ÕÉ°¤4(€€€€€€€¥˜Á…ÉÍ•¹Í¡•µ”¹½Ğ¥¸€ ‰¡ÑÑÀˆ°€‰¡ÑÑÁÌˆ¤è4(€€€€€€€€€€€¥˜Á…ÉÍ•¹Í¡•µ”€ôô€‰™¥±”ˆè4(€€€€€€€€€€€€€€€™¥±•}Á…Ñ €ôÕ¹ÅÕ½Ñ”¡Á…ÉÍ•¹Á…Ñ ¤4(€€€€€€€€€€€€€€€¥˜±•¸¡™¥±•}Á…Ñ ¤€øô€Ì…¹™¥±•}Á…Ñ¡lÁt€ôô€ˆ¼ˆ…¹™¥±•}Á…Ñ¡lÉt€ôô€ˆèˆè4(€€€€€€€€€€€€€€€€€€€™¥±•}Á…Ñ €ô™¥±•}Á…Ñ¡lÄét4(€€€€€€€€€€€€€€€±½…±}Á…Ñ €ôA…Ñ ¡™¥±•}Á…Ñ ¤4(€€€€€€€€€€€€€€€¥˜Á…ÉÍ•¹¹•Ñ±½Œè4(€€€€€€€€€€€€€€€€€€€±½…±}Á…Ñ €ôA…Ñ ¡˜ˆ¼½íÁ…ÉÍ•¹¹•Ñ±½õí±½…±}Á…Ñ¡ôˆ¤4(€€€€€€€€€€€•±¥˜€ 4(€€€€€€€€€€€€€€€±•¸¡Á…ÉÍ•¹Í¡•µ”¤€ôô€Ä4(€€€€€€€€€€€€€€€…¹±•¸¡ÕÉ°¤€ø€È4(€€€€€€€€€€€€€€€…¹ÕÉ±lÅt€ôô€ˆèˆ4(€€€€€€€€€€€€€€€…¹ÕÉ±lÉt¥¸€ ˆ¼ˆ°€‰qpˆ¤4(€€€€€€€€€€€€¤è4(€€€€€€€€€€€€€€€±½…±}Á…Ñ €ôA…Ñ ¡ÕÉ°¤4(€€€€€€€€€€€•±¥˜Á…ÉÍ•¹Í¡•µ”è4(€€€€€€€€€€€€€€€±½•È¹•ÉÉ½È¡˜‹’â7šR¿š2j–nû&–rÃ–v–6?¢º¸èíÕÉ±ôˆ¤4(€€€€€€€€€€€€€€€É•ÑÕÉ¸9½¹”4(€€€€€€€€€€€•±Í”è4(€€€€€€€€€€€€€€€±½…±}Á…Ñ €ôA…Ñ ¡ÕÉ°¤4(4(€€€€€€€€€€€ÑÉäè4(€€€€€€€€€€€€€€€¥˜¹½Ğ±½…±}Á…Ñ ¹¥Í}™¥±” ¤è4(€€€€€€€€€€€€€€€€€€€É…¥Í”¥±•9½Ñ½Õ¹‘ÉÉ½È¡±½…±}Á…Ñ ¤4(€€€€€€€€€€€€€€€É•ÑÕÉ¸…İ…¥Ğ…Íå¹¥¼¹Ñ½}Ñ¡É•…¡±½…±}Á…Ñ ¹É•…‘}‰åÑ•Ì¤4(€€€€€€€€€€€•á•ÁĞ=MÉÉ½È…Ì”è4(€€€€€€€€€€€€€€€±½•È¹•ÉÉ½È¡˜‹¢¾ï–>[šr³–rÃ–nû&–’Ç¢Ò”èí±½…±}Á…Ñ¡ô°ƒ¦Rg¢¾¼èí•ôˆ¤4(€€€€€€€€€€€€€€€É•ÑÕÉ¸9½¹”4(4(€€€€€€€ÑÉäè4(€€€€€€€€€€€…Íå¹Œİ¥Ñ …¥½¡ÑÑÀ¹±¥•¹ÑM•ÍÍ¥½¸ ¤…ÌÍ•ÍÍ¥½¸è4(€€€€€€€€€€€€€€€…Íå¹Œİ¥Ñ Í•ÍÍ¥½¸¹•Ğ¡ÕÉ°¤…ÌÉ•ÍÀè4(€€€€€€€€€€€€€€€€€€€É•ÍÀ¹É…¥Í•}™½É}ÍÑ…ÑÕÌ ¤4(€€€€€€€€€€€€€€€€€€€É•ÑÕÉ¸…İ…¥ĞÉ•ÍÀ¹É•… ¤4(€€€€€€€•á•ÁĞá•ÁÑ¥½¸…Ì”è4(€€€€€€€€€€€±½•È¹•ÉÉ½È¡˜‹’â/¢ö÷–nû&–’Ç¢Ò”èíÕÉ±ô°ƒ¦Rg¢¾¼èí•ôˆ¤4(€€€€€€€€€€€É•ÑÕÉ¸9½¹”4(4(€€€€Œƒ¢:ß–>[–nû&ÕÉ°4(€€€‘•˜}•Ñ}¥µ…•}ÕÉ°¡Í•±˜°•Ù•¹ĞèÍÑÉ5•ÍÍ…•Ù•¹Ğ¤€´øÍÑÈğ9½¹”è4(€€€€€€€¥˜¡…Í…ÑÑÈ¡•Ù•¹Ğ°€‰•Ñ}¥µ…•Ìˆ¤è4(€€€€€€€€€€€¥µ…•Ì€ô•Ù•¹Ğ¹•Ñ}¥µ…•Ì ¤4(€€€€€€€€€€€¥˜¥µ…•Ìè4(€€€€€€€€€€€€€€€É•ÑÕÉ¸¥µ…•ÍlÁt¹ÕÉ°4(4(€€€€€€€¥˜¡…Í…ÑÑÈ¡•Ù•¹Ğ¹µ•ÍÍ…•}½‰¨°€‰µ•ÍÍ…”ˆ¤è4(€€€€€€€€€€€™½ÈÍ•œ¥¸•Ù•¹Ğ¹µ•ÍÍ…•}½‰¨¹µ•ÍÍ…”è4(€€€€€€€€€€€€€€€¥˜¥Í¥¹ÍÑ…¹”¡Í•œ°I•Á±ä¤…¹Í•œ¹¡…¥¸è4(€€€€€€€€€€€€€€€€€€€™½È¥Ñ•´¥¸Í•œ¹¡…¥¸è4(€€€€€€€€€€€€€€€€€€€€€€€¥˜¥Í¥¹ÍÑ…¹”¡¥Ñ•´°	½Ñ%µ…”¤…¹¥Ñ•´¹ÕÉ°è4(€€€€€€€€€€€€€€€€€€€€€€€€€€€É•ÑÕÉ¸¥Ñ•´¹ÕÉ°4(€€€€€€€€€€€€€€€€€€€€€€€¥˜¥Í¥¹ÍÑ…¹”¡¥Ñ•´°‘¥Ğ¤…¹¥Ñ•´¹•Ğ ‰ÑåÁ”ˆ¤€ôô€‰¥µ…”ˆè4(€€€€€€€€€€€€€€€€€€€€€€€€€€€É•ÑÕÉ¸¥Ñ•´¹•Ğ ‰‘…Ñ„ˆ°íô¤¹•Ğ ‰ÕÉ°ˆ¤½È¥Ñ•´¹•Ğ ‰ÕÉ°ˆ¤4(€€€€€€€€€€€€€€€¥˜¥Í¥¹ÍÑ…¹”¡Í•œ°‘¥Ğ¤…¹Í•œ¹•Ğ ‰ÑåÁ”ˆ¤€ôô€‰¥µ…”ˆè4(€€€€€€€€€€€€€€€€€€€É•ÑÕÉ¸Í•œ¹•Ğ ‰‘…Ñ„ˆ°íô¤¹•Ğ ‰ÕÉ°ˆ¤½ÈÍ•œ¹•Ğ ‰ÕÉ°ˆ¤4(€€€€€€€€€€€€€€€¥˜¥Í¥¹ÍÑ…¹”¡Í•œ°	½Ñ%µ…”¤…¹Í•œ¹ÕÉ°è4(€€€€€€€€€€€€€€€€€€€É•ÑÕÉ¸Í•œ¹ÕÉ°4(€€€€€€€É•ÑÕÉ¸9½¹”4(
+            logger.error(f"ä¿å­˜QQæ•°æ®å¤±è´¥: {qq}: {e}")
+
+    # è·å–qqæ•°æ®
+    async def _load_qq_data(self):
+        """å¼‚æ­¥ä»æ•°æ®åº“åŠ è½½QQæ•°æ®"""
+        try:
+            return await self.qq_profile_repo.load_all()
+        except (OSError, sqlite3.DatabaseError) as e:
+            logger.error(f"åŠ è½½QQæ•°æ®å¤±è´¥: {e}")
+            return {}
+
+    async def _migrate_legacy_qq_data(self):
+        """Import old JSON persistence into the SQLite database once."""
+        legacy_data = self._load_legacy_qq_data()
+        if not legacy_data:
+            return
+
+        try:
+            await self.qq_profile_repo.save_missing(legacy_data)
+        except (OSError, sqlite3.DatabaseError) as e:
+            logger.error(f"è¿ç§»æ—§QQæ•°æ®å¤±è´¥ï¼Œå·²ä¿ç•™æ—§JSONæ•°æ®: {e}")
+            return
+
+        for legacy_path in self.legacy_qq_data_files:
+            if not legacy_path.exists():
+                continue
+            try:
+                legacy_path.unlink()
+                logger.info(f"[qqbox] å·²è¿ç§»å¹¶åˆ é™¤æ—§JSONæ•°æ®: {legacy_path}")
+            except OSError as e:
+                logger.error(f"åˆ é™¤æ—§QQæ•°æ®å¤±è´¥: {legacy_path}: {e}")
+
+    def _load_legacy_qq_data(self):
+        legacy_data = {}
+        for legacy_path in self.legacy_qq_data_files:
+            legacy_data.update(self._load_legacy_qq_data_file(legacy_path))
+        return legacy_data
+
+    def _load_legacy_qq_data_file(self, legacy_path):
+        try:
+            if not legacy_path.exists():
+                return {}
+            content = legacy_path.read_text(encoding="utf-8")
+            if not content.strip():
+                return {}
+            data = json.loads(content)
+            if isinstance(data, dict):
+                return {
+                    str(qq): profile
+                    for qq, profile in data.items()
+                    if isinstance(profile, dict)
+                }
+            return {}
+        except (json.JSONDecodeError, OSError) as e:
+            logger.error(f"åŠ è½½æ—§QQæ•°æ®å¤±è´¥: {legacy_path}: {e}")
+            return {}
+
+    def _get_legacy_qq_data_files(self):
+        paths = [
+            self.qq_data_file,
+            self.data_dir / "avatars" / "qq_data.json",
+        ]
+        configured_avatar_path = self.Config.get("avatar_image_path", "")
+        if configured_avatar_path:
+            configured_path = Path(configured_avatar_path)
+            if not configured_path.is_absolute():
+                configured_path = self.data_dir / configured_path
+            paths.append(configured_path / "qq_data.json")
+
+        seen = set()
+        unique_paths = []
+        for path in paths:
+            resolved = path.resolve()
+            if resolved in seen:
+                continue
+            seen.add(resolved)
+            unique_paths.append(path)
+        return unique_paths
+
+    def _log_runtime_paths(self, level="info"):
+        log = getattr(logger, level)
+        log(f"[qqbox] æŒä¹…åŒ–æ•°æ®ç›®å½•: {self.data_dir}")
+        log(f"[qqbox] å¤´åƒç¼“å­˜ç›®å½•: {self.avatar_image_path}")
+        log(f"[qqbox] æ•°æ®åº“è·¯å¾„: {self.qq_db_file}")
+        log(f"[qqbox] æ—§JSONè¿ç§»æ£€æµ‹è·¯å¾„: {self.qq_data_file}")
+        log(f"[qqbox] å­—ä½“æŒä¹…åŒ–ç›®å½•: {self.font_manager.font_root}")
+
+    def _config_group(self, key):
+        value = self.Config.get(key, {})
+        return value if isinstance(value, dict) else {}
+
+    def _log_font_not_ready_paths(self):
+        if getattr(self, "_font_paths_logged_on_failure", False):
+            return
+        self._font_paths_logged_on_failure = True
+        logger.warning("[qqbox] å­—ä½“æœªåŠ è½½ï¼Œæ‰“å°è¿è¡Œè·¯å¾„ç”¨äºæ’æŸ¥")
+        self._log_runtime_paths(level="warning")
+
+    def _format_font_status(self):
+        status = self.font_manager.status()
+        progress = ""
+        if status.total > 0:
+            progress = f"\nè¿›åº¦ï¼š{status.downloaded}/{status.total} bytes"
+        error = f"\né”™è¯¯ï¼š{status.error}" if status.error else ""
+        return (
+            f"å­—ä½“çŠ¶æ€ï¼š{status.state.value}\n"
+            f"ç‰ˆæœ¬ï¼š{status.version}\n"
+            f"ç¼“å­˜ï¼š{status.cache_path}{progress}{error}"
+        )
+
+    def _font_unavailable_message(self):
+        status = self.font_manager.status()
+        if status.state in {
+            FontState.CHECKING,
+            FontState.DOWNLOADING,
+            FontState.VERIFYING,
+            FontState.LOADING,
+            FontState.NOT_STARTED,
+        }:
+            return "å­—ä½“æ­£åœ¨åå°å‡†å¤‡ï¼Œè¯·ç¨åé‡è¯•ï¼›å¯ç”¨ /qb font status æŸ¥çœ‹è¿›åº¦"
+        return "å­—ä½“å‡†å¤‡å¤±è´¥ï¼Œè¯·ç”¨ /qb font status æŸ¥çœ‹åŸå› ï¼Œæˆ–ç”¨ /qb font retry é‡è¯•"
+
+    # æ£€æµ‹qqå·æ˜¯å¦åˆæ³•
+    def _validate_qq(self, qq):
+        """éªŒè¯QQå·æ˜¯å¦åˆæ³•ï¼ˆåªåŒ…å«æ•°å­—ï¼‰"""
+        if not qq or not isinstance(qq, str):
+            return False
+        # åªå…è®¸æ•°å­—ï¼Œé˜²æ­¢è·¯å¾„éå†æ”»å‡»
+        if not qq.isdigit():
+            logger.warning(f"æ£€æµ‹åˆ°éæ³•QQå·æ ¼å¼: {qq}")
+            return False
+        return True
+
+    @staticmethod
+    def _remove_message_id_markers(text):
+        """ç§»é™¤æ¶ˆæ¯æ­£æ–‡ä¸­å½¢å¦‚ [MSG_ID:...] çš„å†…éƒ¨æ ‡è®°ã€‚"""
+        return MSG_ID_PATTERN.sub("", text).strip()
+
+    # è·å–qqä¿¡æ¯
+    async def get_qq_info(self, qq, bot=None, force_refresh: bool = False):
+        # ç¡®ä¿å¤´åƒä¿å­˜ç›®å½•å­˜åœ¨
+        os.makedirs(self.avatar_image_path, exist_ok=True)
+
+        nickname = self.qq_title_key.get(qq, {}).get("nickname", None)
+
+        if force_refresh or nickname is None:
+            nickname = await self.get_nickname_by_onebot(qq, bot)
+            if nickname:
+                await self.update_qq_title_key(qq=qq, nickname=nickname)
+
+        # [å…¼å®¹] å…ˆæ£€æŸ¥ç¼“å­˜
+        avatar_dir = Path(self.avatar_image_path)
+        for filename in os.listdir(self.avatar_image_path):
+            if (
+                filename.startswith(f"{qq}-")
+                and filename.endswith(".png")
+                and not force_refresh
+            ):
+                # [å…¼å®¹]é€šè¿‡è€æ–¹æ³•è·å–åç§°æ•°æ®
+                if nickname is None:
+                    nickname = filename[len(f"{qq}-") : -4]
+                    if nickname:
+                        await self.update_qq_title_key(qq=qq, nickname=nickname)
+                    else:
+                        nickname = qq
+                        await self.update_qq_title_key(qq=qq, nickname=nickname)
+
+                return {
+                    "qq": qq,
+                    "name": nickname,
+                    "avatar_path": str(avatar_dir / filename),
+                }
+
+        # å¦‚æœä¸å­˜åœ¨å¤´åƒæ–‡ä»¶,è¿›è¡Œè·å–
+        if self.http_client is None:
+            logger.error("HTTPå®¢æˆ·ç«¯æœªåˆå§‹åŒ–")
+            return None
+
+        if force_refresh or nickname is None:
+            nickname = await self.get_nickname_by_api(qq, self.http_client)
+            if nickname:
+                await self.update_qq_title_key(qq=qq, nickname=nickname)
+
+        # ä¸‹è½½å¤´åƒ
+        if force_refresh:
+            for old_avatar in avatar_dir.glob(f"{qq}-*.png"):
+                try:
+                    old_avatar.unlink()
+                except OSError as exc:
+                    logger.warning(f"åˆ é™¤æ—§å¤´åƒå¤±è´¥ {old_avatar}: {exc}")
+
+        avatar_url = f"https://q1.qlogo.cn/g?b=qq&nk={qq}&s=640"
+        save_path = avatar_dir / f"{qq}-.png"
+        success = await self.download_circular_avatar(
+            avatar_url, str(save_path), self.http_client
+        )
+
+        if not success:
+            raise RuntimeError(f"ä¸‹è½½å¤´åƒå¤±è´¥: {qq}")
+
+        return {"qq": qq, "name": nickname, "avatar_path": str(save_path)}
+
+    # æ›´æ–°self.qq_title_key
+    async def update_qq_title_key(
+        self, qq, nickname=None, color=None, content=None, notes=None
+    ):
+        qq_title = self.qq_title_key.get(qq, {})
+        self.qq_title_key[qq] = {
+            "nickname": nickname
+            if nickname is not None
+            else qq_title.get("nickname", None),
+            "color": color if color is not None else qq_title.get("color", None),
+            "content": content
+            if content is not None
+            else qq_title.get("content", None),
+            "notes": notes if notes is not None else qq_title.get("notes", None),
+        }
+        await self._save_qq_profile(qq)
+
+    async def _load_active_layout_preset(self):
+        preset = await self.layout_preset_repo.get_active()
+        if preset is None:
+            self.active_layout_preset = None
+            return
+        try:
+            preset["config"] = normalize_layout(preset["config"])
+            self._validate_layout_fonts(preset["config"])
+        except (LayoutValidationError, RuntimeError) as exc:
+            logger.error(f"[qqbox] åŠ è½½å½“å‰å¸ƒå±€é¢„è®¾å¤±è´¥: {exc}")
+            self.active_layout_preset = None
+            return
+        self.active_layout_preset = preset
+
+    def set_active_layout_preset(self, preset):
+        self.active_layout_preset = preset
+
+    @staticmethod
+    def _color_hex(value) -> str:
+        channels = tuple(value)
+        if len(channels) == 3:
+            channels += (255,)
+        return "#" + "".join(f"{channel:02X}" for channel in channels[:4])
+
+    def default_layout_config(self):
+        """Return the base generator layout without freezing its dynamic rules."""
+        layout = normalize_layout(DEFAULT_LAYOUT)
+        generator = self.qqbox
+        bubble_x, bubble_y = generator.bubble_position
+        avatar_x, avatar_y = generator.avatar_position
+        layout["canvas"].update(
+            {
+                "auto_size": True,
+                "background_color": self._color_hex(generator.background_color),
+                "margin": generator.margin,
+            }
+        )
+        layout["bubble"].update(
+            {
+                "x": bubble_x,
+                "y": bubble_y,
+                "padding": generator.bubble_padding,
+                "corner_radius": generator.corner_radius,
+                "max_width": generator.max_width,
+                "background_color": self._color_hex(generator.bubble_bg_color),
+                "text_color": self._color_hex(generator.text_color),
+                "font_size": generator._font_configs["bubble"][1],
+            }
+        )
+        layout["avatar"].update(
+            {
+                "x": avatar_x,
+                "y": avatar_y,
+                "width": generator.avatar_size[0],
+                "height": generator.avatar_size[1],
+            }
+        )
+        layout["title"].update(
+            {
+                "x": bubble_x,
+                "y": avatar_y + generator.title_bubble_offset,
+                "auto_position": True,
+                "padding_x": generator.title_padding_x,
+                "padding_y": generator.title_padding_y,
+                "font_size": generator._font_configs["title"][1],
+                "color": self._color_hex(generator.title_color),
+            }
+        )
+        layout["nickname"].update(
+            {
+                "auto_position": True,
+                "font_size": generator._font_configs["nickname"][1],
+                "color": self._color_hex(generator.nickname_color),
+            }
+        )
+        return layout
+
+    def available_font_files(self) -> dict[str, Path]:
+        """Return safe font IDs mapped to files available to Page presets."""
+        available: dict[str, Path] = {}
+        bundle = self.qqbox._current_font_bundle()
+        bundle_paths = getattr(bundle, "paths", None)
+        if bundle_paths is not None:
+            for role in ("bubble", "nickname", "title"):
+                path = Path(getattr(bundle_paths, role)).resolve()
+                if path.is_file():
+                    available[f"current-{role}"] = path
+
+        root = self.font_manager.font_root.resolve()
+        if root.is_dir():
+            for path in root.rglob("*"):
+                if not path.is_file() or path.suffix.lower() not in {
+                    ".ttf",
+                    ".ttc",
+                    ".otf",
+                }:
+                    continue
+                resolved = path.resolve()
+                try:
+                    relative = resolved.relative_to(root)
+                except ValueError:
+                    continue
+                if ".staging" in relative.parts:
+                    continue
+                available[relative.as_posix()] = resolved
+        return available
+
+    def _validate_layout_fonts(self, layout):
+        available = self.available_font_files()
+        for role in ("bubble", "nickname", "title"):
+            font_id = layout[role]["font"]
+            if font_id and font_id not in available:
+                raise LayoutValidationError(f"{role}.font æŒ‡å®šçš„å­—ä½“ä¸å­˜åœ¨")
+
+    @staticmethod
+    def _layout_font_path(layout, role, available):
+        font_id = layout[role]["font"]
+        if font_id:
+            return available[font_id]
+        current = available.get(f"current-{role}")
+        if current is None:
+            raise RuntimeError(f"{role} å­—ä½“å°šæœªå‡†å¤‡")
+        return current
+
+    def _build_layout_generator(self, raw_layout):
+        layout = normalize_layout(raw_layout)
+        self._validate_layout_fonts(layout)
+        available = self.available_font_files()
+        paths = FontPaths(
+            bubble=self._layout_font_path(layout, "bubble", available),
+            nickname=self._layout_font_path(layout, "nickname", available),
+            title=self._layout_font_path(layout, "title", available),
+        )
+        scale = self.qqbox.SCALE
+        bundle = FontBundle(
+            bubble=ImageFont.truetype(
+                str(paths.bubble), layout["bubble"]["font_size"] * scale
+            ),
+            nickname=ImageFont.truetype(
+                str(paths.nickname), layout["nickname"]["font_size"]
+            ),
+            nickname_scaled=ImageFont.truetype(
+                str(paths.nickname), layout["nickname"]["font_size"] * scale
+            ),
+            title=ImageFont.truetype(str(paths.title), layout["title"]["font_size"]),
+            title_scaled=ImageFont.truetype(
+                str(paths.title), layout["title"]["font_size"] * scale
+            ),
+            paths=paths,
+            version="layout-preset",
+        )
+        generator = ChatBubbleGenerator(
+            bubble_font_path=str(paths.bubble),
+            nickname_font_path=str(paths.nickname),
+            title_font_path=str(paths.title),
+            avatar_image_path=self.avatar_image_path,
+            bubble_font_size=layout["bubble"]["font_size"],
+            nickname_font_size=layout["nickname"]["font_size"],
+            title_font_size=layout["title"]["font_size"],
+            bubble_padding=layout["bubble"]["padding"],
+            title_padding_x=layout["title"]["padding_x"],
+            title_padding_y=layout["title"]["padding_y"],
+            bubble_bg_color=color_tuple(layout["bubble"]["background_color"]),
+            text_color=color_tuple(layout["bubble"]["text_color"]),
+            nickname_color=color_tuple(layout["nickname"]["color"]),
+            title_color=color_tuple(layout["title"]["color"]),
+            corner_radius=layout["bubble"]["corner_radius"],
+            avatar_size=(layout["avatar"]["width"], layout["avatar"]["height"]),
+            margin=layout["canvas"]["margin"],
+            max_width=layout["bubble"]["max_width"],
+            bubble_position=(layout["bubble"]["x"], layout["bubble"]["y"]),
+            avatar_position=(layout["avatar"]["x"], layout["avatar"]["y"]),
+            title_position=(
+                None
+                if layout["title"]["auto_position"]
+                else (layout["title"]["x"], layout["title"]["y"])
+            ),
+            nickname_position=(
+                None
+                if layout["nickname"]["auto_position"]
+                else (layout["nickname"]["x"], layout["nickname"]["y"])
+            ),
+            canvas_size=(
+                None
+                if layout["canvas"]["auto_size"]
+                else (layout["canvas"]["width"], layout["canvas"]["height"])
+            ),
+            background_color=layout["canvas"]["background_color"],
+        )
+        generator.install_font_bundle(bundle)
+        return generator
+
+    def _layout_generator_cache_key(self, layout) -> str:
+        """ç¼“å­˜é”®ï¼šå¸ƒå±€å†…å®¹ + å½“å‰å­—ä½“å¿«ç…§ï¼Œä»»ä¸€ä¾§å˜åŒ–éƒ½ä¼šå¾—åˆ°æ–°é”®ã€‚"""
+        normalized = normalize_layout(layout)
+        bundle = self.qqbox._current_font_bundle()
+        paths = getattr(bundle, "paths", None)
+        font_state = (
+            getattr(bundle, "version", None),
+            str(getattr(paths, "bubble", "")),
+            str(getattr(paths, "nickname", "")),
+            str(getattr(paths, "title", "")),
+        )
+        payload = json.dumps(normalized, ensure_ascii=False, sort_keys=True)
+        return hashlib.sha1(repr((font_state, payload)).encode("utf-8")).hexdigest()
+
+    def _build_layout_generator_cached(self, raw_layout):
+        """æŒ‰ç¼“å­˜é”®å¤ç”¨å¸ƒå±€ç”Ÿæˆå™¨ï¼Œé¿å…æ¯æ¬¡æ¸²æŸ“é‡å¤åŠ è½½å­—ä½“æ–‡ä»¶ã€‚
+
+        å­—ä½“é‡è£…ä¼šæ›´æ¢ bundle ç‰ˆæœ¬ä¸è·¯å¾„ï¼Œè‡ªç„¶å¾—åˆ°æ–°ç¼“å­˜é”®ï¼›ç¼“å­˜æœ‰ç•Œï¼Œ
+        è¶…å‡º LAYOUT_GENERATOR_CACHE_LIMIT åæŒ‰æœ€è¿‘ä½¿ç”¨é¡ºåºé€å‡ºã€‚
+        """
+        key = self._layout_generator_cache_key(raw_layout)
+        cache = self._generator_cache
+        cached = cache.get(key)
+        if cached is not None:
+            cache.move_to_end(key)
+            return cached
+        generator = self._build_layout_generator(raw_layout)
+        cache[key] = generator
+        while len(cache) > LAYOUT_GENERATOR_CACHE_LIMIT:
+            cache.popitem(last=False)
+        return generator
+
+    def _active_generator(self):
+        active_layout_preset = getattr(self, "active_layout_preset", None)
+        if not active_layout_preset:
+            return self.qqbox
+        return self._build_layout_generator_cached(active_layout_preset["config"])
+
+    def create_chat_message(self, **kwargs):
+        return self._active_generator().create_chat_message(**kwargs)
+
+    def create_chat_message_by_gif(self, **kwargs):
+        return self._active_generator().create_chat_message_by_gif(**kwargs)
+
+    def _preview_render_context(self, generator, payload):
+        qq = str(payload.get("qq") or "10001")
+        profile = self.qq_title_key.get(qq, {})
+        display_name = str(
+            payload.get("display_name")
+            or profile.get("notes")
+            or profile.get("nickname")
+            or "é¢„è§ˆç”¨æˆ·"
+        )[:64]
+        title = str(payload.get("title") or profile.get("content") or "ç¤ºä¾‹å¤´è¡”")[:64]
+        try:
+            color = int(payload.get("color", profile.get("color") or 4))
+        except (TypeError, ValueError):
+            color = 4
+        if color not in generator.color_map:
+            color = 4
+        text = str(payload.get("text") or "è¿™æ˜¯ä¸€æ¡å¯å®æ—¶è°ƒæ•´å¸ƒå±€çš„ç¤ºä¾‹æ°”æ³¡ã€‚")[:500]
+        avatar_path = next(self.avatar_image_path.glob(f"{qq}-*.png"), None)
+        return qq, display_name, title, color, text, avatar_path
+
+    def render_layout_preview(self, layout, payload):
+        generator = self._build_layout_generator_cached(layout)
+        qq, display_name, title, color, text, avatar_path = (
+            self._preview_render_context(generator, payload)
+        )
+        return generator.create_chat_message(
+            qq=qq,
+            text=text,
+            image=None,
+            qq_title_key={
+                qq: {"notes": display_name, "content": title, "color": color}
+            },
+            user_info={
+                "name": display_name,
+                "avatar_path": str(avatar_path) if avatar_path else None,
+            },
+        )
+
+    def render_layout_preview_details(self, layout, payload):
+        generator = self._build_layout_generator_cached(layout)
+        qq, display_name, title, color, text, avatar_path = (
+            self._preview_render_context(generator, payload)
+        )
+        result = generator.create_chat_message(
+            qq=qq,
+            text=text,
+            image=None,
+            qq_title_key={
+                qq: {"notes": display_name, "content": title, "color": color}
+            },
+            user_info={
+                "name": display_name,
+                "avatar_path": str(avatar_path) if avatar_path else None,
+            },
+        )
+        title_color = generator.color_map[color]
+        title_bubble = generator.create_title_bubble(title, title_color)
+        title_position = generator.title_position or (
+            generator.bubble_position[0],
+            generator.avatar_position[1] + generator.title_bubble_offset,
+        )
+        nickname_position = generator.nickname_position or (
+            title_position[0] + title_bubble.width + generator.title_bubble_name_gap,
+            generator._centered_nickname_y(
+                title_bubble.height, display_name, title_position[1]
+            ),
+        )
+        nickname_bbox = generator.nickname_font.getbbox(display_name)
+        bubble = generator.create_chat_bubble(text)
+        with Image.open(result) as image:
+            canvas_size = image.size
+        return result, {
+            "canvas": {"width": canvas_size[0], "height": canvas_size[1]},
+            "avatar": {
+                "x": generator.avatar_position[0],
+                "y": generator.avatar_position[1],
+                "width": generator.avatar_size[0],
+                "height": generator.avatar_size[1],
+            },
+            "title": {
+                "x": title_position[0],
+                "y": title_position[1],
+                "width": title_bubble.width,
+                "height": title_bubble.height,
+            },
+            "nickname": {
+                "x": nickname_position[0],
+                "y": nickname_position[1],
+                "width": nickname_bbox[2] - nickname_bbox[0],
+                "height": nickname_bbox[3] - nickname_bbox[1],
+            },
+            "bubble": {
+                "x": generator.bubble_position[0],
+                "y": generator.bubble_position[1],
+                "width": bubble.width,
+                "height": bubble.height,
+            },
+        }
+
+    # é€šè¿‡onebotè·å–nickname
+    async def get_nickname_by_onebot(self, qq, bot=None):
+        if bot is None:
+            return None
+        else:
+            try:
+                payloads = {"user_id": int(qq), "no_cache": True}
+                qq_info = await bot.api.call_action("get_stranger_info", **payloads)
+                return qq_info.get("nick", None)
+            except Exception:
+                logger.error("é€šè¿‡onebotè·å–nickå¤±è´¥")
+
+    # é€šè¿‡apiè·å–nickname
+    async def get_nickname_by_api(self, qq, http_client):
+        # å¤‡ç”¨APIåˆ—è¡¨
+        apis = [
+            f"https://uapis.cn/api/v1/social/qq/userinfo?qq={qq}",
+            f"https://api.mmp.cc/api/qqname?qq={qq}",
+            f"https://api.uomg.com/api/qq.info?qq={qq}",
+        ]
+
+        nickname = qq  # å¦‚æœAPIè®¿é—®å¤±è´¥,ä½¿ç”¨qqå½“é»˜è®¤å€¼,è®©ç”¨æˆ·ä½¿ç”¨æä¾›çš„å¤‡æ³¨æ¥å£ä¿®æ”¹åç§°
+
+        # å°è¯•å¤šä¸ªAPI
+        for api_url in apis:
+            try:
+                response = await http_client.get(api_url, timeout=10.0)
+                if response.status_code == 200:
+                    data = response.json()
+                    # å°è¯•è§£æä¸åŒAPIçš„å“åº”æ ¼å¼
+                    if "data" in data and "name" in data["data"]:
+                        nickname = data["data"]["name"]
+                        break
+                    elif "name" in data:
+                        nickname = data["name"]
+                        break
+                    elif "nickname" in data:
+                        nickname = data["nickname"]
+                        break
+            except Exception as e:
+                logger.debug(f"APIè¯·æ±‚å¤±è´¥ {api_url}: {e}")
+                continue
+        return nickname
+
+    # ä¸‹è½½å¹¶è£å‰ªå¤´åƒä¸ºåœ†å½¢
+    async def download_circular_avatar(
+        self, url, save_path, http_client=None, size=None
+    ):
+        """å¼‚æ­¥ä¸‹è½½å¹¶è£å‰ªå¤´åƒä¸ºåœ†å½¢"""
+        if http_client is None:
+            logger.error("HTTPå®¢æˆ·ç«¯æœªåˆå§‹åŒ–")
+            return False
+
+        try:
+            response = await http_client.get(url, timeout=15.0)
+            response.raise_for_status()
+
+            # åŠ è½½å›¾ç‰‡
+            img_data = response.content
+            img = Image.open(BytesIO(img_data)).convert("RGBA")
+
+            # åˆ›å»ºåœ†å½¢å¤´åƒ
+            result = self.create_circular_avatar(img, size)
+
+            # ä¿å­˜å¤´åƒ
+            result.save(save_path)
+            logger.debug(f"å¤´åƒå·²ä¿å­˜: {save_path}")
+            return True
+
+        except httpx.RequestError as e:
+            logger.error(f"ä¸‹è½½å¤´åƒè¯·æ±‚å¤±è´¥: {e}")
+        except Exception as e:
+            logger.error(f"å¤„ç†å¤´åƒå¤±è´¥: {e}")
+
+        return False
+
+    # å°†å›¾ç‰‡è£å‰ªä¸ºåœ†å½¢
+    def create_circular_avatar(self, img, size=None):
+        """å°†å›¾ç‰‡è£å‰ªä¸ºåœ†å½¢"""
+        # è·å–å›¾ç‰‡å°ºå¯¸
+        w, h = img.size
+        side = min(w, h)
+
+        # ä¸­å¿ƒè£å‰ªä¸ºæ­£æ–¹å½¢
+        left = (w - side) // 2
+        top = (h - side) // 2
+        img = img.crop((left, top, left + side, top + side))
+
+        # è°ƒæ•´å¤§å°
+        if size is None:
+            size = side
+        img = img.resize((size, size), Image.Resampling.LANCZOS)
+
+        # åˆ›å»ºåœ†å½¢é®ç½©
+        mask = Image.new("L", (size, size), 0)
+        draw = ImageDraw.Draw(mask)
+        draw.ellipse((0, 0, size, size), fill=255)
+
+        # åº”ç”¨é®ç½©
+        result = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+        result.paste(img, (0, 0), mask)
+        return result
+
+    # è·å–æ¶ˆæ¯é‡Œé¢çš„img
+    async def _get_images(self, event: AstrMessageEvent) -> bytes | None:
+        """è·å–å›¾ç‰‡æ•°æ®ï¼Œæ”¯æŒä»æ¶ˆæ¯ã€å›å¤ä¸­è·å–"""
+        # æŸ¥æ‰¾ç›´æ¥å‘é€çš„å›¾ç‰‡æˆ–å›å¤ä¸­çš„å›¾ç‰‡
+        for component in event.message_obj.message:
+            if isinstance(component, BotImage):
+                if component.url:
+                    return await self._download_image(component.url)
+                elif component.file:
+                    return await self._download_image(component.file)
+            elif isinstance(component, Reply) and component.chain:
+                for reply_component in component.chain:
+                    if isinstance(reply_component, BotImage):
+                        if reply_component.url:
+                            return await self._download_image(reply_component.url)
+                        elif reply_component.file:
+                            return await self._download_image(reply_component.file)
+        return None
+
+    # é€šè¿‡urlä¸‹è½½img
+    async def _download_image(self, url: str) -> bytes | None:
+        """è¯»å– HTTP(S) å›¾ç‰‡æˆ– AstrBot ä¸´æ—¶ç›®å½•ä¸­çš„æœ¬åœ°å›¾ç‰‡ã€‚"""
+        parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https"):
+            if parsed.scheme == "file":
+                file_path = unquote(parsed.path)
+                if len(file_path) >= 3 and file_path[0] == "/" and file_path[2] == ":":
+                    file_path = file_path[1:]
+                local_path = Path(file_path)
+                if parsed.netloc:
+                    local_path = Path(f"//{parsed.netloc}{local_path}")
+            elif (
+                len(parsed.scheme) == 1
+                and len(url) > 2
+                and url[1] == ":"
+                and url[2] in ("/", "\\")
+            ):
+                local_path = Path(url)
+            elif parsed.scheme:
+                logger.error(f"ä¸æ”¯æŒçš„å›¾ç‰‡åœ°å€åè®®: {url}")
+                return None
+            else:
+                local_path = Path(url)
+
+            try:
+                if not local_path.is_file():
+                    raise FileNotFoundError(local_path)
+                return await asyncio.to_thread(local_path.read_bytes)
+            except OSError as e:
+                logger.error(f"è¯»å–æœ¬åœ°å›¾ç‰‡å¤±è´¥: {local_path}, é”™è¯¯: {e}")
+                return None
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url) as resp:
+                    resp.raise_for_status()
+                    return await resp.read()
+        except Exception as e:
+            logger.error(f"ä¸‹è½½å›¾ç‰‡å¤±è´¥: {url}, é”™è¯¯: {e}")
+            return None
+
+    # è·å–å›¾ç‰‡url
+    def _get_image_url(self, event: AstrMessageEvent) -> str | None:
+        if hasattr(event, "get_images"):
+            images = event.get_images()
+            if images:
+                return images[0].url
+
+        if hasattr(event.message_obj, "message"):
+            for seg in event.message_obj.message:
+                if isinstance(seg, Reply) and seg.chain:
+                    for item in seg.chain:
+                        if isinstance(item, BotImage) and item.url:
+                            return item.url
+                        if isinstance(item, dict) and item.get("type") == "image":
+                            return item.get("data", {}).get("url") or item.get("url")
+                if isinstance(seg, dict) and seg.get("type") == "image":
+                    return seg.get("data", {}).get("url") or seg.get("url")
+                if isinstance(seg, BotImage) and seg.url:
+                    return seg.url
+        return None
