@@ -23,7 +23,7 @@
             <span><strong>数据库管理</strong><small>名称、头衔与颜色</small></span>
           </button>
         </nav>
-        <div class="sidebar-foot"><span class="live-dot"></span>QQbox v1.4.13</div>
+        <div class="sidebar-foot"><span class="live-dot"></span>QQbox v1.4.15</div>
       </aside>
 
       <main class="app-main">
@@ -87,6 +87,30 @@
 
             <aside class="controls-panel">
               <div class="section-heading"><div><p class="eyebrow">PARAMETERS</p><h2>全部参数</h2></div><span class="hint">向下滚动查看更多</span></div>
+
+              <section class="bg-manager">
+                <div class="bg-manager-head">
+                  <div><p class="eyebrow">BACKGROUND</p><h3>气泡背景</h3></div>
+                  <button id="manage-backgrounds" type="button">管理背景图</button>
+                </div>
+                <div class="bg-field">
+                  <label for="bg-select-button">默认气泡背景</label>
+                  <div class="bg-select" id="bg-select">
+                    <button id="bg-select-button" class="bg-select-button" type="button" aria-haspopup="listbox">
+                      <img id="bg-select-preview" alt="" hidden />
+                      <span id="bg-select-text">纯色（默认）</span>
+                      <span class="bg-select-arrow">▾</span>
+                    </button>
+                    <div id="bg-select-menu" class="bg-select-menu" role="listbox" hidden></div>
+                  </div>
+                </div>
+                <div class="bg-actions">
+                  <button id="upload-background" type="button">上传气泡背景</button>
+                  <button id="set-default-background" class="primary" type="button">设为默认背景</button>
+                  <input id="background-file" type="file" accept="image/*" hidden />
+                </div>
+              </section>
+
               <div id="controls"></div>
             </aside>
           </section>
@@ -128,11 +152,35 @@
               <label>用户名称<input id="name" name="name" maxlength="64" placeholder="留空时使用缓存昵称" /></label>
               <label>用户头衔<input id="title" name="title" maxlength="64" /></label>
               <label>用户颜色<select id="color" name="color"><option value="1">灰色 · #B5B6B5</option><option value="2">紫色 · #D69AFF</option><option value="3">黄色 · #FFC629</option><option value="4">绿色 · #52D7C5</option></select></label>
+              <div class="db-avatar-field">
+                <label>头像</label>
+                <div class="db-avatar-box">
+                  <img id="avatar-preview" alt="头像预览" hidden />
+                  <span id="avatar-empty" class="db-avatar-empty">暂无头像，可上传自定义头像</span>
+                  <input id="avatar-file" type="file" accept="image/*" hidden />
+                </div>
+                <div class="db-avatar-actions">
+                  <button id="avatar-upload" type="button">上传头像</button>
+                  <button id="avatar-remove" type="button" class="danger" hidden>移除自定义头像</button>
+                </div>
+              </div>
               <div class="db-form-actions"><button id="cancel" type="button">取消</button><button class="primary" type="submit">保存到数据库</button></div>
             </form>
           </section>
           <div id="notice" class="db-notice" role="status" aria-live="polite"></div>
         </section>
+
+        <dialog id="background-manager-dialog" class="bg-dialog">
+          <div class="bg-dialog-header">
+            <h3>背景图管理</h3>
+            <button id="bg-dialog-close" class="icon-button" type="button" aria-label="关闭">×</button>
+          </div>
+          <p id="background-manager-notice" class="bg-dialog-notice" hidden></p>
+          <div id="background-manager-list" class="bg-dialog-list"></div>
+          <div class="bg-dialog-footer">
+            <button id="bg-dialog-upload" class="primary" type="button">上传图片</button>
+          </div>
+        </dialog>
       </main>
     </div>
     <script type="module" src="./shell.js"></script>

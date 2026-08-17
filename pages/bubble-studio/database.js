@@ -5,7 +5,14 @@ const editor = document.getElementById("editor");
 const notice = document.getElementById("notice");
 const search = document.getElementById("search");
 const count = document.getElementById("count");
+const avatarPreview = document.getElementById("avatar-preview");
+const avatarEmpty = document.getElementById("avatar-empty");
+const avatarFile = document.getElementById("avatar-file");
+const avatarUpload = document.getElementById("avatar-upload");
+const avatarRemove = document.getElementById("avatar-remove");
+const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 let profiles = [];
+let avatarCustom = false;
 
 const COLORS = {
   1: ["灰色", "#B5B6B5"],
@@ -17,6 +24,44 @@ const COLORS = {
 function setNotice(message, isError = false) {
   notice.textContent = message;
   notice.classList.toggle("error", isError);
+}
+
+function setAvatarPreview(dataUrl, custom) {
+  avatarCustom = Boolean(custom);
+  if (dataUrl) {
+    avatarPreview.src = dataUrl;
+    avatarPreview.hidden = false;
+    avatarEmpty.hidden = true;
+  } else {
+    avatarPreview.removeAttribute("src");
+    avatarPreview.hidden = true;
+    avatarEmpty.hidden = false;
+  }
+  avatarRemove.hidden = !avatarCustom;
+}
+
+function readFileAsDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("读取文件失败"));
+    reader.readAsDataURL(file);
+  });
+}
+
+function validateImageFile(file) {
+  if (!file.type.startsWith("image/")) throw new Error("请选择图片文件");
+  if (file.size > MAX_UPLOAD_BYTES) throw new Error("图片不能超过 8 MB");
+}
+
+async function loadAvatar(qq) {
+  if (!qq) { setAvatarPreview(null, false); return; }
+  try {
+    const result = await bridge.apiGet("admin/profiles/avatar", { qq });
+    setAvatarPreview(result.avatar, result.custom);
+  } catch (error) {
+    setAvatarPreview(null, false);
+  }
 }
 
 function actionButton(label, action, className = "") {
@@ -75,11 +120,13 @@ function openEditor(profile = null) {
   document.getElementById("title").value = profile?.title || "";
   document.getElementById("color").value = String(profile?.color || 1);
   document.getElementById("qq").focus();
+  loadAvatar(profile?.qq || "");
 }
 
 function closeEditor() {
   editor.hidden = true;
   editor.reset();
+  setAvatarPreview(null, false);
 }
 
 async function loadProfiles() {
@@ -133,6 +180,45 @@ document.getElementById("refresh").addEventListener("click", loadProfiles);
 document.getElementById("close-editor").addEventListener("click", closeEditor);
 document.getElementById("cancel").addEventListener("click", closeEditor);
 search.addEventListener("input", renderProfiles);
+
+avatarUpload.addEventListener("click", () => avatarFile.click());
+
+avatarFile.addEventListener("change", async () => {
+  const file = avatarFile.files[0];
+  if (!file) return;
+  const qq = document.getElementById("qq").value.trim();
+  if (!qq) { setNotice("请先填写 QQ 号", true); return; }
+  let dataUrl;
+  try {
+    validateImageFile(file);
+    dataUrl = await readFileAsDataURL(file);
+  } catch (error) {
+    setNotice(error.message, true);
+    avatarFile.value = "";
+    return;
+  }
+  try {
+    await bridge.apiPost("admin/profiles/avatar/upload", { qq, image: dataUrl });
+    await loadAvatar(qq);
+    setNotice("头像已上传");
+  } catch (error) {
+    setNotice(error.message, true);
+  }
+  avatarFile.value = "";
+});
+
+avatarRemove.addEventListener("click", async () => {
+  const qq = document.getElementById("qq").value.trim();
+  if (!qq || !avatarCustom) return;
+  if (!window.confirm("确定移除自定义头像吗？移除后将恢复为自动获取的头像。")) return;
+  try {
+    await bridge.apiPost("admin/profiles/avatar/delete", { qq });
+    await loadAvatar(qq);
+    setNotice("已移除自定义头像");
+  } catch (error) {
+    setNotice(error.message, true);
+  }
+});
 
 await bridge.ready();
 await loadProfiles();

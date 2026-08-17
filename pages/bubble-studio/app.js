@@ -7,6 +7,7 @@ const presetSelect = document.getElementById("preset-select");
 const presetName = document.getElementById("preset-name");
 const previewImage = document.getElementById("preview-image");
 const MAX_MESSAGE_TEXT_LENGTH = 500;
+const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 const sampleText = document.getElementById("sample-text");
 sampleText.maxLength = MAX_MESSAGE_TEXT_LENGTH;
 let defaults;
@@ -28,6 +29,226 @@ const SECTIONS = [
 
 function clone(value) { return JSON.parse(JSON.stringify(value)); }
 function setStatus(message, error = false) { status.textContent = message; status.classList.toggle("error", error); }
+
+const bgSelect = document.getElementById("bg-select");
+const bgSelectButton = document.getElementById("bg-select-button");
+const bgSelectMenu = document.getElementById("bg-select-menu");
+const bgSelectPreview = document.getElementById("bg-select-preview");
+const bgSelectText = document.getElementById("bg-select-text");
+const manageBackgroundsButton = document.getElementById("manage-backgrounds");
+const uploadBackgroundButton = document.getElementById("upload-background");
+const setDefaultBackgroundButton = document.getElementById("set-default-background");
+const backgroundFileInput = document.getElementById("background-file");
+const backgroundManagerDialog = document.getElementById("background-manager-dialog");
+const backgroundManagerList = document.getElementById("background-manager-list");
+const bgDialogUpload = document.getElementById("bg-dialog-upload");
+const bgDialogClose = document.getElementById("bg-dialog-close");
+
+let backgrounds = [];
+let selectedBackground = "";
+
+function readFileAsDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("读取文件失败"));
+    reader.readAsDataURL(file);
+  });
+}
+
+function validateImageFile(file) {
+  if (!file.type.startsWith("image/")) throw new Error("请选择图片文件");
+  if (file.size > MAX_UPLOAD_BYTES) throw new Error("图片不能超过 8 MB");
+}
+
+function renderBackgroundOptions() {
+  bgSelectMenu.replaceChildren();
+  const none = document.createElement("button");
+  none.type = "button";
+  none.className = "bg-option";
+  none.dataset.name = "";
+  none.innerHTML = '<span class="bg-option-thumb placeholder"></span><span>纯色（默认）</span>';
+  none.addEventListener("click", () => setSelectedBackground(""));
+  bgSelectMenu.append(none);
+
+  for (const bg of backgrounds) {
+    const option = document.createElement("button");
+    option.type = "button";
+    option.className = "bg-option";
+    option.dataset.name = bg.name;
+    const img = document.createElement("img");
+    img.src = bg.image;
+    img.alt = bg.name;
+    img.className = "bg-option-thumb";
+    const label = document.createElement("span");
+    label.textContent = bg.name;
+    option.append(img, label);
+    option.addEventListener("click", () => setSelectedBackground(bg.name));
+    bgSelectMenu.append(option);
+  }
+}
+
+function updateSelectedBackgroundPreview() {
+  const bg = backgrounds.find((item) => item.name === selectedBackground);
+  if (bg) {
+    bgSelectPreview.src = bg.image;
+    bgSelectPreview.hidden = false;
+    bgSelectText.textContent = bg.name;
+  } else {
+    bgSelectPreview.removeAttribute("src");
+    bgSelectPreview.hidden = true;
+    bgSelectText.textContent = "纯色（默认）";
+  }
+}
+
+function setSelectedBackground(name) {
+  selectedBackground = name;
+  updateSelectedBackgroundPreview();
+  bgSelectMenu.hidden = true;
+}
+
+function setBackgroundManagerNotice(message, isError = false) {
+  const notice = document.getElementById("background-manager-notice");
+  if (!notice) return;
+  notice.textContent = message;
+  notice.classList.toggle("error", isError);
+  notice.hidden = false;
+}
+
+function renderBackgroundManagerList() {
+  backgroundManagerList.replaceChildren();
+  setBackgroundManagerNotice("");
+  document.getElementById("background-manager-notice").hidden = true;
+  if (!backgrounds.length) {
+    const empty = document.createElement("p");
+    empty.className = "bg-dialog-empty";
+    empty.textContent = "暂无背景图，点击下方「上传图片」添加。";
+    backgroundManagerList.append(empty);
+    return;
+  }
+  for (const bg of backgrounds) {
+    const item = document.createElement("div");
+    item.className = "bg-dialog-item";
+    const img = document.createElement("img");
+    img.src = bg.image;
+    img.alt = bg.name;
+    img.className = "bg-dialog-thumb";
+    const name = document.createElement("span");
+    name.className = "bg-dialog-name";
+    name.textContent = bg.name;
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "danger";
+    del.textContent = "删除";
+    let revertTimer = null;
+
+    del.addEventListener("click", async () => {
+      // 两段式确认：避免依赖可能被 iframe 拦截的 window.confirm
+      if (del.dataset.confirm !== "1") {
+        del.dataset.confirm = "1";
+        del.textContent = "确认删除";
+        del.classList.add("confirm-delete");
+        if (revertTimer) clearTimeout(revertTimer);
+        revertTimer = setTimeout(() => {
+          del.dataset.confirm = "";
+          del.textContent = "删除";
+          del.classList.remove("confirm-delete");
+        }, 2600);
+        return;
+      }
+
+      if (revertTimer) clearTimeout(revertTimer);
+      del.disabled = true;
+      del.textContent = "删除中…";
+      try {
+        const result = await bridge.apiPost("admin/layout/backgrounds/delete", {
+          name: bg.name,
+        });
+        if (result && result.deleted === false) {
+          throw new Error("服务端未删除该文件");
+        }
+        setStatus("背景图已删除");
+        setBackgroundManagerNotice(`已删除：${bg.name}`);
+        await refreshBackgrounds();
+      } catch (error) {
+        setBackgroundManagerNotice(error.message || "删除失败", true);
+        del.disabled = false;
+        del.dataset.confirm = "";
+        del.textContent = "删除";
+        del.classList.remove("confirm-delete");
+      }
+    });
+    item.append(img, name, del);
+    backgroundManagerList.append(item);
+  }
+}
+
+async function refreshBackgrounds() {
+  const [optionsResult, defaultResult] = await Promise.all([
+    bridge.apiGet("admin/layout/backgrounds/options"),
+    bridge.apiGet("admin/layout/backgrounds/default"),
+  ]);
+  backgrounds = optionsResult.options || [];
+  selectedBackground = defaultResult.background_image || "";
+  renderBackgroundOptions();
+  updateSelectedBackgroundPreview();
+  renderBackgroundManagerList();
+}
+
+bgSelectButton.addEventListener("click", () => {
+  bgSelectMenu.hidden = !bgSelectMenu.hidden;
+});
+
+document.addEventListener("click", (event) => {
+  if (!bgSelect.contains(event.target)) {
+    bgSelectMenu.hidden = true;
+  }
+});
+
+manageBackgroundsButton.addEventListener("click", () => {
+  renderBackgroundManagerList();
+  backgroundManagerDialog.showModal();
+});
+
+bgDialogClose.addEventListener("click", () => {
+  backgroundManagerDialog.close();
+});
+
+bgDialogUpload.addEventListener("click", () => backgroundFileInput.click());
+uploadBackgroundButton.addEventListener("click", () => backgroundFileInput.click());
+
+backgroundFileInput.addEventListener("change", async () => {
+  const file = backgroundFileInput.files[0];
+  if (!file) return;
+  const name = (file.name || "气泡背景").replace(/\.[^.]+$/, "");
+  let dataUrl;
+  try {
+    validateImageFile(file);
+    dataUrl = await readFileAsDataURL(file);
+  } catch (error) {
+    setStatus(error.message, true);
+    backgroundFileInput.value = "";
+    return;
+  }
+  try {
+    const result = await bridge.apiPost("admin/layout/backgrounds/upload", { name, image: dataUrl });
+    await refreshBackgrounds();
+    setStatus(`背景图已上传：${result.name}`);
+  } catch (error) {
+    setStatus(error.message, true);
+  }
+  backgroundFileInput.value = "";
+});
+
+setDefaultBackgroundButton.addEventListener("click", async () => {
+  try {
+    await bridge.apiPost("admin/layout/backgrounds/default/set", { name: selectedBackground });
+    setStatus(selectedBackground ? `已将「${selectedBackground}」设为默认背景` : "已清除默认背景，恢复纯色");
+  } catch (error) {
+    setStatus(error.message, true);
+  }
+});
+
 
 function fieldId(section, field) { return `field-${section}-${field}`; }
 
@@ -280,5 +501,6 @@ try {
   presets = presetResult.presets || [];
   const active = presets.find((preset) => preset.is_active);
   loadPreset(active || null);
+  await refreshBackgrounds();
   setStatus(active ? `当前使用：${active.name}` : "当前使用插件默认布局");
 } catch (error) { setStatus(error.message, true); }

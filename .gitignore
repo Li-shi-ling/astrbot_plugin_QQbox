@@ -11,6 +11,7 @@ __pycache__/
 build/
 develop-eggs/
 dist/
+data/
 downloads/
 eggs/
 .eggs/
@@ -218,4 +219,4 @@ scripts/
 resources/fonts/
 .omx/
 .codex/
-test/
+cs/

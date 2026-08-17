@@ -272,9 +272,52 @@ h2 { font-size: 15px; font-weight: 650; letter-spacing: 0; }
 .db-editor-heading { display: flex; align-items: start; justify-content: space-between; }
 .icon-button { width: 30px; height: 30px; padding: 0; border-color: transparent; font-size: 20px; line-height: 1; color: var(--muted); }
 .db-form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+.db-avatar-field { display: grid; gap: 8px; }
+.db-avatar-field > label { font-size: 12px; font-weight: 600; color: var(--muted); }
+.db-avatar-box { display: flex; align-items: center; justify-content: center; min-height: 88px; border: 1.5px dashed var(--border); border-radius: 12px; background: var(--accent-soft); overflow: hidden; }
+.db-avatar-box img { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; }
+.db-avatar-empty { color: var(--muted); font-size: 12px; }
+.db-avatar-actions { display: flex; gap: 8px; }
+.db-avatar-actions button { flex: 1; padding: 7px 10px; font-size: 12px; }
 .db-empty { padding: 48px 20px; color: var(--muted); text-align: center; }
 .db-notice { min-height: 26px; padding-top: 12px; color: var(--accent-strong); font-weight: 600; font-size: 12px; }
 .db-notice.error { color: var(--danger); }
+
+/* ---------- 气泡背景管理 ---------- */
+.bg-manager { border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-bottom: 18px; background: var(--surface); }
+.bg-manager-head { display: flex; align-items: start; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.bg-manager-head h3 { margin: 0; font-size: 14px; }
+.bg-manager-head .eyebrow { margin: 0 0 2px; }
+.bg-manager-head button { padding: 6px 10px; font-size: 12px; }
+.bg-field { display: grid; gap: 6px; }
+.bg-field > label { font-size: 12px; font-weight: 600; color: var(--muted); }
+.bg-select { position: relative; }
+.bg-select-button { width: 100%; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text); font: inherit; font-size: 13px; text-align: left; }
+.bg-select-button:hover { border-color: var(--accent); }
+.bg-select-button img { width: 28px; height: 28px; border-radius: 6px; object-fit: cover; background: var(--accent-soft); }
+.bg-select-arrow { margin-left: auto; color: var(--muted); font-size: 12px; }
+.bg-select-menu { position: absolute; z-index: 30; top: calc(100% + 4px); left: 0; right: 0; max-height: 220px; overflow: auto; padding: 4px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); box-shadow: 0 10px 30px rgb(0 0 0 / 12%); }
+.bg-option { width: 100%; display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 0; border-radius: 8px; background: transparent; color: var(--text); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.bg-option:hover { background: var(--accent-soft); }
+.bg-option-thumb { width: 28px; height: 28px; border-radius: 6px; object-fit: cover; background: var(--accent-soft); flex: 0 0 auto; }
+.bg-option-thumb.placeholder { border: 1px dashed var(--border); }
+.bg-actions { display: flex; gap: 8px; margin-top: 10px; }
+.bg-actions button { flex: 1; padding: 7px 10px; font-size: 12px; }
+.bg-dialog { width: min(520px, 90vw); padding: 0; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); color: var(--text); }
+.bg-dialog::backdrop { background: rgb(0 0 0 / 45%); }
+.bg-dialog-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+.bg-dialog-header h3 { margin: 0; font-size: 15px; }
+.bg-dialog-list { padding: 12px 16px; max-height: 50vh; overflow: auto; display: grid; gap: 8px; }
+.bg-dialog-empty { color: var(--muted); text-align: center; padding: 24px 0; }
+.bg-dialog-item { display: flex; align-items: center; gap: 10px; padding: 8px; border: 1px solid var(--border); border-radius: 10px; }
+.bg-dialog-thumb { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; background: var(--accent-soft); flex: 0 0 auto; }
+.bg-dialog-name { flex: 1; font-size: 13px; word-break: break-all; }
+.bg-dialog-item .danger { padding: 5px 10px; font-size: 12px; }
+.bg-dialog-footer { padding: 12px 16px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; }
+.bg-dialog-notice { margin: 12px 16px 0; padding: 8px 10px; border-radius: 8px; background: var(--accent-soft); color: var(--accent-strong); font-size: 12px; }
+.bg-dialog-notice.error { background: color-mix(in srgb, var(--danger) 10%, transparent); color: var(--danger); }
+.bg-dialog-item .danger.confirm-delete { background: var(--danger); border-color: transparent; color: #fff; }
+.bg-dialog-item .danger:disabled { opacity: .6; cursor: default; }
 
 /* ---------- 响应式 ---------- */
 @media (max-width: 1270px) {
