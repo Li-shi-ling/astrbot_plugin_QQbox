@@ -231,6 +231,34 @@ def test_bubble_background_loader_stays_inside_persistent_directory(tmp_path) ->
         rendered.close()
 
 
+def test_bubble_background_convert_failure_returns_none(
+    monkeypatch, tmp_path
+) -> None:
+    import data.plugins.astrbot_plugin_QQbox.src.chat_bubble_generator as (
+        bubble_module,
+    )
+
+    background = tmp_path / "broken.png"
+    background.write_bytes(b"not inspected because Image.open is stubbed")
+
+    class BrokenImage:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def convert(self, _mode):
+            raise OSError("decode failed")
+
+    monkeypatch.setattr(bubble_module.Image, "open", lambda _path: BrokenImage())
+    generator = ChatBubbleGenerator(None, None, None, tmp_path)
+    generator.bubble_background_dir = tmp_path
+    generator.bubble_background_image = background.name
+
+    assert generator._load_bubble_background(8, 6) is None
+
+
 def _png_data_url(width: int = 2, height: int = 2) -> str:
     buffer = BytesIO()
     Image.new("RGBA", (width, height), (1, 2, 3, 255)).save(buffer, format="PNG")
@@ -262,7 +290,16 @@ def test_avatar_lookup_prefers_custom_and_supports_named_cache(tmp_path) -> None
     module = importlib.import_module(
         "data.plugins.astrbot_plugin_QQbox.src.web_pages"
     )
-    owner = SimpleNamespace(avatar_image_path=tmp_path)
+    def cached_avatar_path(qq: str):
+        custom = tmp_path / f"custom-{qq}.png"
+        if custom.is_file():
+            return custom
+        return next(iter(sorted(tmp_path.glob(f"{qq}-*.png"))), None)
+
+    owner = SimpleNamespace(
+        avatar_image_path=tmp_path,
+        _cached_avatar_path=cached_avatar_path,
+    )
     controller = module.QQBoxWebController(owner)
     cached = tmp_path / "12345-Nickname.png"
     cached.write_bytes(b"cached")
@@ -293,3 +330,69 @@ def test_image_source_keeps_dictionary_adapter_compatibility() -> None:
     assert QQbox._image_source(
         {"type": "image", "file": "C:/AstrBot/data/temp/image.png"}
     ) == "C:/AstrBot/data/temp/image.png"
+
+
+def test_default_layout_keeps_global_background_as_dynamic_fallback() -> None:
+    from data.plugins.astrbot_plugin_QQbox.main import QQbox
+
+    plugin = QQbox.__new__(QQbox)
+    plugin.qqbox = SimpleNamespace(
+        bubble_position=(120, 60),
+        avatar_position=(23, 10),
+        background_color=(240, 240, 242, 255),
+        margin=20,
+        bubble_padding=20,
+        corner_radius=27,
+        max_width=640,
+        bubble_bg_color=(255, 255, 255, 220),
+        bubble_background_image="global.png",
+        text_color=(0, 0, 0, 255),
+        avatar_size=(89, 89),
+        title_bubble_offset=5,
+        title_padding_x=25,
+        title_padding_y=15,
+        title_color=(255, 255, 255, 255),
+        nickname_color=(128, 128, 128, 255),
+        _font_configs={
+            "bubble": (None, 34),
+            "title": (None, 19),
+            "nickname": (None, 21),
+        },
+    )
+
+    assert plugin.default_layout_config()["bubble"]["background_image"] == ""
+
+
+def test_referenced_background_cannot_be_deleted(monkeypatch, tmp_path) -> None:
+    module = importlib.import_module(
+        "data.plugins.astrbot_plugin_QQbox.src.web_pages"
+    )
+    background = tmp_path / "used.png"
+    background.write_bytes(b"background")
+    layout = normalize_layout(DEFAULT_LAYOUT)
+    layout["bubble"]["background_image"] = background.name
+
+    class Presets:
+        async def list_all(self):
+            return [{"name": "正在使用的布局", "config": layout}]
+
+    async def payload(default=None):
+        return {"name": background.name}
+
+    monkeypatch.setattr(module, "request", SimpleNamespace(json=payload))
+    monkeypatch.setattr(
+        module,
+        "error_response",
+        lambda message, **_kwargs: {"error": message},
+    )
+    owner = SimpleNamespace(
+        bubble_background_dir=tmp_path,
+        layout_preset_repo=Presets(),
+        default_bubble_background="",
+    )
+
+    result = asyncio.run(module.QQBoxWebController(owner).delete_background())
+
+    assert result["error"].startswith("该背景图正被布局预设使用")
+    assert "正在使用的布局" in result["error"]
+    assert background.is_file()

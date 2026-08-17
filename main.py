@@ -50,7 +50,7 @@ from .src.web_pages import QQBoxWebController
 MSG_ID_PATTERN = re.compile(r"\[MSG_ID:[^\]]*\]")
 # 布局生成器缓存上限（条），超出后按最近使用顺序逐出
 LAYOUT_GENERATOR_CACHE_LIMIT = 8
-@register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.4.14")
+@register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.4.15")
 class QQbox(Star):
     def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)
@@ -699,7 +699,9 @@ class QQbox(Star):
                 "corner_radius": generator.corner_radius,
                 "max_width": generator.max_width,
                 "background_color": self._color_hex(generator.bubble_bg_color),
-                "background_image": generator.bubble_background_image,
+                # Empty means "follow the global default". Copying the current
+                # global image here would freeze it into every new/reset preset.
+                "background_image": "",
                 "text_color": self._color_hex(generator.text_color),
                 "font_size": generator._font_configs["bubble"][1],
             }

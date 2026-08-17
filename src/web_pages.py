@@ -201,14 +201,9 @@ class QQBoxWebController:
 
     def _avatar_path_for(self, qq: str):
         """返回当前生效的头像路径：自定义优先，其次 qlogo 下载的头像。"""
-        avatar_dir = self.owner.avatar_image_path
-        custom = avatar_dir / f"custom-{qq}.png"
-        if custom.is_file():
-            return custom, True
-        downloaded = next(iter(sorted(avatar_dir.glob(f"{qq}-*.png"))), None)
-        if downloaded is not None:
-            return downloaded, False
-        return None, False
+        path = self.owner._cached_avatar_path(qq)
+        custom = path is not None and path.name == f"custom-{qq}.png"
+        return path, custom
 
     async def get_avatar(self):
         qq = str(request.query.get("qq", "") or "").strip()
@@ -328,6 +323,23 @@ class QQBoxWebController:
         save_path = self.owner.bubble_background_dir / name
         removed = False
         if save_path.is_file():
+            referenced_by = []
+            for preset in await self.owner.layout_preset_repo.list_all():
+                config = preset.get("config") if isinstance(preset, dict) else None
+                bubble = config.get("bubble") if isinstance(config, dict) else None
+                if (
+                    isinstance(bubble, dict)
+                    and bubble.get("background_image") == name
+                ):
+                    referenced_by.append(str(preset.get("name") or "未命名布局"))
+            if referenced_by:
+                names = "、".join(referenced_by[:3])
+                if len(referenced_by) > 3:
+                    names += f" 等 {len(referenced_by)} 个布局"
+                return error_response(
+                    f"该背景图正被布局预设使用：{names}。请先修改或删除这些布局。",
+                    status_code=409,
+                )
             try:
                 save_path.unlink()
                 removed = True
@@ -346,11 +358,14 @@ class QQBoxWebController:
         for name in self.owner.available_background_images():
             path = self.owner.bubble_background_dir / name
             try:
-                with Image.open(path) as img:
-                    img = img.convert("RGBA")
-                    img.thumbnail((96, 96), Image.Resampling.LANCZOS)
+                with Image.open(path) as source:
+                    thumbnail = source.convert("RGBA")
+                try:
+                    thumbnail.thumbnail((96, 96), Image.Resampling.LANCZOS)
                     buf = BytesIO()
-                    img.save(buf, format="PNG")
+                    thumbnail.save(buf, format="PNG")
+                finally:
+                    thumbnail.close()
                 data_url = "data:image/png;base64," + base64.b64encode(
                     buf.getvalue()
                 ).decode("ascii")
