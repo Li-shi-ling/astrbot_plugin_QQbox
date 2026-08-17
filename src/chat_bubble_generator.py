@@ -3,6 +3,7 @@ import threading
 import unicodedata
 from functools import wraps
 from io import BytesIO
+from pathlib import Path
 
 from PIL import Image, ImageChops, ImageDraw, ImageSequence
 
@@ -56,6 +57,8 @@ class ChatBubbleGenerator:
         nickname_color=(128, 128, 128, 255),
         title_color=(255, 255, 255, 255),
         corner_radius=27,
+        bubble_background_image="",
+        bubble_background_dir=None,
         avatar_size=(89, 89),
         margin=20,
         title_bubble_name_gap=8,
@@ -100,6 +103,8 @@ class ChatBubbleGenerator:
         self.margin = margin
         self.max_width = max_width
         self.corner_radius = corner_radius
+        self.bubble_background_image = bubble_background_image
+        self.bubble_background_dir = bubble_background_dir
         self.avatar_size = avatar_size
         self.bubble_position = bubble_position
         self.avatar_position = avatar_position
@@ -351,37 +356,45 @@ class ChatBubbleGenerator:
                 x += gap
 
     def _create_rounded_mask(self, width, height):
-        """创建圆角遮罩"""
+        """创建圆角遮罩，圆角半径与文本气泡的 corner_radius 保持一致"""
         mask = Image.new("L", (width, height), 0)
         draw_mask = ImageDraw.Draw(mask)
 
-        # 动态计算圆角半径
-        min_side = min(width, height)
-        dynamic_radius = int(min_side * 0.05)
-        final_radius = min(dynamic_radius, 50 * self.SCALE)
+        # 与文本气泡共用同一圆角参数，并限制在半边以内避免越界
+        radius = min(
+            max(0, self.corner_radius * self.SCALE),
+            width // 2,
+            height // 2,
+        )
 
         draw_mask.rounded_rectangle(
-            (0, 0, width, height), radius=final_radius, fill=255
+            (0, 0, width, height), radius=radius, fill=255
         )
         return mask
 
-    def _resize_image_for_bubble(self, image, padding=None):
-        """调整图片大小以适应气泡"""
-        if padding is None:
-            padding = self.bubble_padding * self.SCALE
-
-        max_width = self.max_width * self.SCALE - padding * 2
-        orig_width, orig_height = image.size
-
-        if orig_width <= max_width:
-            return image
-
-        # 按比例缩放
-        ratio = max_width / orig_width
-        new_width = int(orig_width * ratio)
-        new_height = int(orig_height * ratio)
-
-        return image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+    def _load_bubble_background(self, width, height):
+        """加载气泡背景图并拉伸到指定尺寸；无图或加载失败返回 None。"""
+        if not self.bubble_background_image or self.bubble_background_dir is None:
+            return None
+        root = Path(self.bubble_background_dir).resolve()
+        path = (root / self.bubble_background_image).resolve()
+        try:
+            path.relative_to(root)
+        except ValueError:
+            return None
+        if path.parent != root or not path.is_file() or path.suffix.lower() not in {
+            ".png", ".jpg", ".jpeg", ".webp"
+        }:
+            return None
+        try:
+            with Image.open(path) as source:
+                img = source.convert("RGBA")
+        except OSError:
+            return None
+        try:
+            return img.resize((width, height), Image.Resampling.LANCZOS)
+        finally:
+            img.close()
 
     def _text_layout_metrics(self, text, font):
         """返回文本换行后的宽高，尺寸均为高 DPI 坐标。"""
@@ -430,16 +443,25 @@ class ChatBubbleGenerator:
 
         # 创建画布
         canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-        draw_canvas = ImageDraw.Draw(canvas)
 
-        # 绘制气泡背景
-        draw_canvas.rounded_rectangle(
-            (0, 0, width, height),
-            radius=self.corner_radius * SCALE,
-            fill=self.bubble_bg_color,
-        )
+        # 绘制气泡背景（图片优先，否则纯色）
+        bg = self._load_bubble_background(width, height)
+        if bg is not None:
+            mask = self._create_rounded_mask(width, height)
+            try:
+                canvas.paste(bg, (0, 0), mask)
+            finally:
+                bg.close()
+                mask.close()
+        else:
+            ImageDraw.Draw(canvas).rounded_rectangle(
+                (0, 0, width, height),
+                radius=self.corner_radius * SCALE,
+                fill=self.bubble_bg_color,
+            )
 
         # 绘制文本
+        draw_canvas = ImageDraw.Draw(canvas)
         y = padding
         for line, justify in zip(lines, justify_lines):
             self._draw_text_line(
@@ -458,27 +480,31 @@ class ChatBubbleGenerator:
         )
 
     def create_chat_img_bubble(self, image):
-        """创建纯图片聊天气泡"""
+        """创建纯图片聊天气泡，图片保持原始观感并限制在最大内容宽度内。"""
         SCALE = self.SCALE
 
-        # 加载图片
         if isinstance(image, str):
             img = Image.open(image)
         else:
             img = image
 
-        # 缩放图片
-        # 在qq会被tx压缩图片,所以要先放大图片
-        img = self.resize_by_scale(img, 2)
-        img = self._resize_image_for_bubble(img)
+        # 逻辑内容宽度上限（去掉左右内边距后的气泡内容区宽度）
+        content_max = max(1, self.max_width - self.bubble_padding * 2)
         width, height = img.size
+        if width > content_max:
+            ratio = content_max / width
+            width = content_max
+            height = max(1, int(height * ratio))
 
-        # 创建圆角图片
+        # 以 SCALE 倍超采样绘制，保证圆角边缘与缩放质量
+        width = max(1, int(width * SCALE))
+        height = max(1, int(height * SCALE))
+        img = img.resize((width, height), Image.Resampling.LANCZOS)
+
         canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
         mask = self._create_rounded_mask(width, height)
         canvas.paste(img, (0, 0), mask)
 
-        # 缩放到正常尺寸
         if SCALE > 1:
             canvas = canvas.resize(
                 (width // SCALE, height // SCALE), Image.Resampling.LANCZOS
@@ -603,7 +629,7 @@ class ChatBubbleGenerator:
             raise ValueError("需要提供user_info参数，避免同步HTTP调用")
 
         # 提取用户信息
-        nickname = user_info.get("name", "未知用户")
+        nickname = user_info.get("name") or "未知用户"
         avatar_path = user_info.get("avatar_path")
 
         # 选择合适的气泡类型
@@ -652,7 +678,7 @@ class ChatBubbleGenerator:
             raise ValueError("需要提供user_info参数，避免同步HTTP调用")
 
         # 提取用户信息
-        nickname = user_info.get("name", "未知用户")
+        nickname = user_info.get("name") or "未知用户"
         avatar_path = user_info.get("avatar_path")
 
         # 处理头衔信息
@@ -933,12 +959,6 @@ class ChatBubbleGenerator:
         )
         background.alpha_composite(overlay, dest=destination)
 
-    def resize_by_scale(self, image, scale_factor):
-        w, h = image.size
-        return image.resize(
-            (int(w * scale_factor), int(h * scale_factor)), Image.Resampling.LANCZOS
-        )
-
     def _safe_text_width(self, draw, text, font, fallback_char_width):
         """
         永不抛异常的文本宽度测量
@@ -972,41 +992,3 @@ class ChatBubbleGenerator:
                 return len(text) * int(fallback_char_width)
             except Exception:
                 return 0
-
-    def _create_single_gif_bubble_frame(self, frame, apply_scaling=True):
-        """优化版本：快速创建单帧气泡，避免重复初始化"""
-        # 调整图片大小
-        if apply_scaling:
-            # 在qq会被tx压缩图片,所以要先放大图片
-            frame = self.resize_by_scale(frame, 2)
-
-        # 调整图片以适应气泡
-        padding = self.bubble_padding * (self.SCALE if apply_scaling else 1)
-        max_width = self.max_width * (self.SCALE if apply_scaling else 1) - padding * 2
-        orig_width, orig_height = frame.size
-
-        if orig_width > max_width:
-            ratio = max_width / orig_width
-            new_width = int(orig_width * ratio)
-            new_height = int(orig_height * ratio)
-            frame = frame.resize((new_width, new_height), Image.Resampling.LANCZOS)
-
-        width, height = frame.size
-
-        # 创建圆角气泡
-        if apply_scaling:
-            canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-            mask = self._create_rounded_mask(width, height)
-            canvas.paste(frame, (0, 0), mask)
-
-            # 缩放到正常尺寸
-            if self.SCALE > 1:
-                canvas = canvas.resize(
-                    (width // self.SCALE, height // self.SCALE),
-                    Image.Resampling.LANCZOS,
-                )
-            return canvas
-        else:
-            # 仅用于布局计算，不应用实际效果
-            return Image.new("RGBA", (width, height), (0, 0, 0, 0))
-

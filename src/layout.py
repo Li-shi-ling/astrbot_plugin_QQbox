@@ -22,6 +22,7 @@ DEFAULT_LAYOUT: dict[str, Any] = {
         "corner_radius": 27,
         "max_width": 640,
         "background_color": "#FFFFFFDC",
+        "background_image": "",
         "text_color": "#000000FF",
         "font": "",
         "font_size": 34,
@@ -83,6 +84,10 @@ FONT_FIELDS = {
     ("bubble", "font"),
     ("title", "font"),
     ("nickname", "font"),
+}
+
+BACKGROUND_IMAGE_FIELDS = {
+    ("bubble", "background_image"),
 }
 
 BOOLEAN_FIELDS = {
@@ -153,6 +158,8 @@ def normalize_layout(payload: Any) -> dict[str, Any]:
                         raise LayoutValidationError(
                             f"{section}.font 不能引用其他角色的当前字体"
                         )
+            elif key in BACKGROUND_IMAGE_FIELDS:
+                value = _normalize_image_id(value)
             elif key in BOOLEAN_FIELDS:
                 if not isinstance(value, bool):
                     raise LayoutValidationError(f"{section}.{field} 必须是布尔值")
@@ -200,4 +207,20 @@ def _normalize_font_id(value: Any) -> str:
         or ":" in normalized
     ):
         raise LayoutValidationError("字体标识不能越过字体持久化目录")
+    return normalized
+
+
+def _normalize_image_id(value: Any) -> str:
+    if value in (None, ""):
+        return ""
+    if not isinstance(value, str) or len(value) > 256:
+        raise LayoutValidationError("背景图标识无效")
+    normalized = value.strip()
+    if (
+        "/" in normalized
+        or "\\" in normalized
+        or normalized in {".", ".."}
+        or ":" in normalized
+    ):
+        raise LayoutValidationError("背景图标识必须是纯文件名")
     return normalized

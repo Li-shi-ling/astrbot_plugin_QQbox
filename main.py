@@ -4,6 +4,7 @@ import json
 import os
 import re
 import sqlite3
+import threading
 from collections import OrderedDict
 from io import BytesIO
 from pathlib import Path
@@ -49,7 +50,7 @@ from .src.web_pages import QQBoxWebController
 MSG_ID_PATTERN = re.compile(r"\[MSG_ID:[^\]]*\]")
 # 布局生成器缓存上限（条），超出后按最近使用顺序逐出
 LAYOUT_GENERATOR_CACHE_LIMIT = 8
-@register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.4.13")
+@register("QQbox", "Lishining", "我想要说的,群友都替我说了!", "1.4.14")
 class QQbox(Star):
     def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)
@@ -64,6 +65,7 @@ class QQbox(Star):
         self.data_dir = Path(StarTools.get_data_dir()).resolve()
         self.avatar_image_path = self.data_dir / "avatars"
         self.db_dir = self.data_dir / "db"
+        self.bubble_background_dir = self.data_dir / "bubble_backgrounds"
 
         font_download = self._config_group("font_download")
 
@@ -80,6 +82,7 @@ class QQbox(Star):
         # 创建必要的目录
         self.avatar_image_path.mkdir(parents=True, exist_ok=True)
         self.db_dir.mkdir(parents=True, exist_ok=True)
+        self.bubble_background_dir.mkdir(parents=True, exist_ok=True)
 
         # Legacy JSON path is kept only for one-time migration.
         self.qq_data_file = self.data_dir / "qq_data.json"
@@ -94,6 +97,9 @@ class QQbox(Star):
         # 初始化QQ数据
         self.qq_title_key = {}
 
+        # 默认气泡背景图（持久化，无预设时生效）
+        self.default_bubble_background = self._load_default_bubble_background()
+
         # 初始化气泡生成器
         self.qqbox = ChatBubbleGenerator(
             bubble_font_path=self.bubble_font_path,
@@ -107,6 +113,8 @@ class QQbox(Star):
             nickname_color=self.nickname_text_color,
             title_color=self.title_text_color,
             corner_radius=self.corner_radius,
+            bubble_background_image=self.default_bubble_background,
+            bubble_background_dir=self.bubble_background_dir,
         )
         self.font_manager = FontManager(
             self.data_dir,
@@ -128,6 +136,7 @@ class QQbox(Star):
         self._font_paths_logged_on_failure = False
         self.active_layout_preset = None
         self._generator_cache: OrderedDict[str, ChatBubbleGenerator] = OrderedDict()
+        self._generator_cache_lock = threading.Lock()
         self.web_controller = QQBoxWebController(self)
         self.web_controller.register(context)
 
@@ -139,7 +148,7 @@ class QQbox(Star):
     @qb.command("echo")
     async def echo(self, event: AstrMessageEvent, qq: str):
         """通过对应qq的设置发送消息 /qb echo [qq] [text]"""
-        if not self.qqbox.is_load_fonts:
+        if not self._fonts_ready():
             self._log_font_not_ready_paths()
             yield event.plain_result(self._font_unavailable_message())
             return
@@ -168,23 +177,20 @@ class QQbox(Star):
     @qb.command("gif")
     async def get_gif(self, event: AstrMessageEvent, qq: str):
         """获取消息链或回复的gif,生成聊天气泡 /qb gif [qq] [图片] 或者 [图片] 回复 /qb gif [qq]"""
-        if not self.qqbox.is_load_fonts:
+        if not self._fonts_ready():
             self._log_font_not_ready_paths()
             yield event.plain_result(self._font_unavailable_message())
             return
         if not self._validate_qq(qq):
             yield event.plain_result("QQ号格式错误，请使用纯数字")
             return
-        img_url = self._get_image_url(event)
-        if not img_url:
-            yield event.plain_result("未检测到图片")
-            return
-        img_data = await self._download_image(img_url)
+        img_data = await self._get_images(event)
         if not img_data:
-            yield event.plain_result("图片下载失败")
+            yield event.plain_result("未检测到图片")
             return
         pil_gif = Image.open(BytesIO(img_data))
         if not getattr(pil_gif, "is_animated", False):
+            pil_gif.close()
             yield event.plain_result("该图片不是GIF")
             return
         bot = getattr(event, "bot", None)
@@ -197,12 +203,13 @@ class QQbox(Star):
             qq_title_key=self.qq_title_key,
             user_info=info,
         )
+        pil_gif.close()
         yield event.chain_result([BotImage.fromBytes(img_bytes.getvalue())])
 
     @qb.command("img")
     async def echo_img(self, event: AstrMessageEvent, qq: str):
         """获取消息链或回复的图片,生成聊天气泡 /qb img [qq] [图片] 或者 [图片] 回复 /qb img [qq]"""
-        if not self.qqbox.is_load_fonts:
+        if not self._fonts_ready():
             self._log_font_not_ready_paths()
             yield event.plain_result(self._font_unavailable_message())
             return
@@ -224,6 +231,7 @@ class QQbox(Star):
             qq_title_key=self.qq_title_key,
             user_info=info,
         )
+        pil_image.close()
         yield event.chain_result([BotImage.fromBytes(img_bytes.getvalue())])
 
     @qb.command("sc")
@@ -232,6 +240,10 @@ class QQbox(Star):
         if not self._validate_qq(qq):
             yield event.plain_result("QQ号格式错误，请使用纯数字")
             return
+        try:
+            color = int(color)
+        except (TypeError, ValueError):
+            color = None
         if color not in self.qqbox.color_map:
             yield event.plain_result("颜色编号需在 1-4 之间")
             return
@@ -474,6 +486,31 @@ class QQbox(Star):
         value = self.Config.get(key, {})
         return value if isinstance(value, dict) else {}
 
+    def _load_default_bubble_background(self) -> str:
+        """读取默认气泡背景图（无预设时生效）。"""
+        path = self.data_dir / "default_bubble_background.json"
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(data, dict):
+                return ""
+            name = str(data.get("background_image", "") or "").strip()
+            return name if name in self.available_background_images() else ""
+        except (OSError, json.JSONDecodeError):
+            return ""
+
+    def _save_default_bubble_background(self, background_image: str) -> None:
+        """保存默认气泡背景图。"""
+        if (
+            background_image
+            and background_image not in self.available_background_images()
+        ):
+            raise ValueError("背景图不存在")
+        path = self.data_dir / "default_bubble_background.json"
+        path.write_text(
+            json.dumps({"background_image": background_image}, ensure_ascii=False),
+            encoding="utf-8",
+        )
+
     def _log_font_not_ready_paths(self):
         if getattr(self, "_font_paths_logged_on_failure", False):
             return
@@ -487,6 +524,19 @@ class QQbox(Star):
     def _font_unavailable_message(self):
         return format_font_generation_unavailable(self.font_manager.status())
 
+    def _fonts_ready(self) -> bool:
+        """判断是否有可用字体：默认字体，或激活预设设定的字体。"""
+        if self.qqbox.is_load_fonts:
+            return True
+        active = getattr(self, "active_layout_preset", None)
+        if not active:
+            return False
+        try:
+            self._build_layout_generator_cached(active["config"])
+            return True
+        except Exception:
+            return False
+
     # 检测qq号是否合法
     def _validate_qq(self, qq):
         """验证QQ号是否合法（只包含数字）"""
@@ -497,6 +547,13 @@ class QQbox(Star):
             logger.warning(f"检测到非法QQ号格式: {qq}")
             return False
         return True
+
+    def _cached_avatar_path(self, qq: str) -> Path | None:
+        """Return the effective cached avatar, preferring a user upload."""
+        custom = self.avatar_image_path / f"custom-{qq}.png"
+        if custom.is_file():
+            return custom
+        return next(iter(sorted(self.avatar_image_path.glob(f"{qq}-*.png"))), None)
 
     @staticmethod
     def _remove_message_id_markers(text):
@@ -515,8 +572,18 @@ class QQbox(Star):
             if nickname:
                 await self.update_qq_title_key(qq=qq, nickname=nickname)
 
-        # [兼容] 先检查缓存
         avatar_dir = Path(self.avatar_image_path)
+
+        # 优先使用用户自定义头像（独立于 qlogo 下载，不会被子 /qb ua 覆盖）
+        custom_avatar = avatar_dir / f"custom-{qq}.png"
+        if custom_avatar.is_file() and not force_refresh:
+            return {
+                "qq": qq,
+                "name": nickname or qq,
+                "avatar_path": str(custom_avatar),
+            }
+
+        # [兼容] 先检查缓存（qlogo 下载的头像）
         for filename in os.listdir(self.avatar_image_path):
             if (
                 filename.startswith(f"{qq}-")
@@ -534,14 +601,14 @@ class QQbox(Star):
 
                 return {
                     "qq": qq,
-                    "name": nickname,
+                    "name": nickname or qq,
                     "avatar_path": str(avatar_dir / filename),
                 }
 
         # 如果不存在头像文件,进行获取
         if self.http_client is None:
             logger.error("HTTP客户端未初始化")
-            return None
+            return {"qq": qq, "name": nickname or qq, "avatar_path": None}
 
         if force_refresh or nickname is None:
             nickname = await self.get_nickname_by_api(qq, self.http_client)
@@ -563,9 +630,12 @@ class QQbox(Star):
         )
 
         if not success:
-            raise RuntimeError(f"下载头像失败: {qq}")
+            if force_refresh:
+                raise RuntimeError(f"下载头像失败: {qq}")
+            logger.warning(f"头像下载失败，使用默认头像: {qq}")
+            return {"qq": qq, "name": nickname or qq, "avatar_path": None}
 
-        return {"qq": qq, "name": nickname, "avatar_path": str(save_path)}
+        return {"qq": qq, "name": nickname or qq, "avatar_path": str(save_path)}
 
     # 更新self.qq_title_key
     async def update_qq_title_key(
@@ -629,6 +699,7 @@ class QQbox(Star):
                 "corner_radius": generator.corner_radius,
                 "max_width": generator.max_width,
                 "background_color": self._color_hex(generator.bubble_bg_color),
+                "background_image": generator.bubble_background_image,
                 "text_color": self._color_hex(generator.text_color),
                 "font_size": generator._font_configs["bubble"][1],
             }
@@ -691,12 +762,31 @@ class QQbox(Star):
                 available[relative.as_posix()] = resolved
         return available
 
+    def available_background_images(self) -> list[str]:
+        """返回可用的气泡背景图文件名列表。"""
+        root = self.bubble_background_dir
+        if not root.is_dir():
+            return []
+        result = []
+        for path in root.iterdir():
+            if path.is_file() and path.suffix.lower() in {
+                ".png",
+                ".jpg",
+                ".jpeg",
+                ".webp",
+            }:
+                result.append(path.name)
+        return sorted(result)
+
     def _validate_layout_fonts(self, layout):
         available = self.available_font_files()
         for role in ("bubble", "nickname", "title"):
             font_id = layout[role]["font"]
             if font_id and font_id not in available:
                 raise LayoutValidationError(f"{role}.font 指定的字体不存在")
+        bg_id = layout["bubble"].get("background_image")
+        if bg_id and bg_id not in self.available_background_images():
+            raise LayoutValidationError("bubble.background_image 指定的背景图不存在")
 
     @staticmethod
     def _layout_font_path(layout, role, available):
@@ -735,6 +825,8 @@ class QQbox(Star):
             paths=paths,
             version="layout-preset",
         )
+        # 布局未指定背景图时，回退到插件页面设置的默认气泡背景
+        background_image = layout["bubble"]["background_image"] or self.default_bubble_background
         generator = ChatBubbleGenerator(
             bubble_font_path=str(paths.bubble),
             nickname_font_path=str(paths.nickname),
@@ -772,6 +864,8 @@ class QQbox(Star):
                 else (layout["canvas"]["width"], layout["canvas"]["height"])
             ),
             background_color=layout["canvas"]["background_color"],
+            bubble_background_image=background_image,
+            bubble_background_dir=self.bubble_background_dir,
         )
         generator.install_font_bundle(bundle)
         return generator
@@ -787,7 +881,14 @@ class QQbox(Star):
             str(getattr(paths, "nickname", "")),
             str(getattr(paths, "title", "")),
         )
-        payload = json.dumps(normalized, ensure_ascii=False, sort_keys=True)
+        payload = json.dumps(
+            {
+                "layout": normalized,
+                "default_background": self.default_bubble_background,
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
         return hashlib.sha1(repr((font_state, payload)).encode("utf-8")).hexdigest()
 
     def _build_layout_generator_cached(self, raw_layout):
@@ -798,14 +899,20 @@ class QQbox(Star):
         """
         key = self._layout_generator_cache_key(raw_layout)
         cache = self._generator_cache
-        cached = cache.get(key)
-        if cached is not None:
-            cache.move_to_end(key)
-            return cached
+        with self._generator_cache_lock:
+            cached = cache.get(key)
+            if cached is not None:
+                cache.move_to_end(key)
+                return cached
         generator = self._build_layout_generator(raw_layout)
-        cache[key] = generator
-        while len(cache) > LAYOUT_GENERATOR_CACHE_LIMIT:
-            cache.popitem(last=False)
+        with self._generator_cache_lock:
+            existing = cache.get(key)
+            if existing is not None:
+                cache.move_to_end(key)
+                return existing
+            cache[key] = generator
+            while len(cache) > LAYOUT_GENERATOR_CACHE_LIMIT:
+                cache.popitem(last=False)
         return generator
 
     def _active_generator(self):
@@ -839,26 +946,8 @@ class QQbox(Star):
         text = str(
             payload.get("text") or "这是一条可实时调整布局的示例气泡。"
         )[:MAX_MESSAGE_TEXT_LENGTH]
-        avatar_path = next(self.avatar_image_path.glob(f"{qq}-*.png"), None)
+        avatar_path = self._cached_avatar_path(qq)
         return qq, display_name, title, color, text, avatar_path
-
-    def render_layout_preview(self, layout, payload):
-        generator = self._build_layout_generator_cached(layout)
-        qq, display_name, title, color, text, avatar_path = (
-            self._preview_render_context(generator, payload)
-        )
-        return generator.create_chat_message(
-            qq=qq,
-            text=text,
-            image=None,
-            qq_title_key={
-                qq: {"notes": display_name, "content": title, "color": color}
-            },
-            user_info={
-                "name": display_name,
-                "avatar_path": str(avatar_path) if avatar_path else None,
-            },
-        )
 
     def render_layout_preview_details(self, layout, payload):
         generator = self._build_layout_generator_cached(layout)
@@ -1027,20 +1116,34 @@ class QQbox(Star):
     # 获取消息里面的img
     async def _get_images(self, event: AstrMessageEvent) -> bytes | None:
         """获取图片数据，支持从消息、回复中获取"""
-        # 查找直接发送的图片或回复中的图片
-        for component in event.message_obj.message:
-            if isinstance(component, BotImage):
-                if component.url:
-                    return await self._download_image(component.url)
-                elif component.file:
-                    return await self._download_image(component.file)
-            elif isinstance(component, Reply) and component.chain:
-                for reply_component in component.chain:
-                    if isinstance(reply_component, BotImage):
-                        if reply_component.url:
-                            return await self._download_image(reply_component.url)
-                        elif reply_component.file:
-                            return await self._download_image(reply_component.file)
+        components = list(getattr(event.message_obj, "message", ()) or ())
+        get_images = getattr(event, "get_images", None)
+        if callable(get_images):
+            components = list(get_images() or ()) + components
+
+        # AstrBot adapters may expose image segments as objects or dictionaries.
+        for component in components:
+            candidates = (
+                component.chain
+                if isinstance(component, Reply) and component.chain
+                else (component,)
+            )
+            for candidate in candidates:
+                source = self._image_source(candidate)
+                if source:
+                    return await self._download_image(source)
+        return None
+
+    @staticmethod
+    def _image_source(component) -> str | None:
+        if isinstance(component, BotImage):
+            return component.url or component.file
+        if isinstance(component, dict) and component.get("type") == "image":
+            data = component.get("data")
+            data = data if isinstance(data, dict) else {}
+            return data.get("url") or data.get("file") or component.get(
+                "url"
+            ) or component.get("file")
         return None
 
     # 通过url下载img
@@ -1084,24 +1187,3 @@ class QQbox(Star):
         except Exception as e:
             logger.error(f"下载图片失败: {url}, 错误: {e}")
             return None
-
-    # 获取图片url
-    def _get_image_url(self, event: AstrMessageEvent) -> str | None:
-        if hasattr(event, "get_images"):
-            images = event.get_images()
-            if images:
-                return images[0].url
-
-        if hasattr(event.message_obj, "message"):
-            for seg in event.message_obj.message:
-                if isinstance(seg, Reply) and seg.chain:
-                    for item in seg.chain:
-                        if isinstance(item, BotImage) and item.url:
-                            return item.url
-                        if isinstance(item, dict) and item.get("type") == "image":
-                            return item.get("data", {}).get("url") or item.get("url")
-                if isinstance(seg, dict) and seg.get("type") == "image":
-                    return seg.get("data", {}).get("url") or seg.get("url")
-                if isinstance(seg, BotImage) and seg.url:
-                    return seg.url
-        return None
